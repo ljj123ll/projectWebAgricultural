@@ -1,30 +1,32 @@
-# Spring Boot ???????YAML ???????????????Tab?
+# Spring Boot 应用配置文件 (YAML 格式)
 spring:
-  # ??????????????YAML ?????
+  # 应用基本信息配置
   application:
-    name: agricultural
-  # ????????MySQL?????????????application???
+    name: agricultural # 应用名称
+
+  # 数据源配置 (MySQL)
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver # MySQL 8.0+ ????
-    url: jdbc:mysql://localhost:3306/agricultural_assist?serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4&useSSL=false&allowPublicKeyRetrieval=true
-    username: root # MySQL ?????
-    password: 798220040520ljj # ??MySQL????????????
-  # Redis ????datasource????????
+    driver-class-name: com.mysql.cj.jdbc.Driver # MySQL 8.0+ 驱动类
+    url: jdbc:mysql://localhost:3306/agricultural_assist?serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4&useSSL=false&allowPublicKeyRetrieval=true # 数据库连接地址
+    username: root # 数据库用户名
+    password: 798220040520ljj # 数据库密码
+
+  # Redis 配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      timeout: 3000
-      database: 0
+      host: localhost # Redis 主机地址
+      port: 6379 # Redis 端口号
+      timeout: 3000 # 连接超时时间 (毫秒)
+      database: 0 # 使用的数据库索引
 
-# ???????spring????????spring???
+# 服务器配置
 server:
-  port: 8080 # ??????
+  port: 8080 # 应用启动端口
 
-# MyBatis ????spring?server??????
+# MyBatis 配置
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.agricultural.assistplatform.entity
+  mapper-locations: classpath:mapper/*.xml # Mapper XML 文件路径
+  type-aliases-package: com.agricultural.assistplatform.entity # 实体类包路径
   configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true # 开启驼峰命名映射
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 日志实现类
