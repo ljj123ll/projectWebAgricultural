@@ -19,14 +19,40 @@ spring:
       timeout: 3000 # 连接超时时间 (毫秒)
       database: 0 # 使用的数据库索引
 
-# 服务器配置
+# 服务器配置（接口文档 Base URL: http://localhost:8080/api）
 server:
-  port: 8080 # 应用启动端口
+  port: 8080
+  servlet:
+    context-path: /api
 
-# MyBatis 配置
-mybatis:
-  mapper-locations: classpath:mapper/*.xml # Mapper XML 文件路径
-  type-aliases-package: com.agricultural.assistplatform.entity # 实体类包路径
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.agricultural.assistplatform.entity
   configuration:
-    map-underscore-to-camel-case: true # 开启驼峰命名映射
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 日志实现类
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleteFlag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  secret: agricultural-assist-platform-jwt-secret-key-2026
+  expire-days: 7
+
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+    try-it-out-enabled: true
+  show-actuator: false
+
