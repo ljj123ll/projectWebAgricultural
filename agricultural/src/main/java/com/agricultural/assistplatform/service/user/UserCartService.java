@@ -92,4 +92,10 @@ public class UserCartService {
         cartMapper.delete(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getId, cartId).eq(Cart::getUserId, userId));
     }
+
+    public void clear() {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        cartMapper.delete(new LambdaQueryWrapper<Cart>().eq(Cart::getUserId, userId));
+    }
 }

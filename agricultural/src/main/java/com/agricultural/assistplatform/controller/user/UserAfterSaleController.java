@@ -33,4 +33,11 @@ public class UserAfterSaleController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.ok(userAfterSaleService.list(pageNum, pageSize));
     }
+
+    @Operation(summary = "申请管理员介入")
+    @PutMapping("/after-sale/{id}/escalate")
+    public Result<Void> escalate(@PathVariable Long id) {
+        userAfterSaleService.escalate(id);
+        return Result.ok();
+    }
 }

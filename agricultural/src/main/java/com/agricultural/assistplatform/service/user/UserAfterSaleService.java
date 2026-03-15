@@ -55,6 +55,16 @@ public class UserAfterSaleService {
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), list);
     }
 
+    public void escalate(Long id) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        AfterSale as = afterSaleMapper.selectOne(new LambdaQueryWrapper<AfterSale>()
+                .eq(AfterSale::getId, id).eq(AfterSale::getUserId, userId));
+        if (as == null) throw new BusinessException(ResultCode.NOT_FOUND, "售后不存在");
+        as.setAfterSaleStatus(4);
+        afterSaleMapper.updateById(as);
+    }
+
     private AfterSaleVO toVO(AfterSale a) {
         AfterSaleVO vo = new AfterSaleVO();
         vo.setId(a.getId());

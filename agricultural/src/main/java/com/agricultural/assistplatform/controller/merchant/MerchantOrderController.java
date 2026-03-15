@@ -28,10 +28,24 @@ public class MerchantOrderController {
         return Result.ok(merchantOrderService.list(orderStatus, pageNum, pageSize));
     }
 
+    @Operation(summary = "订单详情")
+    @GetMapping("/orders/{id}")
+    public Result<MerchantOrderVO> get(@PathVariable Long id) {
+        return Result.ok(merchantOrderService.get(id));
+    }
+
     @Operation(summary = "发货")
     @PutMapping("/orders/{id}/ship")
     public Result<Void> ship(@PathVariable Long id, @RequestBody Map<String, String> body) {
         merchantOrderService.ship(id, body);
+        return Result.ok();
+    }
+
+    @Operation(summary = "取消订单")
+    @PutMapping("/orders/{id}/cancel")
+    public Result<Void> cancel(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        merchantOrderService.cancel(id, reason);
         return Result.ok();
     }
 }

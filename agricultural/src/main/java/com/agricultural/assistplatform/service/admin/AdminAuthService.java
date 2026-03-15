@@ -44,4 +44,8 @@ public class AdminAuthService {
                 "username", admin.getUsername(),
                 "roleId", admin.getRoleId());
     }
+
+    public void sendSms(String phone) {
+        smsService.sendCode(phone);
+    }
 }

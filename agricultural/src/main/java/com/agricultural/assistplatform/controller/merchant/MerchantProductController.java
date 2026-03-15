@@ -56,4 +56,11 @@ public class MerchantProductController {
         merchantProductService.updateStatus(id, status);
         return Result.ok();
     }
+
+    @Operation(summary = "删除商品")
+    @DeleteMapping("/products/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        merchantProductService.delete(id);
+        return Result.ok();
+    }
 }

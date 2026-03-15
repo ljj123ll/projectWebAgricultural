@@ -3,6 +3,7 @@ package com.agricultural.assistplatform.controller.user;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.user.UserProductService;
+import com.agricultural.assistplatform.entity.ProductCategory;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,5 +43,17 @@ public class UserProductController {
     @GetMapping("/products/hot")
     public Result<List<ProductSimpleVO>> hot(@RequestParam(defaultValue = "10") Integer limit) {
         return Result.ok(userProductService.hotList(limit));
+    }
+
+    @Operation(summary = "商品分类")
+    @GetMapping("/categories")
+    public Result<List<ProductCategory>> categories() {
+        return Result.ok(userProductService.categories());
+    }
+
+    @Operation(summary = "产地列表")
+    @GetMapping("/origins")
+    public Result<List<String>> origins() {
+        return Result.ok(userProductService.origins());
     }
 }

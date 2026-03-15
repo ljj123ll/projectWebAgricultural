@@ -83,6 +83,10 @@ public class MerchantAuthService {
                 "status", m.getStatus());
     }
 
+    public void sendSms(String phone) {
+        smsService.sendCode(phone);
+    }
+
     private MerchantLoginVO buildLoginVO(MerchantInfo m) {
         String token = jwtUtil.generateToken(String.valueOf(m.getId()), "merchant");
         MerchantLoginVO vo = new MerchantLoginVO();

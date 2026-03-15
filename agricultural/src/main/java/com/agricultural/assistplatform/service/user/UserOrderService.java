@@ -198,6 +198,15 @@ public class UserOrderService {
         orderMainMapper.updateById(main);
     }
 
+    public LogisticsInfo logistics(Long id) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
+                .eq(OrderMain::getId, id).eq(OrderMain::getUserId, userId));
+        if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
+        return logisticsInfoMapper.selectOne(new LambdaQueryWrapper<LogisticsInfo>().eq(LogisticsInfo::getOrderNo, main.getOrderNo()));
+    }
+
     private OrderVO toVO(OrderMain main) {
         OrderVO vo = new OrderVO();
         vo.setId(main.getId());

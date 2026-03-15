@@ -2,6 +2,7 @@ package com.agricultural.assistplatform.service.user;
 
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.ResultCode;
+import com.agricultural.assistplatform.entity.ProductCategory;
 import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.entity.ProductTrace;
 import com.agricultural.assistplatform.entity.ShopInfo;
@@ -9,6 +10,7 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductTraceMapper;
 import com.agricultural.assistplatform.mapper.ShopInfoMapper;
+import com.agricultural.assistplatform.mapper.ProductCategoryMapper;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -26,6 +28,7 @@ public class UserProductService {
     private final ProductInfoMapper productInfoMapper;
     private final ProductTraceMapper productTraceMapper;
     private final ShopInfoMapper shopInfoMapper;
+    private final ProductCategoryMapper productCategoryMapper;
 
     /**
      * 商品搜索：keyword、sortBy(sales/price_asc/price_desc/score)、categoryId、originPlace、分页
@@ -91,6 +94,15 @@ public class UserProductService {
                 new LambdaQueryWrapper<ProductInfo>().eq(ProductInfo::getStatus, 1)
                         .orderByDesc(ProductInfo::getSalesVolume).last("LIMIT " + limit));
         return list.stream().map(this::toSimpleVO).collect(Collectors.toList());
+    }
+
+    public List<ProductCategory> categories() {
+        return productCategoryMapper.selectList(new LambdaQueryWrapper<ProductCategory>().orderByAsc(ProductCategory::getId));
+    }
+
+    public List<String> origins() {
+        return productInfoMapper.selectList(new LambdaQueryWrapper<ProductInfo>().isNotNull(ProductInfo::getOriginPlace))
+                .stream().map(ProductInfo::getOriginPlace).distinct().collect(Collectors.toList());
     }
 
     private ProductSimpleVO toSimpleVO(ProductInfo p) {

@@ -38,4 +38,18 @@ public class UserAddressController {
         userAddressService.setDefault(id);
         return Result.ok();
     }
+
+    @Operation(summary = "修改地址")
+    @PutMapping("/addresses/{id}")
+    public Result<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        userAddressService.update(id, body);
+        return Result.ok();
+    }
+
+    @Operation(summary = "删除地址")
+    @DeleteMapping("/addresses/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        userAddressService.delete(id);
+        return Result.ok();
+    }
 }

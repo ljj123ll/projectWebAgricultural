@@ -32,6 +32,15 @@ public class MerchantAuthController {
         return Result.ok(merchantAuthService.login(body));
     }
 
+    @Operation(summary = "发送短信验证码")
+    @PostMapping("/sms/send")
+    public Result<Void> sendSms(@RequestBody Map<String, String> body) {
+        String phone = body.get("phone");
+        if (phone == null || phone.isBlank()) return Result.fail(400, "手机号不能为空");
+        merchantAuthService.sendSms(phone);
+        return Result.ok();
+    }
+
     @Operation(summary = "审核状态")
     @GetMapping("/audit/status")
     public Result<Map<String, Object>> auditStatus() {

@@ -121,4 +121,13 @@ public class MerchantProductService {
         p.setStatus(status);
         productInfoMapper.updateById(p);
     }
+
+    public void delete(Long productId) {
+        Long merchantId = LoginContext.getUserId();
+        if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        ProductInfo p = productInfoMapper.selectOne(new LambdaQueryWrapper<ProductInfo>()
+                .eq(ProductInfo::getId, productId).eq(ProductInfo::getMerchantId, merchantId));
+        if (p == null) throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在");
+        productInfoMapper.deleteById(productId);
+    }
 }

@@ -1,0 +1,18 @@
+import request from '@/utils/request';
+import type { Product, PageResult, ProductCategory, ShopInfo } from '@/types';
+
+export const searchProducts = (params: any) => request.get<any, PageResult<Product>>('/user/products/search', { params });
+export const getProductDetail = (id: number) => request.get<any, Product>(`/user/products/${id}`);
+export const hotProducts = (params: any) => request.get<any, Product[]>('/user/products/hot', { params });
+export const listCategories = () => request.get<any, ProductCategory[]>('/user/categories');
+export const listOrigins = () => request.get<any, string[]>('/user/origins');
+
+export const getMerchantShop = (id: number) => request.get<any, ShopInfo>(`/user/merchants/${id}`);
+export const getMerchantProductsPublic = (id: number, params: any) =>
+  request.get<any, PageResult<Product>>(`/user/merchants/${id}/products`, { params });
+
+export const getMerchantProducts = (params: any) => request.get<any, PageResult<Product>>('/merchant/products', { params });
+export const addProduct = (data: any) => request.post('/merchant/products', data);
+export const updateProductStatus = (id: number, status: number) => request.put(`/merchant/products/${id}/status`, { status });
+export const updateProduct = (id: number, data: any) => request.put(`/merchant/products/${id}`, data);
+export const deleteProduct = (id: number) => request.delete(`/merchant/products/${id}`);

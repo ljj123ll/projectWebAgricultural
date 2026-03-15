@@ -60,6 +60,38 @@ public class UserAddressService {
         userAddressMapper.updateById(addr);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void update(Long id, Map<String, Object> body) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        UserAddress addr = userAddressMapper.selectOne(new LambdaQueryWrapper<UserAddress>().eq(UserAddress::getId, id).eq(UserAddress::getUserId, userId));
+        if (addr == null) throw new BusinessException(ResultCode.NOT_FOUND, "地址不存在");
+        if (body.get("receiver") != null) addr.setReceiver((String) body.get("receiver"));
+        if (body.get("phone") != null) addr.setPhone((String) body.get("phone"));
+        if (body.get("province") != null) addr.setProvince((String) body.get("province"));
+        if (body.get("city") != null) addr.setCity((String) body.get("city"));
+        if (body.get("county") != null) addr.setCounty((String) body.get("county"));
+        if (body.get("town") != null) addr.setTown((String) body.get("town"));
+        if (body.get("detailAddress") != null) addr.setDetailAddress((String) body.get("detailAddress"));
+        if (body.get("isDefault") != null) {
+            boolean isDefault = Boolean.TRUE.equals(body.get("isDefault")) || "1".equals(String.valueOf(body.get("isDefault")));
+            addr.setIsDefault(isDefault ? 1 : 0);
+            if (isDefault) {
+                userAddressMapper.update(null, new LambdaUpdateWrapper<UserAddress>().eq(UserAddress::getUserId, userId).set(UserAddress::getIsDefault, 0));
+            }
+        }
+        userAddressMapper.updateById(addr);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        UserAddress addr = userAddressMapper.selectOne(new LambdaQueryWrapper<UserAddress>().eq(UserAddress::getId, id).eq(UserAddress::getUserId, userId));
+        if (addr == null) throw new BusinessException(ResultCode.NOT_FOUND, "地址不存在");
+        userAddressMapper.deleteById(id);
+    }
+
     private UserAddressVO toVO(UserAddress a) {
         UserAddressVO vo = new UserAddressVO();
         vo.setId(a.getId());

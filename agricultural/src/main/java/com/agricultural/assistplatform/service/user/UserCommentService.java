@@ -1,6 +1,7 @@
 package com.agricultural.assistplatform.service.user;
 
 import com.agricultural.assistplatform.common.LoginContext;
+import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.dto.user.CommentSubmitDTO;
 import com.agricultural.assistplatform.entity.Comment;
@@ -11,6 +12,7 @@ import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +49,16 @@ public class UserCommentService {
         c.setAuditStatus(1);
         commentMapper.insert(c);
         updateProductScore(dto.getProductId());
+    }
+
+    public PageResult<Comment> list(Integer pageNum, Integer pageSize) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        if (pageNum == null || pageNum < 1) pageNum = 1;
+        if (pageSize == null || pageSize < 1) pageSize = 10;
+        Page<Comment> page = commentMapper.selectPage(new Page<>(pageNum, pageSize),
+                new LambdaQueryWrapper<Comment>().eq(Comment::getUserId, userId).orderByDesc(Comment::getCreateTime));
+        return PageResult.of(page.getTotal(), page.getRecords());
     }
 
     private void updateProductScore(Long productId) {

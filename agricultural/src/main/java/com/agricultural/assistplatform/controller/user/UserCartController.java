@@ -49,4 +49,11 @@ public class UserCartController {
         userCartService.delete(id);
         return Result.ok();
     }
+
+    @Operation(summary = "清空购物车")
+    @DeleteMapping("/cart")
+    public Result<Void> clear() {
+        userCartService.clear();
+        return Result.ok();
+    }
 }

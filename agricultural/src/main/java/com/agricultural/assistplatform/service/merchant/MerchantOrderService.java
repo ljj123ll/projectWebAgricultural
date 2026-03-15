@@ -42,6 +42,15 @@ public class MerchantOrderService {
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), list);
     }
 
+    public MerchantOrderVO get(Long id) {
+        Long merchantId = LoginContext.getUserId();
+        if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
+                .eq(OrderMain::getId, id).eq(OrderMain::getMerchantId, merchantId));
+        if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
+        return toVO(main);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void ship(Long id, Map<String, String> body) {
         Long merchantId = LoginContext.getUserId();
@@ -69,6 +78,19 @@ public class MerchantOrderService {
             newLog.setLogisticsStatus(1);
             logisticsInfoMapper.insert(newLog);
         }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(Long id, String reason) {
+        Long merchantId = LoginContext.getUserId();
+        if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
+                .eq(OrderMain::getId, id).eq(OrderMain::getMerchantId, merchantId));
+        if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
+        if (main.getOrderStatus() != 2) throw new BusinessException(ResultCode.BAD_REQUEST, "仅待发货订单可取消");
+        main.setOrderStatus(5);
+        main.setCancelReason(reason);
+        orderMainMapper.updateById(main);
     }
 
     private MerchantOrderVO toVO(OrderMain main) {

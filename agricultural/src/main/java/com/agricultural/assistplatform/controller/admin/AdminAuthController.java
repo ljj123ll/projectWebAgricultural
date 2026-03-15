@@ -22,4 +22,13 @@ public class AdminAuthController {
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> body) {
         return Result.ok(adminAuthService.login(body));
     }
+
+    @Operation(summary = "发送短信验证码")
+    @PostMapping("/sms/send")
+    public Result<Void> sendSms(@RequestBody Map<String, String> body) {
+        String phone = body.get("phone");
+        if (phone == null || phone.isBlank()) return Result.fail(400, "手机号不能为空");
+        adminAuthService.sendSms(phone);
+        return Result.ok();
+    }
 }

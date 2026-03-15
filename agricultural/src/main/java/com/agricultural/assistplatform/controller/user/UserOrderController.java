@@ -60,4 +60,10 @@ public class UserOrderController {
         userOrderService.receive(id);
         return Result.ok();
     }
+
+    @Operation(summary = "物流信息")
+    @GetMapping("/orders/{id}/logistics")
+    public Result<com.agricultural.assistplatform.entity.LogisticsInfo> logistics(@PathVariable Long id) {
+        return Result.ok(userOrderService.logistics(id));
+    }
 }
