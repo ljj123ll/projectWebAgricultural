@@ -49,8 +49,8 @@ public class UserOrderController {
 
     @Operation(summary = "支付订单（模拟）")
     @PostMapping("/orders/{id}/pay")
-    public Result<Void> pay(@PathVariable Long id) {
-        userOrderService.pay(id);
+    public Result<Void> pay(@PathVariable Long id, @RequestParam(defaultValue = "true") Boolean success) {
+        userOrderService.pay(id, success);
         return Result.ok();
     }
 

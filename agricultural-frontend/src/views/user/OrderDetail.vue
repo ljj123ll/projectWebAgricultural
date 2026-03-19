@@ -10,14 +10,14 @@
       <h2>{{ statusText }}</h2>
     </div>
 
-    <div class="order-info">
+    <div v-if="order" class="order-info">
       <p>订单编号：{{ order.orderNo }}</p>
       <p>下单时间：{{ formatDate(order.createTime) }}</p>
     </div>
 
-    <div class="order-items">
+    <div v-if="order" class="order-items">
       <h3>商品信息</h3>
-      <div v-for="item in order.orderItems" :key="item.id" class="item">
+      <div v-for="item in order.items || order.orderItems" :key="item.productId || item.id" class="item">
         <img :src="item.productImg" :alt="item.productName" />
         <div class="item-info">
           <h4>{{ item.productName }}</h4>
@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <div class="order-amount">
+    <div v-if="order" class="order-amount">
       <div class="amount-row">
         <span>商品总额</span>
         <span>¥{{ order.totalAmount.toFixed(2) }}</span>
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div v-if="order.orderStatus === 4" class="review-action">
+    <div v-if="order && order.orderStatus === 4" class="review-action">
       <el-button type="primary" size="large" @click="openReviewDialog">评价商品</el-button>
     </div>
 
@@ -51,7 +51,7 @@
         <el-form-item label="选择商品">
           <el-select v-model="reviewForm.productId" placeholder="请选择商品" style="width: 100%">
             <el-option
-              v-for="item in order.orderItems"
+              v-for="item in order?.items || order?.orderItems"
               :key="item.productId"
               :label="item.productName"
               :value="item.productId"
@@ -151,8 +151,9 @@ const formatDate = (date: string) => {
 };
 
 const openReviewDialog = () => {
-  if (order.value && order.value.orderItems.length > 0) {
-    reviewForm.productId = order.value.orderItems[0].productId;
+  const items = order.value?.items || order.value?.orderItems;
+  if (items && items.length > 0) {
+    reviewForm.productId = items[0].productId;
   }
   reviewDialogVisible.value = true;
 };

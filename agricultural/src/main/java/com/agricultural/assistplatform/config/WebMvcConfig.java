@@ -18,4 +18,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true);
     }
+
+    @Override
+    public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+        // Map /uploads/** to file:./uploads/
+        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + uploadDir);
+    }
 }

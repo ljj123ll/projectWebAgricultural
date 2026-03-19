@@ -22,8 +22,9 @@ public class MerchantAuthController {
 
     @Operation(summary = "商家注册")
     @PostMapping("/register")
-    public Result<MerchantLoginVO> register(@Valid @RequestBody MerchantRegisterDTO dto) {
-        return Result.ok(merchantAuthService.register(dto));
+    public Result<Void> register(@Valid @RequestBody MerchantRegisterDTO dto) {
+        merchantAuthService.register(dto);
+        return Result.ok();
     }
 
     @Operation(summary = "商家登录")

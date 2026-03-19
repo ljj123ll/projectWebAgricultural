@@ -21,8 +21,8 @@ public class AdminDashboardController {
 
     @Operation(summary = "平台核心数据")
     @GetMapping("/dashboard")
-    public Result<DashboardVO> dashboard() {
-        return Result.ok(adminDashboardService.dashboard());
+    public Result<DashboardVO> dashboard(@RequestParam(required = false) String timeRange) {
+        return Result.ok(adminDashboardService.dashboard(timeRange));
     }
 
     @Operation(summary = "商家销量排行")

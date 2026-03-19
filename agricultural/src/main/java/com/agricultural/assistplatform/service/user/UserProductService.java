@@ -31,9 +31,9 @@ public class UserProductService {
     private final ProductCategoryMapper productCategoryMapper;
 
     /**
-     * 商品搜索：keyword、sortBy(sales/price_asc/price_desc/score)、categoryId、originPlace、分页
+     * 商品搜索：keyword、sortBy(sales/price_asc/price_desc/score/stock)、categoryId、originPlace、isUnsalable、分页
      */
-    public PageResult<ProductSimpleVO> search(String keyword, String sortBy, Long categoryId, String originPlace,
+    public PageResult<ProductSimpleVO> search(String keyword, String sortBy, Long categoryId, String originPlace, Integer isUnsalable,
                                              Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
@@ -44,10 +44,12 @@ public class UserProductService {
         }
         if (categoryId != null) q.eq(ProductInfo::getCategoryId, categoryId);
         if (originPlace != null && !originPlace.isBlank()) q.eq(ProductInfo::getOriginPlace, originPlace);
+        if (isUnsalable != null) q.eq(ProductInfo::getIsUnsalable, isUnsalable);
         if ("sales".equals(sortBy)) q.orderByDesc(ProductInfo::getSalesVolume);
         else if ("price_asc".equals(sortBy)) q.orderByAsc(ProductInfo::getPrice);
         else if ("price_desc".equals(sortBy)) q.orderByDesc(ProductInfo::getPrice);
         else if ("score".equals(sortBy)) q.orderByDesc(ProductInfo::getScore);
+        else if ("stock".equals(sortBy)) q.orderByDesc(ProductInfo::getStock);
         else q.orderByDesc(ProductInfo::getSalesVolume);
         Page<ProductInfo> page = productInfoMapper.selectPage(new Page<>(pageNum, pageSize), q);
         List<ProductSimpleVO> list = page.getRecords().stream().map(this::toSimpleVO).collect(Collectors.toList());
@@ -114,6 +116,23 @@ public class UserProductService {
         v.setStock(p.getStock() != null ? p.getStock() : 0);
         v.setProductImg(p.getProductImg());
         v.setScore(p.getScore() != null ? p.getScore() : java.math.BigDecimal.ZERO);
+        v.setOriginPlace(p.getOriginPlace());
+        
+        if (p.getCategoryId() != null) {
+            ProductCategory category = productCategoryMapper.selectById(p.getCategoryId());
+            if (category != null) {
+                v.setCategoryName(category.getCategoryName());
+            }
+        }
+        
+        if (p.getMerchantId() != null) {
+            ShopInfo shop = shopInfoMapper.selectOne(
+                new LambdaQueryWrapper<ShopInfo>().eq(ShopInfo::getMerchantId, p.getMerchantId()));
+            if (shop != null) {
+                v.setMerchantName(shop.getShopName());
+            }
+        }
+        
         return v;
     }
 }

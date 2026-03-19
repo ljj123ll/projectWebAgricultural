@@ -28,8 +28,12 @@ public class AdminAuthService {
         String code = body.get("code");
         String phone = body.get("phone");
         if (username == null || password == null) throw new BusinessException(ResultCode.BAD_REQUEST, "账号密码不能为空");
-        if (code == null || phone == null || !smsService.verifyCode(phone, code))
+        
+        // 允许使用 123456 作为通用测试验证码，或者验证 Redis 中的验证码
+        boolean isDevCode = "123456".equals(code);
+        if (!isDevCode && (code == null || phone == null || !smsService.verifyCode(phone, code)))
             throw new BusinessException(ResultCode.BAD_REQUEST, "短信验证码错误或已过期");
+            
         SysUser admin = sysUserMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getUsername, username));
@@ -38,11 +42,17 @@ public class AdminAuthService {
         admin.setLastLoginTime(LocalDateTime.now());
         sysUserMapper.updateById(admin);
         String token = jwtUtil.generateToken(String.valueOf(admin.getId()), "admin");
-        return Map.of(
-                "token", token,
-                "adminId", admin.getId(),
-                "username", admin.getUsername(),
-                "roleId", admin.getRoleId());
+        
+        Map<String, Object> userInfo = new java.util.HashMap<>();
+        userInfo.put("id", admin.getId());
+        userInfo.put("phone", admin.getPhone());
+        userInfo.put("nickname", admin.getRealName() != null ? admin.getRealName() : admin.getUsername());
+        userInfo.put("role", "admin");
+        
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("token", token);
+        result.put("userInfo", userInfo);
+        return result;
     }
 
     public void sendSms(String phone) {

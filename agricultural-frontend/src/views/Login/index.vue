@@ -87,9 +87,6 @@ const handlePasswordLogin = async () => {
         if (valid) {
             loading.value = true;
             try {
-                // TODO: Update api/user.ts to support password login with correct path
-                // Mocking response structure for now based on previous api/user.ts
-                // In real scenario, `login` should call /user/login/password
                 const res = await loginPassword(passwordForm);
                 if (res) {
                     userStore.setLoginState(res);

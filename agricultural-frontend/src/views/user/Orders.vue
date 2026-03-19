@@ -13,15 +13,15 @@
       >
         {{ tab.label }}
         <el-badge 
-          v-if="tab.count > 0" 
-          :value="tab.count" 
+          v-if="getTabCount(tab.value) > 0" 
+          :value="getTabCount(tab.value)" 
           class="tab-badge"
         />
       </div>
     </div>
 
     <!-- 订单列表 -->
-    <div class="order-list">
+    <div class="order-list" v-loading="loading">
       <div v-for="order in filteredOrders" :key="order.id" class="order-card">
         <div class="order-header">
           <div class="order-info">
@@ -34,8 +34,8 @@
         </div>
 
         <div class="order-items">
-          <div v-for="item in order.orderItems" :key="item.id" class="item">
-            <img :src="item.productImg" :alt="item.productName" />
+          <div v-for="item in order.orderItems" :key="item.productId" class="item">
+            <img :src="getFullImageUrl(item.productImg)" :alt="item.productName" />
             <div class="item-info">
               <h4>{{ item.productName }}</h4>
               <p>¥{{ item.productPrice }} × {{ item.productNum }}</p>
@@ -46,15 +46,15 @@
         <div class="order-footer">
           <div class="order-amount">
             共{{ getTotalCount(order) }}件商品 实付：
-            <span class="amount">¥{{ order.totalAmount.toFixed(2) }}</span>
+            <span class="amount">¥{{ Number(order.totalAmount).toFixed(2) }}</span>
           </div>
           <div class="order-actions">
             <!-- 待付款 -->
             <template v-if="order.orderStatus === 1">
-              <el-button type="primary" @click="goToPay(order.orderNo)">
+              <el-button type="primary" @click="goToPay(order.id)">
                 立即支付
               </el-button>
-              <el-button @click="cancelOrder(order)">取消订单</el-button>
+              <el-button @click="cancelCurrentOrder(order)">取消订单</el-button>
             </template>
 
             <!-- 待发货 -->
@@ -73,7 +73,7 @@
 
             <!-- 已完成 -->
             <template v-if="order.orderStatus === 4">
-              <el-button type="primary" @click="goToReview(order)">
+              <el-button type="primary" @click="goToReview(order.id)">
                 评价商品
               </el-button>
               <el-button @click="applyAfterSale(order)">申请售后</el-button>
@@ -84,7 +84,7 @@
               <el-button @click="deleteOrder(order)">删除订单</el-button>
             </template>
 
-            <el-button link @click="viewDetail(order.orderNo)">查看详情</el-button>
+            <el-button link @click="viewDetail(order.id)">查看详情</el-button>
           </div>
         </div>
       </div>
@@ -118,123 +118,83 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/modules/order';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { Order } from '@/types';
+import { getOrders, cancelOrder, receiveOrder, getLogistics } from '@/apis/order';
+import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
 const orderStore = useOrderStore();
 
 const currentTab = ref(0);
+const loading = ref(false);
+const hiddenOrderIds = ref<number[]>([]);
 
 const tabs = ref([
-  { label: '全部', value: 0, count: 0 },
-  { label: '待付款', value: 1, count: 2 },
-  { label: '待发货', value: 2, count: 1 },
-  { label: '待收货', value: 3, count: 0 },
-  { label: '已完成', value: 4, count: 3 },
-  { label: '已取消', value: 5, count: 1 }
+  { label: '全部', value: 0 },
+  { label: '待付款', value: 1 },
+  { label: '待发货', value: 2 },
+  { label: '待收货', value: 3 },
+  { label: '已完成', value: 4 },
+  { label: '已取消', value: 5 }
 ]);
 
-// 模拟订单数据
-const orders = ref<Order[]>([
-  {
-    id: 1,
-    orderNo: 'ORD202403010001',
-    totalAmount: 59.8,
-    orderStatus: 1,
-    createTime: '2024-03-01 10:30:00',
-    orderItems: [
-      {
-        id: 1,
-        productId: 1,
-        productName: '四川红心猕猴桃',
-        productImg: 'https://via.placeholder.com/100x100/67c23a/fff?text=猕猴桃',
-        productPrice: 29.9,
-        productNum: 2
-      }
-    ]
-  },
-  {
-    id: 2,
-    orderNo: 'ORD202402280002',
-    totalAmount: 39.9,
-    orderStatus: 2,
-    createTime: '2024-02-28 15:20:00',
-    orderItems: [
-      {
-        id: 2,
-        productId: 2,
-        productName: '农家土鸡蛋',
-        productImg: 'https://via.placeholder.com/100x100/e6a23c/fff?text=土鸡蛋',
-        productPrice: 39.9,
-        productNum: 1
-      }
-    ]
-  },
-  {
-    id: 3,
-    orderNo: 'ORD202402250003',
-    totalAmount: 128,
-    orderStatus: 4,
-    createTime: '2024-02-25 09:00:00',
-    orderItems: [
-      {
-        id: 3,
-        productId: 3,
-        productName: '高山绿茶',
-        productImg: 'https://via.placeholder.com/100x100/67c23a/fff?text=绿茶',
-        productPrice: 128,
-        productNum: 1
-      }
-    ]
-  },
-  {
-    id: 4,
-    orderNo: 'ORD202402200004',
-    totalAmount: 88,
-    orderStatus: 5,
-    createTime: '2024-02-20 14:00:00',
-    orderItems: [
-      {
-        id: 4,
-        productId: 4,
-        productName: '农家腊肉',
-        productImg: 'https://via.placeholder.com/100x100/f56c6c/fff?text=腊肉',
-        productPrice: 88,
-        productNum: 1
-      }
-    ]
-  }
-]);
+const orders = ref<Order[]>([]);
 
-// 过滤订单
-const filteredOrders = computed(() => {
-  if (currentTab.value === 0) {
-    return orders.value;
+const normalizeOrder = (order: any): Order => {
+  const orderItems = Array.isArray(order.orderItems) ? order.orderItems : order.items || [];
+  return {
+    ...order,
+    totalAmount: Number(order.totalAmount || 0),
+    orderItems
+  };
+};
+
+const loadOrders = async () => {
+  loading.value = true;
+  try {
+    const res = await getOrders({ pageNum: 1, pageSize: 100 });
+    orders.value = (res?.list || []).map(normalizeOrder);
+  } finally {
+    loading.value = false;
   }
-  return orders.value.filter(order => order.orderStatus === currentTab.value);
+};
+
+onMounted(() => {
+  loadOrders();
 });
 
-// 获取状态文本
+const visibleOrders = computed(() => orders.value.filter(order => !hiddenOrderIds.value.includes(order.id)));
+
+const filteredOrders = computed(() => {
+  if (currentTab.value === 0) {
+    return visibleOrders.value;
+  }
+  return visibleOrders.value.filter(order => order.orderStatus === currentTab.value);
+});
+
+const getTabCount = (tabValue: number) => {
+  if (tabValue === 0) return visibleOrders.value.length;
+  return visibleOrders.value.filter(order => order.orderStatus === tabValue).length;
+};
+
 const getStatusText = (status: number) => {
   return orderStore.getStatusText(status);
 };
 
-// 获取状态类型
 const getStatusType = (status: number) => {
   return orderStore.getStatusType(status);
 };
 
-// 获取商品总数
 const getTotalCount = (order: Order) => {
-  return order.orderItems.reduce((sum, item) => sum + item.productNum, 0);
+  return (order.orderItems || []).reduce((sum, item) => sum + item.productNum, 0);
 };
 
-// 格式化日期
 const formatDate = (date: string) => {
+  if (!date) return '';
   return date.substring(0, 16).replace('T', ' ');
 };
 
@@ -242,61 +202,55 @@ const messageDialogVisible = ref(false);
 const currentOrderNo = ref('');
 const messageContent = ref('');
 
-// 去支付
-const goToPay = (orderNo: string) => {
-  router.push(`/order-pay/${orderNo}`);
+const goToPay = (orderId: number) => {
+  router.push(`/order-pay/${orderId}`);
 };
 
-// 取消订单
-const cancelOrder = (order: Order) => {
+const cancelCurrentOrder = (order: Order) => {
   ElMessageBox.confirm('确定要取消该订单吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    order.orderStatus = 5;
+  }).then(async () => {
+    await cancelOrder(order.id);
     ElMessage.success('订单已取消');
+    await loadOrders();
   });
 };
 
-// 确认收货
 const confirmReceive = (order: Order) => {
   ElMessageBox.confirm('确认已收到商品？', '提示', {
     confirmButtonText: '确认收货',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    order.orderStatus = 4;
+  }).then(async () => {
+    await receiveOrder(order.id);
     ElMessage.success('确认收货成功');
+    await loadOrders();
   });
 };
 
-// 查看物流
-const viewLogistics = (order: Order) => {
+const viewLogistics = async (order: Order) => {
+  const logistics = await getLogistics(order.id);
+  const company = logistics?.logisticsCompany || '暂无';
+  const no = logistics?.logisticsNo || '暂无';
   ElMessageBox.alert(
-    '物流公司：顺丰速运\n物流单号：SF1234567890',
+    `物流公司：${company}\n物流单号：${no}`,
     '物流信息',
     {
-      confirmButtonText: '复制单号',
-      callback: () => {
-        navigator.clipboard.writeText('SF1234567890');
-        ElMessage.success('物流单号已复制');
-      }
+      confirmButtonText: '确定'
     }
   );
 };
 
-// 申请售后
 const applyAfterSale = (order: Order) => {
   router.push(`/after-sale/${order.orderNo}`);
 };
 
-// 去评价
-const goToReview = (order: Order) => {
-  router.push(`/order-detail/${order.orderNo}?review=1`);
+const goToReview = (orderId: number) => {
+  router.push(`/order-detail/${orderId}?review=1`);
 };
 
-// 联系商家
 const contactMerchant = (order: Order) => {
   currentOrderNo.value = order.orderNo;
   messageContent.value = '';
@@ -312,24 +266,19 @@ const sendMessage = () => {
   messageDialogVisible.value = false;
 };
 
-// 删除订单
 const deleteOrder = (order: Order) => {
   ElMessageBox.confirm('确定要删除该订单吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const index = orders.value.findIndex(o => o.id === order.id);
-    if (index > -1) {
-      orders.value.splice(index, 1);
-    }
+    hiddenOrderIds.value.push(order.id);
     ElMessage.success('订单已删除');
   });
 };
 
-// 查看详情
-const viewDetail = (orderNo: string) => {
-  router.push(`/order-detail/${orderNo}`);
+const viewDetail = (orderId: number) => {
+  router.push(`/order-detail/${orderId}`);
 };
 </script>
 

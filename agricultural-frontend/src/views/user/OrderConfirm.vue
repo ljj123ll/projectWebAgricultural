@@ -208,7 +208,9 @@ const loadAddresses = async () => {
       if (defaultAddr) {
         selectedAddressId.value = defaultAddr.id;
       } else if (res.length > 0) {
-        selectedAddressId.value = res[0].id;
+        if (res && res.length > 0) {
+          selectedAddressId.value = res[0].id;
+        }
       }
     } else {
        // Mock fallback if API fails or returns empty in dev

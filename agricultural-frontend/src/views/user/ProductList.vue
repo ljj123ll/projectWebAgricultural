@@ -19,21 +19,28 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :xs="12" :sm="5" :md="4">
-            <el-select v-model="filterOrigin" placeholder="产地筛选" size="large" clearable @change="handleFilter">
-              <el-option v-for="item in originOptions" :key="item" :label="item" :value="item" />
-            </el-select>
+          <el-col :xs="12" :sm="5" :md="6">
+             <el-cascader
+              v-model="selectedRegion"
+              :options="originOptions"
+              placeholder="产地筛选 (省/市/区)"
+              size="large"
+              clearable
+              style="width: 100%"
+              @change="handleFilter"
+            />
           </el-col>
           <el-col :xs="12" :sm="5" :md="4">
             <el-select v-model="filterCategory" placeholder="商品品类" size="large" clearable @change="handleFilter">
               <el-option v-for="item in categoryOptions" :key="item.id" :label="item.categoryName" :value="item.id" />
             </el-select>
           </el-col>
-          <el-col :xs="24" :sm="6" :md="4">
+          <el-col :xs="24" :sm="6" :md="8">
             <el-radio-group v-model="sortType" size="large" @change="handleSort">
-              <el-radio-button label="default">综合</el-radio-button>
               <el-radio-button label="sales">销量</el-radio-button>
-              <el-radio-button label="price">价格</el-radio-button>
+              <el-radio-button label="score">评分</el-radio-button>
+              <el-radio-button label="price_asc">价格↑</el-radio-button>
+              <el-radio-button label="price_desc">价格↓</el-radio-button>
             </el-radio-group>
           </el-col>
         </el-row>
@@ -62,14 +69,14 @@
                 @click="goToProduct(product.id)"
               >
                 <div class="image-wrapper">
-                  <img :src="product.productImg" class="product-image" />
+                  <img :src="getFullImageUrl(product.productImg)" class="product-image" />
                   <div v-if="product.stock <= 10" class="stock-badge">仅剩 {{ product.stock }} 件</div>
                 </div>
                 <div class="card-content">
                   <h3 class="product-name text-ellipsis">{{ product.productName }}</h3>
                   <div class="product-tags">
                     <el-tag size="small" effect="plain">{{ product.categoryName || '生鲜' }}</el-tag>
-                    <span class="origin"><el-icon><Location /></el-icon> {{ product.originPlace || '四川' }}</span>
+                    <span class="origin"><el-icon><Location /></el-icon> {{ product.originPlace ? product.originPlace.split('/').slice(0, 2).join('/') : '四川' }}</span>
                   </div>
                   <div class="price-row">
                     <span class="price">¥{{ product.price }}</span>
@@ -101,26 +108,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { Search, Location, Shop } from '@element-plus/icons-vue';
-import { searchProducts, listOrigins, listCategories } from '@/apis/product';
+import { searchProducts, listCategories } from '@/apis/product';
 import type { Product, ProductCategory } from '@/types';
+import { regionData, codeToText } from 'element-china-area-data';
+import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
 
 // 筛选状态
 const searchKeyword = ref('');
-const filterOrigin = ref('');
+const selectedRegion = ref<string[]>([]);
 const filterCategory = ref<number | ''>('');
-const sortType = ref('default');
+const sortType = ref('sales');
 const currentPage = ref(1);
 const pageSize = ref(12);
 const total = ref(0);
 
 // 选项数据
-const originOptions = ref<string[]>([]);
+const originOptions = regionData; // 使用省市区数据
 const categoryOptions = ref<ProductCategory[]>([]);
 
 // 列表数据
@@ -128,39 +138,59 @@ const products = ref<Product[]>([]);
 
 // 初始化
 onMounted(async () => {
+  applyQueryFilters();
   await Promise.all([
     loadOptions(),
     loadProducts()
   ]);
 });
 
+watch(
+  () => route.query,
+  () => {
+    applyQueryFilters();
+    currentPage.value = 1;
+    loadProducts();
+  }
+);
+
 // 加载选项
 const loadOptions = async () => {
   try {
-    const [originsRes, categoriesRes] = await Promise.all([
-      listOrigins(),
-      listCategories()
-    ]);
-    if (originsRes) originOptions.value = originsRes;
+    const categoriesRes = await listCategories();
     if (categoriesRes) categoryOptions.value = categoriesRes;
   } catch (error) {
     console.error('加载选项失败', error);
-    // Mock data fallback
-    originOptions.value = ['成都市', '绵阳市', '德阳市', '南充市'];
-    categoryOptions.value = [
-      { id: 1, categoryName: '生鲜果蔬', categoryCode: 'fresh', parentId: 0, categoryLevel: 1 },
-      { id: 2, categoryName: '粮油副食', categoryCode: 'grain', parentId: 0, categoryLevel: 1 }
-    ];
   }
+};
+
+const applyQueryFilters = () => {
+  searchKeyword.value = typeof route.query.keyword === 'string' ? route.query.keyword : '';
+  const categoryQuery = Number(route.query.category);
+  filterCategory.value = !Number.isNaN(categoryQuery) && categoryQuery > 0 ? categoryQuery : '';
+  sortType.value = typeof route.query.sort === 'string' ? normalizeSort(route.query.sort) : 'sales';
+};
+
+const normalizeSort = (sort: string) => {
+  if (sort === 'default') return 'sales';
+  if (sort === 'price') return 'price_asc';
+  if (sort === 'price_asc' || sort === 'price_desc' || sort === 'sales' || sort === 'score' || sort === 'stock') return sort;
+  return 'sales';
 };
 
 // 加载商品列表
 const loadProducts = async () => {
   loading.value = true;
   try {
+    // 处理产地筛选
+    let originStr = '';
+    if (selectedRegion.value && selectedRegion.value.length > 0) {
+      originStr = selectedRegion.value.map(code => codeToText[code]).join('/');
+    }
+
     const params = {
       keyword: searchKeyword.value,
-      origin: filterOrigin.value,
+      originPlace: originStr,
       categoryId: filterCategory.value,
       sortBy: sortType.value,
       pageNum: currentPage.value,
@@ -171,14 +201,13 @@ const loadProducts = async () => {
       products.value = res.list;
       total.value = res.total;
     } else {
-       // Mock fallback
-       products.value = mockProducts;
-       total.value = mockProducts.length;
+       products.value = [];
+       total.value = 0;
     }
   } catch (error) {
     console.error('加载商品失败', error);
-    products.value = mockProducts;
-    total.value = mockProducts.length;
+    products.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -195,68 +224,13 @@ const handleFilter = () => {
 };
 
 const handleSort = () => {
+  currentPage.value = 1;
   loadProducts();
 };
 
 const goToProduct = (id: number) => {
   router.push(`/product/${id}`);
 };
-
-// Mock Data
-const mockProducts: Product[] = [
-  {
-    id: 1,
-    productName: '四川红心猕猴桃',
-    productImg: 'https://via.placeholder.com/300x300/67c23a/fff?text=Kiwi',
-    price: 29.9,
-    stock: 8,
-    salesVolume: 156,
-    originPlace: '成都市蒲江',
-    merchantName: '蒲江生态果园',
-    categoryId: 1,
-    categoryName: '生鲜果蔬',
-    merchantId: 1
-  },
-  {
-    id: 2,
-    productName: '农家土鸡蛋 30枚',
-    productImg: 'https://via.placeholder.com/300x300/e6a23c/fff?text=Eggs',
-    price: 45.0,
-    stock: 120,
-    salesVolume: 89,
-    originPlace: '绵阳市三台',
-    merchantName: '三台养殖合作社',
-    categoryId: 4,
-    categoryName: '畜禽肉蛋',
-    merchantId: 2
-  },
-  {
-    id: 3,
-    productName: '安岳柠檬 5斤装',
-    productImg: 'https://via.placeholder.com/300x300/f56c6c/fff?text=Lemon',
-    price: 19.9,
-    stock: 500,
-    salesVolume: 230,
-    originPlace: '资阳市安岳',
-    merchantName: '安岳柠檬基地',
-    categoryId: 1,
-    categoryName: '生鲜果蔬',
-    merchantId: 3
-  },
-  {
-    id: 4,
-    productName: '通江银耳 特级',
-    productImg: 'https://via.placeholder.com/300x300/409eff/fff?text=Fungus',
-    price: 88.0,
-    stock: 45,
-    salesVolume: 67,
-    originPlace: '巴中市通江',
-    merchantName: '巴山珍品',
-    categoryId: 3,
-    categoryName: '干货特产',
-    merchantId: 4
-  }
-];
 
 </script>
 

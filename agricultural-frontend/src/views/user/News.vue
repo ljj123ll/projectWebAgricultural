@@ -7,28 +7,26 @@
       <h1 class="page-title">助农新闻</h1>
     </div>
 
-    <!-- 分类标签 -->
     <div class="category-tabs">
       <div
         v-for="cat in categories"
         :key="cat.id"
         class="tab-item"
         :class="{ active: currentCategory === cat.id }"
-        @click="currentCategory = cat.id"
+        @click="changeCategory(cat.id)"
       >
-        {{ cat.name }}
+        {{ cat.categoryName }}
       </div>
     </div>
 
-    <!-- 新闻列表 -->
-    <div class="news-list">
+    <div v-loading="loading" class="news-list">
       <div
-        v-for="news in filteredNews"
+        v-for="news in newsList"
         :key="news.id"
         class="news-item"
         @click="goToDetail(news.id)"
       >
-        <img :src="news.coverImg" :alt="news.title" class="news-image" />
+        <img :src="getFullImageUrl(news.coverImg)" :alt="news.title" class="news-image" />
         <div class="news-content">
           <span class="news-category">{{ getCategoryName(news.categoryId) }}</span>
           <h3 class="news-title">{{ news.title }}</h3>
@@ -37,64 +35,68 @@
       </div>
     </div>
 
-    <!-- 空状态 -->
-    <el-empty v-if="filteredNews.length === 0" description="暂无新闻" />
+    <el-empty v-if="!loading && newsList.length === 0" description="暂无新闻" />
+    <div class="pagination-wrap" v-if="total > pageSize">
+      <el-pagination
+        background
+        layout="prev, pager, next"
+        :total="total"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+        @current-change="loadNews"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ArrowLeft } from '@element-plus/icons-vue';
+import { listNews, listNewsCategories } from '@/apis/user';
+import { getFullImageUrl } from '@/utils/image';
+import type { News, NewsCategory } from '@/types';
 
 const router = useRouter();
 const currentCategory = ref(0);
+const loading = ref(false);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
-const categories = ref([
-  { id: 0, name: '全部' },
-  { id: 1, name: '农业政策' },
-  { id: 2, name: '扶贫案例' },
-  { id: 3, name: '产地动态' }
+const categories = ref<Array<{ id: number; categoryName: string }>>([
+  { id: 0, categoryName: '全部' }
 ]);
+const newsList = ref<News[]>([]);
 
-const newsList = ref([
-  {
-    id: 1,
-    title: '2024年农业补贴政策解读',
-    categoryId: 1,
-    coverImg: 'https://via.placeholder.com/200x150/409eff/fff?text=政策',
-    createTime: '2024-03-01'
-  },
-  {
-    id: 2,
-    title: '助农电商助力乡村振兴典型案例',
-    categoryId: 2,
-    coverImg: 'https://via.placeholder.com/200x150/67c23a/fff?text=案例',
-    createTime: '2024-02-28'
-  },
-  {
-    id: 3,
-    title: '春季农产品产销对接会成功举办',
-    categoryId: 3,
-    coverImg: 'https://via.placeholder.com/200x150/e6a23c/fff?text=动态',
-    createTime: '2024-02-25'
-  }
-]);
+const loadCategories = async () => {
+  const res = await listNewsCategories();
+  categories.value = [{ id: 0, categoryName: '全部' }, ...(res || []).map((item: NewsCategory) => ({ id: item.id, categoryName: item.categoryName }))];
+};
 
-const filteredNews = computed(() => {
-  if (currentCategory.value === 0) {
-    return newsList.value;
+const loadNews = async () => {
+  loading.value = true;
+  try {
+    const res = await listNews({
+      categoryId: currentCategory.value || undefined,
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    });
+    newsList.value = res?.list || [];
+    total.value = res?.total || 0;
+  } finally {
+    loading.value = false;
   }
-  return newsList.value.filter(news => news.categoryId === currentCategory.value);
-});
+};
+
+const changeCategory = (id: number) => {
+  currentCategory.value = id;
+  currentPage.value = 1;
+  loadNews();
+};
 
 const getCategoryName = (categoryId: number) => {
-  const map: Record<number, string> = {
-    1: '农业政策',
-    2: '扶贫案例',
-    3: '产地动态'
-  };
-  return map[categoryId] || '其他';
+  return categories.value.find(item => item.id === categoryId)?.categoryName || '其他';
 };
 
 const formatDate = (date?: string) => {
@@ -105,6 +107,11 @@ const formatDate = (date?: string) => {
 const goToDetail = (id: number) => {
   router.push(`/news/${id}`);
 };
+
+onMounted(async () => {
+  await loadCategories();
+  await loadNews();
+});
 </script>
 
 <style scoped lang="scss">
@@ -202,6 +209,12 @@ const goToDetail = (id: number) => {
       }
     }
   }
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {

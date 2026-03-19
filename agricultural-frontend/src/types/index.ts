@@ -72,10 +72,18 @@ export interface Order {
   orderStatus: number; // 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消
   createTime: string;
   orderItems: OrderItem[];
+  items?: OrderItem[];
+  cancelReason?: string;
+  payDeadline?: string;
+  receiver?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
+  logisticsCompany?: string;
+  logisticsNo?: string;
 }
 
 export interface OrderItem {
-  id: number;
+  id?: number;
   productId: number;
   productName: string;
   productImg: string;

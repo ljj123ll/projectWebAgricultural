@@ -16,7 +16,12 @@ public class ShopInfo {
     private Long merchantId;
     private String shopName;
     private String shopIntro;
-    private String qualificationImg;
+    private String qualificationImg; // logo
+
+    private String shopType;
+    private String categories; // stored as JSON or comma separated
+    private String shopAddress;
+
     @TableLogic
     private Integer deleteFlag;
     private LocalDateTime createTime;

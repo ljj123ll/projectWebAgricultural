@@ -38,7 +38,7 @@ public class AdminAuditController {
 
     @Operation(summary = "商品审核列表")
     @GetMapping("/products/audit")
-    public Result<PageResult<ProductInfo>> productAuditList(
+    public Result<PageResult<com.agricultural.assistplatform.vo.admin.AdminProductAuditVO>> productAuditList(
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {

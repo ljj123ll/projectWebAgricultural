@@ -1,166 +1,193 @@
 <template>
   <div class="news-detail-page">
-    <el-button link @click="router.back()" class="back-btn">
-      <el-icon><ArrowLeft /></el-icon>
-      返回
-    </el-button>
+    <div class="main-container">
+      <el-button link @click="$router.back()" class="back-btn">
+        <el-icon><ArrowLeft /></el-icon>
+        返回列表
+      </el-button>
 
-    <article class="news-article">
-      <span class="news-category">{{ getCategoryName(news.categoryId) }}</span>
-      <h1 class="news-title">{{ news.title }}</h1>
-      <p class="news-time">发布时间：{{ formatDate(news.createTime) }}</p>
-      
-      <img v-if="news.coverImg" :src="news.coverImg" :alt="news.title" class="news-cover" />
-      
-      <div class="news-content" v-html="contentHtml"></div>
-    </article>
+      <div class="article-container" v-loading="loading">
+        <template v-if="news">
+          <div class="article-header">
+            <h1 class="news-title">{{ news.title }}</h1>
+            <div class="meta-info">
+              <span class="meta-item author" v-if="news.author">
+                <el-avatar :size="24" icon="UserFilled" class="author-avatar" />
+                {{ news.author }}
+              </span>
+              <span class="meta-item time">{{ formatDate(news.createTime) }}</span>
+              <span class="meta-item views">
+                <el-icon><View /></el-icon> {{ news.viewCount || 0 }} 阅读
+              </span>
+              <el-tag size="small" effect="plain" class="category-tag">
+                {{ news.categoryName }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="article-cover" v-if="news.coverImg">
+            <img :src="getFullImageUrl(news.coverImg)" alt="cover" />
+          </div>
+          
+          <div class="article-content">
+             <MdPreview :editorId="id" :modelValue="news.content" />
+          </div>
+        </template>
+        <el-empty v-else description="未找到相关资讯" />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { View, ArrowLeft, UserFilled } from '@element-plus/icons-vue';
+import { getNewsDetail } from '@/apis/user';
+import { getFullImageUrl } from '@/utils/image';
+import { MdPreview } from 'md-editor-v3';
+import 'md-editor-v3/lib/preview.css';
 
 const router = useRouter();
 const route = useRoute();
-
-const news = ref({
-  id: Number(route.params.id),
-  title: '2024年农业补贴政策解读',
-  categoryId: 1,
-  coverImg: 'https://via.placeholder.com/800x400/409eff/fff?text=新闻详情',
-  createTime: '2024-03-01',
-  content: '# 补贴政策要点\n\n- **补贴对象**：种植大户、家庭农场、合作社\n- **补贴范围**：种植补贴、农机购置补贴、农业保险补贴\n- **申请流程**：线上提交材料，线下核验\n\n## 申报材料\n\n1. 身份证明\n2. 经营主体证明\n3. 土地流转或承包证明\n\n## 温馨提示\n\n政策解读以当地农业部门通知为准，建议提前准备材料。'
-});
-
-const getCategoryName = (categoryId: number) => {
-  const map: Record<number, string> = {
-    1: '农业政策',
-    2: '扶贫案例',
-    3: '产地动态'
-  };
-  return map[categoryId] || '其他';
-};
+const id = 'preview-only';
+const loading = ref(false);
+const news = ref<any>(null);
 
 const formatDate = (date?: string) => {
   if (!date) return '';
-  return date.substring(0, 10);
+  return date.replace('T', ' ').substring(0, 16);
 };
 
-const renderMarkdown = (markdown: string) => {
-  const escaped = markdown
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  let html = escaped
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>')
-    .replace(/^- (.*)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, match => `<ul>${match}</ul>`);
-  html = html.replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>');
-  return `<p>${html}</p>`;
-};
-
-const contentHtml = computed(() => renderMarkdown(news.value.content || ''));
-
-onMounted(() => {
-  // 根据ID加载新闻详情
-  console.log('加载新闻ID:', route.params.id);
+onMounted(async () => {
+  const newsId = Number(route.params.id);
+  if (newsId) {
+    loading.value = true;
+    try {
+      const res = await getNewsDetail(newsId);
+      if (res) {
+        news.value = res;
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      loading.value = false;
+    }
+  }
 });
 </script>
 
 <style scoped lang="scss">
 .news-detail-page {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
+  background-color: #f4f5f5;
+  min-height: 100vh;
+  padding-top: 20px;
+}
 
-  .back-btn {
-    margin-bottom: 16px;
-    font-size: 16px;
+.main-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.back-btn {
+  margin-bottom: 20px;
+  font-size: 16px;
+  color: #606266;
+  
+  &:hover {
+    color: var(--el-color-primary);
   }
 }
 
-.news-article {
-  max-width: 800px;
-  margin: 0 auto;
+.article-container {
+  background: #fff;
+  border-radius: 4px;
+  padding: 32px;
+  min-height: 500px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
 
-  .news-category {
-    display: inline-block;
-    background: #67c23a;
-    color: #fff;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-
+.article-header {
+  margin-bottom: 24px;
+  
   .news-title {
-    font-size: 28px;
-    margin: 16px 0;
-    line-height: 1.4;
+    font-size: 32px;
+    font-weight: 600;
+    color: #252933;
+    line-height: 1.31;
+    margin: 0 0 20px 0;
   }
-
-  .news-time {
-    color: #909399;
+  
+  .meta-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    color: #8a919f;
     font-size: 14px;
-    margin-bottom: 24px;
+    
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .author {
+      color: #515767;
+      font-weight: 500;
+      
+      .author-avatar {
+        background: #e4e6eb;
+        color: #fff;
+      }
+    }
   }
+}
 
-  .news-cover {
-    width: 100%;
+.article-cover {
+  margin: 0 -32px 32px;
+  max-height: 400px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  background: #f8f9fa;
+  
+  img {
+    max-width: 100%;
     max-height: 400px;
-    object-fit: cover;
-    border-radius: 8px;
-    margin-bottom: 24px;
+    object-fit: contain;
   }
+}
 
-  .news-content {
-    font-size: 16px;
-    line-height: 1.8;
-    color: #303133;
-
-    :deep(h1) {
-      font-size: 22px;
-      margin: 16px 0 12px;
-    }
-
-    :deep(h2) {
-      font-size: 20px;
-      margin: 16px 0 12px;
-    }
-
-    :deep(h3) {
-      font-size: 18px;
-      margin: 16px 0 12px;
-    }
-
-    :deep(ul) {
-      padding-left: 20px;
-      margin: 8px 0 16px;
-    }
-
-    :deep(code) {
-      background: #f5f7fa;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: inherit;
-    }
+.article-content {
+  :deep(.md-editor-preview-wrapper) {
+    padding: 0;
   }
 }
 
 @media (max-width: 768px) {
   .news-detail-page {
-    padding: 16px;
+    padding: 0;
   }
-
-  .news-article {
+  
+  .article-container {
+    padding: 20px 16px;
+    border-radius: 0;
+  }
+  
+  .article-header {
     .news-title {
-      font-size: 22px;
+      font-size: 24px;
     }
+    
+    .meta-info {
+      gap: 12px;
+      font-size: 13px;
+    }
+  }
+  
+  .article-cover {
+    margin: 0 -16px 20px;
   }
 }
 </style>

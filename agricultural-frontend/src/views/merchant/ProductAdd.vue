@@ -48,19 +48,17 @@
         
         <el-form-item label="商品图片" prop="productImg">
           <div class="upload-container">
-            <el-input v-model="productForm.productImg" placeholder="输入图片URL或使用上传组件" />
-            <div class="image-preview" v-if="productForm.productImg">
-              <img :src="productForm.productImg" />
-            </div>
-            <!-- 模拟上传组件 -->
             <el-upload
-              action="#"
+              :action="uploadAction"
+              name="file"
               list-type="picture-card"
-              :auto-upload="false"
-              :limit="5"
+              :show-file-list="false"
+              :on-success="handleUploadSuccess"
+              :before-upload="beforeUpload"
               class="upload-demo"
             >
-              <el-icon><Plus /></el-icon>
+              <img v-if="productForm.productImg" :src="getFullImageUrl(productForm.productImg)" class="image-preview" />
+              <el-icon v-else><Plus /></el-icon>
             </el-upload>
           </div>
         </el-form-item>
@@ -129,58 +127,76 @@
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="产地详情" prop="originPlaceDetail">
-              <el-input v-model="productForm.originPlaceDetail" placeholder="省/市/县/乡镇/村" />
+            <el-form-item label="产地 (省/市/区)" prop="originPlace">
+               <el-cascader
+                v-model="selectedRegion"
+                :options="regionOptions"
+                placeholder="请选择省/市/区"
+                style="width: 100%"
+                @change="handleRegionChange"
+              />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="种植周期" prop="plantingCycle">
-              <el-input v-model="productForm.plantingCycle" placeholder="如：3月播种，9月采摘" />
+           <el-col :span="12">
+            <el-form-item label="详细地址" prop="originPlaceDetail">
+              <el-input v-model="productForm.originPlaceDetail" placeholder="乡镇/村/街道/门牌号" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="施肥类型">
-              <el-select v-model="productForm.fertilizerType" placeholder="请选择" style="width: 100%">
-                <el-option label="有机肥" value="有机肥" />
-                <el-option label="农家肥" value="农家肥" />
-                <el-option label="复合肥" value="复合肥" />
-              </el-select>
+            <el-form-item label="生产周期" prop="productionCycle">
+              <el-input v-model="productForm.productionCycle" placeholder="如：3月播种，9月采摘；或 孵化期30天，出栏180天" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="生产方式">
+              <el-select v-model="productForm.productionMethod" placeholder="请选择" style="width: 100%">
+                <el-option label="有机生产" value="有机生产" />
+                <el-option label="绿色生产" value="绿色生产" />
+                <el-option label="无公害" value="无公害" />
+                <el-option label="传统农耕" value="传统农耕" />
+                <el-option label="现代化养殖" value="现代化养殖" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="24">
+           <el-col :span="12">
             <el-form-item label="保存方式">
               <el-select v-model="productForm.storageMethod" placeholder="请选择" style="width: 100%">
                 <el-option label="常温保存" value="常温保存" />
                 <el-option label="冷藏保存" value="冷藏保存" />
                 <el-option label="通风干燥" value="通风干燥" />
+                <el-option label="冷冻保存" value="冷冻保存" />
               </el-select>
             </el-form-item>
           </el-col>
+           <el-col :span="12">
+             <el-form-item label="运输方式">
+               <el-radio-group v-model="productForm.transportMethod">
+                 <el-radio label="普通物流" border />
+                 <el-radio label="冷链运输" border />
+                 <el-radio label="加急空运" border />
+               </el-radio-group>
+            </el-form-item>
+          </el-col>
         </el-row>
-
-        <el-form-item label="运输方式">
-           <el-radio-group v-model="productForm.transportMethod">
-             <el-radio label="普通物流" border />
-             <el-radio label="冷链运输" border />
-             <el-radio label="加急空运" border />
-           </el-radio-group>
-        </el-form-item>
 
         <!-- 溯源二维码预览 -->
         <div class="qr-preview-section">
           <div class="qr-box">
              <img :src="qrCodeUrl" v-if="qrCodeUrl" />
              <div class="placeholder" v-else>
-               <el-icon size="30"><QrCode /></el-icon>
+               <el-icon size="30"><Grid /></el-icon>
                <span>填写信息后自动生成</span>
              </div>
           </div>
           <div class="qr-info">
             <h4>溯源二维码预览</h4>
-            <p>包含产地、种植、施肥等全链路信息，消费者扫码可见。</p>
+            <p>包含产地、生产周期、生产方式等全链路信息，消费者扫码可见。</p>
             <el-button type="primary" link :disabled="!qrCodeUrl">下载二维码图片</el-button>
           </div>
         </div>
@@ -205,18 +221,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowLeft, Plus, CircleCheck, QuestionFilled, QrCode } from '@element-plus/icons-vue';
-import type { FormInstance, FormRules } from 'element-plus';
+import { ArrowLeft, Plus, CircleCheck, QuestionFilled, Grid } from '@element-plus/icons-vue';
+import type { FormInstance, FormRules, UploadProps } from 'element-plus';
+import { createProduct, updateProduct } from '@/apis/merchant';
+import { getFullImageUrl } from '@/utils/image';
+import { regionData, codeToText } from 'element-china-area-data';
 
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
 const router = useRouter();
 const route = useRoute();
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
 
 const isEdit = computed(() => !!route.params.id);
+
+const selectedRegion = ref<string[]>([]);
+const regionOptions = regionData;
+
+const handleRegionChange = (value: string[]) => {
+  if (value && value.length > 0) {
+    const loc = value.map(code => codeToText[code]).join('/');
+    productForm.originPlace = loc;
+  }
+};
+
+const handleUploadSuccess = (response: any) => {
+  if (response.code === 200) {
+    productForm.productImg = response.data;
+    ElMessage.success('上传成功');
+  } else {
+    ElMessage.error(response.msg || '上传失败');
+  }
+}
+
+const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
+  if (rawFile.type !== 'image/jpeg' && rawFile.type !== 'image/png') {
+    ElMessage.error('图片必须是 JPG/PNG 格式!')
+    return false
+  } else if (rawFile.size / 1024 / 1024 > 2) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  return true
+}
 
 // 表单数据
 const productForm = reactive({
@@ -227,9 +277,10 @@ const productForm = reactive({
   stockWarning: 10,
   productImg: '',
   productDesc: '',
-  originPlaceDetail: '',
-  plantingCycle: '',
-  fertilizerType: '',
+  originPlace: '', // 省/市/区
+  originPlaceDetail: '', // 详细地址
+  productionCycle: '',
+  productionMethod: '',
   storageMethod: '',
   transportMethod: '普通物流'
 });
@@ -240,8 +291,9 @@ const rules: FormRules = {
   categoryId: [{ required: true, message: '请选择品类', trigger: 'change' }],
   price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
   stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
+  originPlace: [{ required: true, message: '请选择产地', trigger: 'change' }],
   originPlaceDetail: [{ required: true, message: '请输入详细产地', trigger: 'blur' }],
-  plantingCycle: [{ required: true, message: '请输入种植周期', trigger: 'blur' }]
+  productionCycle: [{ required: true, message: '请输入生产周期', trigger: 'blur' }]
 };
 
 // 模拟生成二维码
@@ -249,7 +301,7 @@ const qrCodeUrl = ref('');
 
 // 监听关键字段变化生成二维码
 watch(
-  () => [productForm.productName, productForm.originPlaceDetail, productForm.plantingCycle],
+  () => [productForm.productName, productForm.originPlace, productForm.productionCycle],
   ([name, origin, cycle]) => {
     if (name && origin && cycle) {
       // 模拟生成
@@ -260,18 +312,44 @@ watch(
   }
 );
 
+onMounted(() => {
+  if (isEdit.value) {
+    const state = history.state;
+    if (state && state.productData) {
+      try {
+        const data = JSON.parse(state.productData);
+        // 合并数据
+        Object.assign(productForm, data);
+        // 尝试回显省市区 (这里比较复杂，因为只存了中文名，反向查code比较难，暂时忽略回显的Cascader绑定，或者仅显示文本)
+        // 如果后端能返回 regionCode 最好，否则只能不回显 Cascader，只显示文本
+         ElMessage.info('提示：编辑模式下，产地省市区请重新选择');
+      } catch (e) {
+        console.error('解析商品数据失败', e);
+      }
+    }
+  }
+});
+
 const saveProduct = async () => {
   if (!formRef.value) return;
   
-  await formRef.value.validate((valid, fields) => {
+  await formRef.value.validate(async (valid) => {
     if (valid) {
       submitting.value = true;
-      // 模拟提交
-      setTimeout(() => {
-        ElMessage.success(isEdit.value ? '商品更新成功' : '商品发布成功');
-        submitting.value = false;
+      try {
+        if (isEdit.value) {
+          await updateProduct(Number(route.params.id), productForm);
+          ElMessage.success('商品更新成功');
+        } else {
+          await createProduct(productForm);
+          ElMessage.success('商品发布成功');
+        }
         router.back();
-      }, 1000);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        submitting.value = false;
+      }
     } else {
       ElMessage.warning('请检查必填项');
     }

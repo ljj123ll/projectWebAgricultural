@@ -51,7 +51,7 @@
         </div>
 
         <div class="card-actions">
-          <el-button v-if="item.status === 'pending'" type="primary" @click="handleAfterSale(item)">
+          <el-button v-if="item.status === 0" type="primary" @click="openHandleDialog(item)">
             立即处理
           </el-button>
           <el-button link type="primary" @click="viewDetail(item)">
@@ -102,8 +102,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listAfterSale, handleAfterSale } from '@/apis/merchant'
 
 const activeTab = ref('all')
 const showHandleDialog = ref(false)
@@ -114,71 +115,69 @@ const handleForm = reactive({
   remark: ''
 })
 
-const afterSalesList = ref([
-  {
-    id: 1,
-    afterSaleNo: 'AS202403080001',
-    orderNo: 'ORD202403080001',
-    createTime: '2024-03-08 15:30:00',
-    productName: '新鲜有机西红柿',
-    productImage: 'https://via.placeholder.com/100',
-    spec: '5斤装',
-    type: 'refund',
-    amount: 29.9,
-    reason: '商品质量问题',
-    description: '收到的西红柿有部分已经腐烂',
-    status: 'pending'
-  },
-  {
-    id: 2,
-    afterSaleNo: 'AS202403070002',
-    orderNo: 'ORD202403070002',
-    createTime: '2024-03-07 10:20:00',
-    productName: '山东红富士苹果',
-    productImage: 'https://via.placeholder.com/100',
-    spec: '10斤装',
-    type: 'return_refund',
-    amount: 59.9,
-    reason: '商品与描述不符',
-    description: '苹果大小与描述不符，偏小',
-    status: 'processing'
-  }
-])
+const afterSalesList = ref<any[]>([])
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    pending: 'warning',
-    processing: 'primary',
-    completed: 'success',
-    rejected: 'danger'
+const getStatusType = (status: number) => {
+  const map: Record<number, string> = {
+    0: 'warning', // 待处理
+    1: 'success', // 已退款
+    2: 'danger'   // 已拒绝
   }
   return map[status] || 'info'
 }
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    pending: '待处理',
-    processing: '处理中',
-    completed: '已完成',
-    rejected: '已拒绝'
+const getStatusText = (status: number) => {
+  const map: Record<number, string> = {
+    0: '待处理',
+    1: '已同意',
+    2: '已拒绝'
   }
-  return map[status] || status
+  return map[status] || '未知状态'
 }
 
-const getTypeText = (type: string) => {
-  const map: Record<string, string> = {
-    refund: '仅退款',
-    return_refund: '退货退款',
-    exchange: '换货'
+const getTypeText = (type: number) => {
+  const map: Record<number, string> = {
+    1: '仅退款',
+    2: '退货退款',
+    3: '换货'
   }
-  return map[type] || type
+  return map[type] || '未知类型'
+}
+
+const loadAfterSales = async () => {
+  try {
+    let statusParam = undefined;
+    if (activeTab.value === 'pending') statusParam = 0;
+    else if (activeTab.value === 'processing') statusParam = 0; // Backend may not have processing
+    else if (activeTab.value === 'completed') statusParam = 1;
+    
+    const res = await listAfterSale({ pageNum: 1, pageSize: 20, afterSaleStatus: statusParam });
+    if (res && res.list) {
+      afterSalesList.value = res.list.map((item: any) => ({
+        id: item.id,
+        afterSaleNo: item.afterSaleNo,
+        orderNo: item.orderNo,
+        createTime: item.createTime,
+        productName: '订单商品', // Need API update to get product details, using placeholder
+        productImage: '', // Need API update
+        spec: '', // Need API update
+        type: item.afterSaleType,
+        amount: 0, // Need API update to get refund amount
+        reason: item.applyReason,
+        description: item.applyReason,
+        status: item.afterSaleStatus
+      }));
+    }
+  } catch (error) {
+    console.error('Failed to load after sales', error);
+  }
 }
 
 const handleTabChange = () => {
-  // 根据标签筛选数据
+  loadAfterSales()
 }
 
-const handleAfterSale = (item: any) => {
+const openHandleDialog = (item: any) => {
   currentItem.value = item
   showHandleDialog.value = true
 }
@@ -187,10 +186,24 @@ const viewDetail = (item: any) => {
   void item
 }
 
-const confirmHandle = () => {
-  ElMessage.success('处理成功')
-  showHandleDialog.value = false
+const confirmHandle = async () => {
+  try {
+    const status = handleForm.result === 'agree' ? 1 : 2;
+    await handleAfterSale(currentItem.value.id, {
+      status,
+      remark: handleForm.remark
+    });
+    ElMessage.success('处理成功')
+    showHandleDialog.value = false
+    loadAfterSales()
+  } catch (error) {
+    console.error('Handle failed', error)
+  }
 }
+
+onMounted(() => {
+  loadAfterSales()
+})
 </script>
 
 <style scoped lang="scss">

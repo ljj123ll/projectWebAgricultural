@@ -19,7 +19,10 @@
             <div class="card-value">{{ statistics.todayOrders }}</div>
             <div class="card-footer">
               昨日：{{ statistics.yesterdayOrders }}
-              <span class="trend up"><el-icon><CaretTop /></el-icon> 12%</span>
+              <span :class="['trend', todayOrderTrend >= 0 ? 'up' : 'down']">
+                <el-icon><CaretTop v-if="todayOrderTrend >= 0" /><CaretBottom v-else /></el-icon>
+                {{ Math.abs(todayOrderTrend) }}%
+              </span>
             </div>
           </div>
         </el-card>
@@ -36,7 +39,10 @@
             <div class="card-value">¥ {{ statistics.todaySales.toFixed(2) }}</div>
             <div class="card-footer">
               昨日：¥ {{ statistics.yesterdaySales.toFixed(2) }}
-              <span class="trend down"><el-icon><CaretBottom /></el-icon> 5%</span>
+              <span :class="['trend', todaySalesTrend >= 0 ? 'up' : 'down']">
+                <el-icon><CaretTop v-if="todaySalesTrend >= 0" /><CaretBottom v-else /></el-icon>
+                {{ Math.abs(todaySalesTrend) }}%
+              </span>
             </div>
           </div>
         </el-card>
@@ -108,11 +114,13 @@
             </div>
           </template>
           <div class="chart-container" ref="chartRef">
-            <!-- 模拟图表展示 -->
-            <div class="mock-chart">
+            <div v-if="salesData.length === 0" class="empty-chart">
+              <el-empty description="暂无数据" :image-size="80" />
+            </div>
+            <div v-else class="mock-chart">
               <div class="bar-group" v-for="(item, index) in salesData" :key="index">
-                <div class="bar" :style="{ height: item.value / 2 + 'px' }">
-                  <span class="bar-value">{{ item.value }}</span>
+                <div class="bar" :style="{ height: calculateBarHeight(item.sales) + 'px' }">
+                  <span class="bar-value">{{ item.orderCount }}</span>
                 </div>
                 <div class="bar-label">{{ item.date }}</div>
               </div>
@@ -135,15 +143,10 @@
             <div class="rank-badge" :class="{ top: scope.$index < 3 }">{{ scope.$index + 1 }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="商品名称" />
-        <el-table-column prop="sales" label="销量" width="120" sortable />
-        <el-table-column prop="revenue" label="销售额" width="150" sortable>
-          <template #default="scope">¥ {{ scope.row.revenue.toFixed(2) }}</template>
-        </el-table-column>
-        <el-table-column prop="stock" label="剩余库存" width="120">
-          <template #default="scope">
-            <span :class="{ 'text-danger': scope.row.stock < 10 }">{{ scope.row.stock }}</span>
-          </template>
+        <el-table-column prop="productName" label="商品名称" />
+        <el-table-column prop="salesVolume" label="销量" width="120" sortable />
+        <el-table-column label="销售额" width="150">
+          <template #default="scope">¥ {{ calculateProductRevenue(scope.row).toFixed(2) }}</template>
         </el-table-column>
       </el-table>
     </el-card>
@@ -151,49 +154,60 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { CaretTop, CaretBottom, Box, List, Service } from '@element-plus/icons-vue';
+import { getMerchantStats } from '@/apis/merchant';
 
 const router = useRouter();
 const currentDate = new Date().toLocaleDateString();
 
-// 模拟统计数据
+// 统计数据
 const statistics = ref({
-  todayOrders: 12,
-  yesterdayOrders: 10,
-  todaySales: 1203.00,
-  yesterdaySales: 1260.50,
-  lowStock: 5,
-  pendingOrders: 8,
-  pendingAfterSales: 2
+  todayOrders: 0,
+  yesterdayOrders: 0,
+  todaySales: 0.00,
+  yesterdaySales: 0.00,
+  lowStock: 0,
+  pendingOrders: 0,
+  pendingAfterSales: 0
 });
+
+// 销售趋势数据
+const salesData = ref<any[]>([]);
+
+// 热销商品数据
+const hotProducts = ref<any[]>([]);
+
+// 计算今日订单趋势
+const todayOrderTrend = computed(() => {
+  if (statistics.value.yesterdayOrders === 0) return 0;
+  return Math.round(((statistics.value.todayOrders - statistics.value.yesterdayOrders) / statistics.value.yesterdayOrders) * 100);
+});
+
+// 计算今日销售额趋势
+const todaySalesTrend = computed(() => {
+  if (statistics.value.yesterdaySales === 0) return 0;
+  return Math.round(((statistics.value.todaySales - statistics.value.yesterdaySales) / statistics.value.yesterdaySales) * 100);
+});
+
+// 计算柱状图高度
+const calculateBarHeight = (sales: number) => {
+  const maxSales = Math.max(...salesData.value.map(d => d.sales || 0), 1);
+  return Math.max((sales / maxSales) * 150, 10);
+};
+
+// 计算商品销售额（根据平均单价估算）
+const calculateProductRevenue = (product: any) => {
+  // 由于没有具体的销售额数据，使用一个估算值
+  return (product.salesVolume || 0) * 15; // 假设平均单价15元
+};
 
 // 待办事项
 const todoList = ref([
-  { title: '待发货订单', desc: '5个订单等待发货', icon: 'Box', type: 'warning', route: '/merchant/orders?status=2' },
-  { title: '库存预警', desc: '3个商品库存不足10件', icon: 'List', type: 'danger', route: '/merchant/products' },
-  { title: '售后申请', desc: '2个新的售后申请', icon: 'Service', type: 'primary', route: '/merchant/after-sales' }
-]);
-
-// 销售趋势数据 (模拟)
-const salesData = ref([
-  { date: '03-01', value: 800 },
-  { date: '03-02', value: 1200 },
-  { date: '03-03', value: 950 },
-  { date: '03-04', value: 1500 },
-  { date: '03-05', value: 1100 },
-  { date: '03-06', value: 1300 },
-  { date: '03-07', value: 1203 }
-]);
-
-// 热销商品数据
-const hotProducts = ref([
-  { name: '四川红心猕猴桃', sales: 156, revenue: 4664.4, stock: 8 },
-  { name: '农家土鸡蛋', sales: 89, revenue: 4005.0, stock: 120 },
-  { name: '安岳柠檬', sales: 230, revenue: 4577.0, stock: 500 },
-  { name: '通江银耳', sales: 67, revenue: 5896.0, stock: 45 },
-  { name: '蒲江丑柑', sales: 45, revenue: 1341.0, stock: 200 }
+  { title: '待发货订单', desc: '暂无数据', icon: Box, type: 'warning', route: '/merchant/orders?status=2' },
+  { title: '库存预警', desc: '暂无数据', icon: List, type: 'danger', route: '/merchant/products' },
+  { title: '售后申请', desc: '暂无数据', icon: Service, type: 'primary', route: '/merchant/after-sales' }
 ]);
 
 const handleTodo = (item: any) => {
@@ -201,6 +215,41 @@ const handleTodo = (item: any) => {
     router.push(item.route);
   }
 };
+
+const loadStats = async () => {
+  try {
+    const res = await getMerchantStats();
+    if (res) {
+      // 更新统计数据
+      statistics.value.todayOrders = res.todayOrders || 0;
+      statistics.value.yesterdayOrders = res.yesterdayOrders || 0;
+      statistics.value.todaySales = res.todaySales || 0;
+      statistics.value.yesterdaySales = res.yesterdaySales || 0;
+      statistics.value.lowStock = res.lowStock || 0;
+      statistics.value.pendingOrders = res.pendingOrders || 0;
+      statistics.value.pendingAfterSales = res.pendingAfterSales || 0;
+      
+      // 更新销售趋势数据
+      salesData.value = res.salesTrend || [];
+      
+      // 更新热销商品
+      hotProducts.value = res.hotProducts || [];
+      
+      // 更新待办事项描述
+      if (todoList.value.length >= 3) {
+      if (todoList.value[0]) todoList.value[0].desc = `${res.pendingOrders || 0} 个订单待发货`;
+      if (todoList.value[1]) todoList.value[1].desc = `${res.lowStock || 0} 个商品库存不足`;
+      if (todoList.value[2]) todoList.value[2].desc = `${res.pendingAfterSales || 0} 个售后待处理`;
+      }
+    }
+  } catch (error) {
+    console.error('获取统计数据失败', error);
+  }
+};
+
+onMounted(() => {
+  loadStats();
+});
 </script>
 
 <style scoped lang="scss">
@@ -297,16 +346,28 @@ const handleTodo = (item: any) => {
   justify-content: center;
   padding-bottom: 20px;
   
+  .empty-chart {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
   .mock-chart {
     display: flex;
     align-items: flex-end;
     gap: 30px;
     height: 100%;
+    width: 100%;
+    justify-content: space-around;
     
     .bar-group {
       display: flex;
       flex-direction: column;
       align-items: center;
+      flex: 1;
+      max-width: 60px;
       
       .bar {
         width: 30px;
@@ -314,6 +375,7 @@ const handleTodo = (item: any) => {
         border-radius: 4px 4px 0 0;
         position: relative;
         transition: height 0.5s ease;
+        min-height: 10px;
         
         &:hover { opacity: 0.8; }
         
@@ -324,6 +386,7 @@ const handleTodo = (item: any) => {
           transform: translateX(-50%);
           font-size: 12px;
           color: #606266;
+          white-space: nowrap;
         }
       }
       
@@ -351,4 +414,6 @@ const handleTodo = (item: any) => {
 }
 
 .text-danger { color: #F56C6C; font-weight: bold; }
+
+.mt-20 { margin-top: 20px; }
 </style>

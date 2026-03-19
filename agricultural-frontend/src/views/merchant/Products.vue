@@ -1,13 +1,13 @@
 <template>
   <div class="merchant-products">
     <div class="toolbar">
-      <el-button type="primary" @click="handleAdd">发布商品</el-button>
+      <el-button type="primary" @click="router.push('/merchant/product-add')">发布商品</el-button>
     </div>
     <el-table :data="productList" style="width: 100%">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column label="商品图片" width="100">
         <template #default="scope">
-          <el-image :src="scope.row.productImg" style="width: 50px; height: 50px" />
+          <el-image :src="getFullImageUrl(scope.row.productImg)" style="width: 50px; height: 50px" />
         </template>
       </el-table-column>
       <el-table-column prop="productName" label="商品名称" />
@@ -33,50 +33,19 @@
         </template>
       </el-table-column>
     </el-table>
-
-    <!-- 添加/编辑商品弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑商品' : '发布商品'" width="500px">
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="商品名称">
-          <el-input v-model="form.productName" />
-        </el-form-item>
-        <el-form-item label="价格">
-          <el-input-number v-model="form.price" :precision="2" :step="0.1" />
-        </el-form-item>
-        <el-form-item label="库存">
-          <el-input-number v-model="form.stock" :min="0" />
-        </el-form-item>
-        <el-form-item label="产地">
-          <el-input v-model="form.originPlace" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="form.productDesc" type="textarea" />
-        </el-form-item>
-        <el-form-item label="图片URL">
-          <el-input v-model="form.productImg" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Product } from '@/types';
-import { listProducts, createProduct, updateProduct, updateProductStatus, deleteProduct } from '@/apis/merchant';
+import { listProducts, updateProductStatus, deleteProduct } from '@/apis/merchant';
+import { getFullImageUrl } from '@/utils/image';
 
+const router = useRouter();
 const productList = ref<Product[]>([]);
-
-const dialogVisible = ref(false);
-const isEdit = ref(false);
-const form = reactive<Partial<Product>>({});
 
 const getStatusText = (status?: number) => {
   if (status === 0) return '待审核';
@@ -92,35 +61,12 @@ const getStatusType = (status?: number) => {
   return 'warning';
 };
 
-const handleAdd = () => {
-  isEdit.value = false;
-  Object.assign(form, {
-    productName: '',
-    price: 0,
-    stock: 0,
-    productImg: '',
-    productDesc: '',
-    originPlace: ''
-  });
-  dialogVisible.value = true;
-};
-
 const handleEdit = (row: Product) => {
-  isEdit.value = true;
-  Object.assign(form, row);
-  dialogVisible.value = true;
-};
-
-const handleSubmit = async () => {
-  if (!isEdit.value) {
-    await createProduct(form);
-    ElMessage.success('发布成功');
-  } else if (form.id) {
-    await updateProduct(form.id as number, form);
-    ElMessage.success('修改成功');
-  }
-  dialogVisible.value = false;
-  loadList();
+  // 由于后端暂无详情接口，将当前行数据通过 state 传递给编辑页
+  router.push({
+    path: `/merchant/product-edit/${row.id}`,
+    state: { productData: JSON.stringify(row) }
+  });
 };
 
 const handleToggleStatus = async (row: Product) => {
@@ -140,6 +86,8 @@ const loadList = async () => {
   const res = await listProducts({ pageNum: 1, pageSize: 20 });
   if (res?.list) productList.value = res.list;
 };
+
+
 
 onMounted(() => {
   loadList();

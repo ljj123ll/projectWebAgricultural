@@ -1,10 +1,16 @@
 <template>
   <div class="register-page">
+    <div class="back-btn-wrapper">
+      <el-button link class="back-btn" @click="router.push('/')">
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回首页</span>
+      </el-button>
+    </div>
     <div class="register-container">
       <div class="register-header">
         <el-icon size="48" color="#67c23a"><Shop /></el-icon>
         <h1>用户注册</h1>
-        <p>仅需手机号即可快速注册</p>
+        <p>连接田间地头，服务美好生活</p>
       </div>
 
       <el-form 
@@ -106,6 +112,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { register, sendSms } from '@/apis/user';
+import { Shop, Iphone, Message, Lock, User, ArrowLeft } from '@element-plus/icons-vue';
 
 const router = useRouter();
 
@@ -201,27 +208,83 @@ const handleRegister = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #67c23a 0%, #95d475 100%);
-  padding: 20px;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=3200&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); // Dark overlay for readability
+  }
+}
+
+.back-btn-wrapper {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+
+  .back-btn {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    transition: all 0.3s;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateX(-2px);
+    }
+
+    .el-icon {
+      margin-right: 4px;
+    }
+  }
 }
 
 .register-container {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 420px;
-  background: #fff;
+  max-width: 460px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border-radius: 16px;
-  padding: 40px 32px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  padding: 48px 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  transition: transform 0.3s;
+  
+  &:hover {
+    transform: translateY(-5px);
+  }
 }
 
 .register-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
+
+  .el-icon {
+    background: #f0f9eb;
+    padding: 12px;
+    border-radius: 50%;
+    margin-bottom: 16px;
+  }
 
   h1 {
-    font-size: 28px;
-    color: #67c23a;
-    margin: 16px 0 8px;
+    font-size: 32px;
+    color: #303133;
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
   }
 
   p {
@@ -232,6 +295,32 @@ const handleRegister = async () => {
 }
 
 .register-form {
+  .el-form-item {
+    margin-bottom: 24px;
+  }
+
+  :deep(.el-input__wrapper) {
+    box-shadow: 0 0 0 1px #dcdfe6 inset;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    transition: all 0.3s;
+
+    &:hover {
+      background: #fff;
+      box-shadow: 0 0 0 1px #67c23a inset;
+    }
+
+    &.is-focus {
+      background: #fff;
+      box-shadow: 0 0 0 1px #67c23a inset;
+    }
+  }
+
+  :deep(.el-input__prefix) {
+    color: #909399;
+  }
+
   .code-input {
     display: flex;
     gap: 12px;
@@ -242,35 +331,82 @@ const handleRegister = async () => {
 
     .el-button {
       width: 120px;
+      height: 44px; // Match input height
+      border-radius: 8px;
+      font-weight: 500;
     }
   }
 
   .register-btn {
     width: 100%;
-    height: 48px;
+    height: 50px;
     font-size: 18px;
-    font-weight: 500;
-  }
-
-  :deep(.el-checkbox__label) {
-    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    margin-top: 12px;
+    border-radius: 25px;
+    background: linear-gradient(135deg, #67c23a 0%, #4caf50 100%);
+    border: none;
+    transition: all 0.3s;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(103, 194, 58, 0.3);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
   }
 }
 
 .register-footer {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 32px;
   color: #606266;
+  font-size: 15px;
+  
+  .el-button {
+    font-size: 15px;
+    font-weight: 600;
+    margin-left: 4px;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 @media (max-width: 768px) {
+  .register-page {
+    padding: 16px;
+    background-image: none;
+    background-color: #f5f7fa;
+    
+    &::before {
+      display: none;
+    }
+  }
+
+  .back-btn-wrapper {
+    position: static;
+    margin-bottom: 20px;
+    
+    .back-btn {
+      color: #606266;
+      background: transparent;
+      padding: 0;
+    }
+  }
+
   .register-container {
     padding: 32px 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   }
 
   .register-header {
     h1 {
-      font-size: 24px;
+      font-size: 26px;
     }
   }
 }

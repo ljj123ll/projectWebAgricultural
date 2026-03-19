@@ -4,15 +4,23 @@ import type { PageResult, UserInfo, MerchantInfo, Comment, News, NewsCategory, O
 export const adminLogin = (data: any) => request.post('/admin/login', data);
 export const adminSendSms = (phone: string) => request.post('/admin/sms/send', { phone });
 
+// 管理员Dashboard
+export const getDashboard = (timeRange = 'all') => request.get<any, any>('/admin/dashboard', { params: { timeRange } });
+
 export const listUsers = (params: any) => request.get<any, PageResult<UserInfo>>('/admin/users', { params });
 export const createUser = (data: any) => request.post('/admin/users', data);
 export const updateUserStatus = (id: number, status: number) => request.put(`/admin/users/${id}/status`, { status });
 export const deleteUser = (id: number) => request.delete(`/admin/users/${id}`);
 
+// 滞销专区
+export const getUnsalableProducts = (params: any) => request.get<any, PageResult<any>>('/admin/unsalable', { params });
+export const setUnsalable = (id: number, isUnsalable: number) => request.put(`/admin/unsalable/${id}`, null, { params: { isUnsalable } });
+
 export const listMerchants = (params: any) => request.get<any, PageResult<MerchantInfo>>('/admin/merchants', { params });
 export const updateMerchantStatus = (id: number, status: number) => request.put(`/admin/merchants/${id}/status`, { status });
 export const listMerchantAudit = (params: any) => request.get<any, PageResult<MerchantInfo>>('/admin/merchants/audit', { params });
 export const auditMerchant = (id: number, data: any) => request.put(`/admin/merchants/${id}/audit`, data);
+export const getMerchantDetail = (id: number) => request.get<any, any>(`/admin/merchants/${id}`);
 export const listProductAudit = (params: any) => request.get<any, PageResult<any>>('/admin/products/audit', { params });
 export const auditProduct = (id: number, data: any) => request.put(`/admin/products/${id}/audit`, data);
 
@@ -42,3 +50,9 @@ export const updateRefund = (id: number, refundStatus: number) => request.put(`/
 
 export const listOperationLogs = (params: any) => request.get('/admin/operation-logs', { params });
 export const listAuditRecords = (params: any) => request.get('/admin/audit-records', { params });
+
+// 数据备份
+export const listBackups = () => request.get<any, any[]>('/admin/backup');
+export const createBackup = () => request.post('/admin/backup');
+export const restoreBackup = (id: number) => request.post(`/admin/backup/${id}/restore`);
+export const deleteBackup = (id: number) => request.delete(`/admin/backup/${id}`);

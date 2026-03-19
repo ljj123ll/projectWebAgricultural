@@ -1,10 +1,20 @@
 <template>
   <div class="login-page">
+    <div class="bg-overlay"></div>
+    <!-- 返回按钮 -->
+    <div class="back-btn-wrapper">
+      <el-button link class="back-btn" @click="router.push('/')">
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回首页</span>
+      </el-button>
+    </div>
     <div class="login-container">
       <div class="login-header">
-        <el-icon size="48" color="#67c23a"><Shop /></el-icon>
-        <h1>助农电商</h1>
-        <p>用户登录</p>
+        <div class="logo-wrapper">
+          <img src="@/assets/vue.svg" alt="logo" />
+        </div>
+        <h1>田园优选</h1>
+        <p class="subtitle">连接城乡，传递自然味道</p>
       </div>
 
       <!-- 登录方式切换 -->
@@ -14,14 +24,14 @@
           :class="{ active: loginType === 'code' }"
           @click="loginType = 'code'"
         >
-          验证码登录
+          <span>验证码登录</span>
         </div>
         <div 
           class="tab-item" 
           :class="{ active: loginType === 'password' }"
           @click="loginType = 'password'"
         >
-          密码登录
+          <span>密码登录</span>
         </div>
       </div>
 
@@ -38,6 +48,7 @@
             v-model="formData.phone"
             placeholder="请输入手机号"
             maxlength="11"
+            class="custom-input"
           >
             <template #prefix>
               <el-icon><Iphone /></el-icon>
@@ -53,6 +64,7 @@
                 v-model="formData.code"
                 placeholder="请输入验证码"
                 maxlength="6"
+                class="custom-input"
               >
                 <template #prefix>
                   <el-icon><Message /></el-icon>
@@ -60,7 +72,9 @@
               </el-input>
               <el-button 
                 type="primary" 
+                plain
                 :disabled="codeCountdown > 0"
+                class="code-btn"
                 @click="sendCode"
               >
                 {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
@@ -77,6 +91,7 @@
               type="password"
               placeholder="请输入密码"
               show-password
+              class="custom-input"
             >
               <template #prefix>
                 <el-icon><Lock /></el-icon>
@@ -86,8 +101,10 @@
         </template>
 
         <!-- 记住登录态 -->
-        <el-form-item>
-          <el-checkbox v-model="rememberMe">7天自动登录</el-checkbox>
+        <el-form-item class="remember-row">
+          <el-checkbox v-model="rememberMe">
+            <span class="remember-text">7天自动登录</span>
+          </el-checkbox>
           <el-button 
             link 
             type="primary" 
@@ -105,39 +122,42 @@
             class="login-btn"
             :loading="loading"
             @click="handleLogin"
+            round
           >
-            登 录
+            <el-icon v-if="!loading" style="margin-right: 5px"><User /></el-icon>
+            <span>立即登录</span>
           </el-button>
         </el-form-item>
       </el-form>
 
       <div class="login-footer">
-        <span>还没有账号？</span>
-        <el-button link type="primary" @click="router.push('/register')">
-          立即注册
-        </el-button>
-      </div>
-
-      <!-- 其他登录方式 -->
-      <div class="other-login">
-        <el-divider>其他方式</el-divider>
-        <div class="login-icons">
-          <el-button circle size="large">
-            <el-icon size="24"><ChatDotRound /></el-icon>
-          </el-button>
+        <div class="divider">
+          <span>还没有账号？</span>
         </div>
+        <el-button 
+          type="success" 
+          text
+          bg
+          size="large" 
+          class="register-btn"
+          @click="router.push('/register')"
+          round
+        >
+          注册新用户
+        </el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { loginPassword, loginSms, sendSms } from '@/apis/user';
+import { Shop, Message, Lock, Iphone, User, ArrowLeft } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -225,8 +245,8 @@ const handleLogin = async () => {
 
         userStore.setLoginState(res, { remember: rememberMe.value });
         ElMessage.success('登录成功');
-        const redirect = route.query.redirect as string;
-        router.push(redirect || '/');
+        // 登录成功后跳转到首页 /home
+        await router.push('/home');
       } catch (error) {
         console.error(error);
       } finally {
@@ -235,6 +255,11 @@ const handleLogin = async () => {
     }
   });
 };
+
+// 清理定时器
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
 </script>
 
 <style scoped lang="scss">
@@ -243,128 +268,212 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #67c23a 0%, #95d475 100%);
-  padding: 20px;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  
+  .bg-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+  }
+}
+
+// 返回按钮
+.back-btn-wrapper {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+
+  .back-btn {
+    color: #fff;
+    font-size: 14px;
+    
+    &:hover {
+      color: #67c23a;
+    }
+
+    .el-icon {
+      margin-right: 4px;
+    }
+  }
 }
 
 .login-container {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border-radius: 16px;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
   padding: 40px 32px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .login-header {
   text-align: center;
   margin-bottom: 32px;
 
-  h1 {
-    font-size: 28px;
-    color: #67c23a;
-    margin: 16px 0 8px;
+  .logo-wrapper {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #fff;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    
+    img {
+      width: 40px;
+      height: 40px;
+    }
   }
 
-  p {
-    font-size: 16px;
-    color: #909399;
-    margin: 0;
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: #7f8c8d;
+    font-weight: 400;
   }
 }
 
 .login-tabs {
   display: flex;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #e4e7ed;
+  margin-bottom: 28px;
+  background: #f5f7fa;
+  padding: 4px;
+  border-radius: 12px;
 
   .tab-item {
     flex: 1;
     text-align: center;
-    padding: 12px;
-    font-size: 16px;
-    color: #606266;
+    padding: 10px 0;
     cursor: pointer;
-    transition: all 0.3s;
-    position: relative;
+    color: #909399;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border-radius: 8px;
 
     &.active {
+      background: #fff;
+      color: #409eff; // 使用更清新的蓝色或保持绿色
       color: #67c23a;
-      font-weight: 500;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 3px;
-        background: #67c23a;
-        border-radius: 2px;
-      }
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
   }
 }
 
 .login-form {
+  .custom-input {
+    :deep(.el-input__wrapper) {
+      box-shadow: none;
+      background: #f5f7fa;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 4px 12px;
+      
+      &.is-focus {
+        background: #fff;
+        border-color: #67c23a;
+        box-shadow: 0 0 0 4px rgba(103, 194, 58, 0.1);
+      }
+    }
+  }
+
   .code-input {
     display: flex;
     gap: 12px;
 
-    .el-input {
-      flex: 1;
-    }
-
-    .el-button {
-      width: 120px;
+    .code-btn {
+      width: 110px;
+      border-radius: 12px;
+      font-weight: 500;
     }
   }
 
-  .forgot-link {
-    float: right;
+  .remember-row {
+    margin-bottom: 24px;
+    
+    .remember-text {
+      color: #606266;
+    }
+    
+    .forgot-link {
+      color: #909399;
+      &:hover {
+        color: #67c23a;
+      }
+    }
   }
 
   .login-btn {
     width: 100%;
     height: 48px;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+    border: none;
+    box-shadow: 0 8px 16px rgba(103, 194, 58, 0.3);
+    transition: all 0.3s;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px rgba(103, 194, 58, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(1px);
+    }
   }
 }
 
 .login-footer {
+  margin-top: 20px;
   text-align: center;
-  margin-top: 24px;
-  color: #606266;
-}
 
-.other-login {
-  margin-top: 32px;
-
-  .login-icons {
+  .divider {
     display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 16px;
+    align-items: center;
+    margin: 20px 0 16px;
+    color: #c0c4cc;
+    font-size: 12px;
+    
+    &::before, &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #ebeef5;
+    }
+    
+    span {
+      padding: 0 12px;
+    }
+  }
+
+  .register-btn {
+    width: 100%;
+    font-weight: 600;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 480px) {
   .login-container {
     padding: 32px 24px;
-  }
-
-  .login-header {
-    h1 {
-      font-size: 24px;
-    }
-  }
-
-  .login-tabs {
-    .tab-item {
-      font-size: 15px;
-    }
+    margin: 16px;
   }
 }
 </style>

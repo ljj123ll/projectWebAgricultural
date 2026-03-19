@@ -18,7 +18,7 @@ public class MerchantShopController {
 
     @Operation(summary = "店铺信息")
     @GetMapping("/shop")
-    public Result<ShopInfo> get() {
+    public Result<com.agricultural.assistplatform.vo.merchant.ShopDetailVO> get() {
         return Result.ok(merchantShopService.get());
     }
 

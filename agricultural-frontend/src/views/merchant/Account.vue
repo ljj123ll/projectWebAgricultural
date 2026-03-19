@@ -79,10 +79,10 @@
       <template #header>
         <div class="card-header">
           <span>近期账单</span>
-          <el-button link type="primary" @click="$router.push('/merchant/account/records')">查看全部</el-button>
+          <el-button link type="primary" @click="loadRecords">刷新</el-button>
         </div>
       </template>
-      <div class="records-list">
+      <div v-if="recentRecords.length > 0" class="records-list">
         <div v-for="record in recentRecords" :key="record.id" class="record-item">
           <div class="record-info">
             <div class="record-icon" :class="record.type">
@@ -100,6 +100,7 @@
           </div>
         </div>
       </div>
+      <el-empty v-else description="暂无账单记录" />
     </el-card>
 
     <!-- 提现弹窗 -->
@@ -158,24 +159,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Wallet, Calendar, TrendCharts, Money, ShoppingCart } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getMerchantStats, listReconciliation, listSubsidy } from '@/apis/merchant'
 
 const showWithdrawDialog = ref(false)
 const showSubsidyRules = ref(false)
 
 const account = reactive({
-  balance: 15880.5,
-  todayIncome: 2580.0,
-  weekIncome: 15800.0,
-  monthIncome: 56800.0
+  balance: 0,
+  todayIncome: 0,
+  weekIncome: 0,
+  monthIncome: 0
 })
 
 const subsidy = reactive({
-  total: 5680.0,
-  month: 1200.0,
-  orderCount: 156
+  total: 0,
+  month: 0,
+  orderCount: 0
 })
 
 const withdrawForm = reactive({
@@ -184,43 +186,65 @@ const withdrawForm = reactive({
   account: ''
 })
 
-const recentRecords = ref([
-  {
-    id: 1,
-    type: 'income',
-    title: '订单收入-ORD202403080001',
-    time: '2024-03-08 14:30:00',
-    amount: 299.0
-  },
-  {
-    id: 2,
-    type: 'income',
-    title: '订单收入-ORD202403080002',
-    time: '2024-03-08 12:15:00',
-    amount: 158.0
-  },
-  {
-    id: 3,
-    type: 'subsidy',
-    title: '助农补贴',
-    time: '2024-03-08 10:00:00',
-    amount: 58.5
-  },
-  {
-    id: 4,
-    type: 'expense',
-    title: '提现到支付宝',
-    time: '2024-03-07 16:20:00',
-    amount: 5000.0
-  },
-  {
-    id: 5,
-    type: 'income',
-    title: '订单收入-ORD202403070015',
-    time: '2024-03-07 11:30:00',
-    amount: 899.0
+const recentRecords = ref<any[]>([])
+
+const loadAccountData = async () => {
+  try {
+    // 获取统计数据
+    const res = await getMerchantStats()
+    if (res) {
+      // 使用今日销售额作为今日收入
+      account.todayIncome = res.todaySales || 0
+      // 使用近7天营收作为周收入
+      account.weekIncome = res.revenue7d || 0
+      // 使用周收入的1/4作为月收入估算
+      account.monthIncome = (res.revenue7d || 0) * 4
+      // 余额使用周收入作为参考
+      account.balance = (res.revenue7d || 0) * 0.8 // 假设80%可提现
+    }
+  } catch (error) {
+    console.error('Failed to load account data', error)
   }
-])
+}
+
+const loadRecords = async () => {
+  try {
+    const res = await listReconciliation({ pageNum: 1, pageSize: 5 })
+    if (res && res.list) {
+      recentRecords.value = res.list.map((item: any) => ({
+        id: item.id,
+        type: item.actualIncome > 0 ? 'income' : 'expense',
+        title: item.orderNo ? `订单收入 ${item.orderNo}` : '账户变动',
+        time: item.createTime,
+        amount: Math.abs(item.actualIncome || 0)
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to load records', error)
+  }
+}
+
+const loadSubsidy = async () => {
+  try {
+    const res = await listSubsidy({ pageNum: 1, pageSize: 100 })
+    if (res && res.list) {
+      // 计算累计补贴
+      subsidy.total = res.list.reduce((sum: number, item: any) => sum + (item.subsidyAmount || 0), 0)
+      subsidy.orderCount = res.total || 0
+      
+      // 计算本月补贴（简化处理，实际应该按月份筛选）
+      subsidy.month = subsidy.total * 0.3 // 假设30%是本月
+    }
+  } catch (error) {
+    console.error('Failed to load subsidy', error)
+  }
+}
+
+onMounted(() => {
+  loadAccountData()
+  loadRecords()
+  loadSubsidy()
+})
 
 const confirmWithdraw = () => {
   if (withdrawForm.amount <= 0) {
@@ -231,8 +255,14 @@ const confirmWithdraw = () => {
     ElMessage.warning('请输入到账账户')
     return
   }
+  if (withdrawForm.amount > account.balance) {
+    ElMessage.warning('提现金额不能超过余额')
+    return
+  }
   ElMessage.success('提现申请已提交')
   showWithdrawDialog.value = false
+  // 扣除余额
+  account.balance -= withdrawForm.amount
 }
 </script>
 

@@ -8,98 +8,71 @@
     </div>
 
     <div class="filter-bar">
-      <el-input v-model="keyword" placeholder="搜索滞销商品或农户" clearable />
+      <el-input v-model="keyword" placeholder="搜索滞销商品或商家" clearable @keyup.enter="loadUnsoldProducts" />
       <el-select v-model="sortType" placeholder="排序方式" style="width: 160px">
-        <el-option label="综合排序" value="default" />
+        <el-option label="销量优先" value="sales" />
         <el-option label="价格从低到高" value="price_asc" />
         <el-option label="价格从高到低" value="price_desc" />
         <el-option label="库存优先" value="stock" />
       </el-select>
+      <el-button type="primary" @click="loadUnsoldProducts">筛选</el-button>
     </div>
 
-    <div class="unsold-list">
-      <div v-for="item in filteredList" :key="item.id" class="unsold-card" @click="goDetail(item.id)">
-        <img :src="item.image" class="product-img" />
+    <div v-loading="loading" class="unsold-list">
+      <div v-for="item in productList" :key="item.id" class="unsold-card" @click="goDetail(item.id)">
+        <img :src="getFullImageUrl(item.productImg)" class="product-img" />
         <div class="card-info">
-          <h3>{{ item.name }}</h3>
-          <p class="farmer">农户：{{ item.farmerName }}</p>
-          <p class="reason">原因：{{ item.reason }}</p>
+          <h3>{{ item.productName }}</h3>
+          <p class="farmer">商家：{{ item.merchantName || '助农商家' }}</p>
+          <p class="reason">产地：{{ item.originPlace || '待补充' }}</p>
           <div class="price-row">
-            <span class="sale-price">助农价 ¥{{ item.salePrice.toFixed(2) }}</span>
-            <span class="original-price">原价 ¥{{ item.originalPrice.toFixed(2) }}</span>
+            <span class="sale-price">助农价 ¥{{ Number(item.price).toFixed(2) }}</span>
           </div>
           <div class="stock-row">
             <span>库存 {{ item.stock }} 件</span>
-            <span>已售 {{ item.sold }} 件</span>
+            <span>已售 {{ item.salesVolume || 0 }} 件</span>
           </div>
         </div>
         <el-button type="warning" size="small">助农购买</el-button>
       </div>
     </div>
 
-    <el-empty v-if="filteredList.length === 0" description="暂无滞销商品" />
+    <el-empty v-if="!loading && productList.length === 0" description="暂无滞销商品" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
+import { searchProducts } from '@/apis/product';
+import { getFullImageUrl } from '@/utils/image';
+import type { Product } from '@/types';
 
 const router = useRouter();
 const keyword = ref('');
-const sortType = ref('default');
+const sortType = ref('sales');
+const loading = ref(false);
+const productList = ref<Product[]>([]);
 
-const unsoldList = ref([
-  {
-    id: 1,
-    name: '滞销大白菜',
-    image: 'https://via.placeholder.com/120',
-    farmerName: '王大爷',
-    originalPrice: 2.5,
-    salePrice: 1.5,
-    stock: 500,
-    sold: 156,
-    reason: '集中上市，供大于求'
-  },
-  {
-    id: 2,
-    name: '滞销苹果',
-    image: 'https://via.placeholder.com/120',
-    farmerName: '李大叔',
-    originalPrice: 8.0,
-    salePrice: 5.0,
-    stock: 320,
-    sold: 300,
-    reason: '物流成本高，销售渠道有限'
-  },
-  {
-    id: 3,
-    name: '滞销土豆',
-    image: 'https://via.placeholder.com/120',
-    farmerName: '张阿姨',
-    originalPrice: 3.2,
-    salePrice: 2.2,
-    stock: 800,
-    sold: 210,
-    reason: '雨季影响市场需求'
+const loadUnsoldProducts = async () => {
+  loading.value = true;
+  try {
+    const res = await searchProducts({
+      keyword: keyword.value,
+      sortBy: sortType.value,
+      isUnsalable: 1,
+      pageNum: 1,
+      pageSize: 50
+    });
+    productList.value = res?.list || [];
+  } finally {
+    loading.value = false;
   }
-]);
+};
 
-const filteredList = computed(() => {
-  let list = [...unsoldList.value];
-  if (keyword.value.trim()) {
-    const key = keyword.value.trim();
-    list = list.filter(item => item.name.includes(key) || item.farmerName.includes(key));
-  }
-  if (sortType.value === 'price_asc') {
-    list.sort((a, b) => a.salePrice - b.salePrice);
-  } else if (sortType.value === 'price_desc') {
-    list.sort((a, b) => b.salePrice - a.salePrice);
-  } else if (sortType.value === 'stock') {
-    list.sort((a, b) => b.stock - a.stock);
-  }
-  return list;
+onMounted(() => {
+  loadUnsoldProducts();
 });
 
 const goDetail = (id: number) => {

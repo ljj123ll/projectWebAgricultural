@@ -3,6 +3,7 @@ package com.agricultural.assistplatform.dto.merchant;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class MerchantRegisterDTO {
@@ -18,4 +19,16 @@ public class MerchantRegisterDTO {
     @NotBlank(message = "联系电话不能为空")
     private String contactPhone;
     private String password;
+    
+    // 资质信息
+    private String idCard;
+    private String idCardFront;
+    private String idCardBack;
+    private String license;
+    
+    // 店铺信息
+    private String shopType;
+    private List<String> categories;
+    private String shopDescription;
+    private String logo;
 }

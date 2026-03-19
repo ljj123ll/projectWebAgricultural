@@ -2,7 +2,7 @@
   <div class="statistics-page">
     <div class="page-header">
       <h2>数据统计</h2>
-      <el-radio-group v-model="timeRange" size="small">
+      <el-radio-group v-model="timeRange" size="small" @change="loadStatistics">
         <el-radio-button label="today">今日</el-radio-button>
         <el-radio-button label="week">本周</el-radio-button>
         <el-radio-button label="month">本月</el-radio-button>
@@ -62,10 +62,13 @@
         <span>销售趋势</span>
       </template>
       <div class="chart-placeholder">
-        <div class="mock-chart">
+        <div v-if="salesTrend.length === 0" class="empty-chart">
+          <el-empty description="暂无数据" :image-size="80" />
+        </div>
+        <div v-else class="mock-chart">
           <div v-for="(bar, index) in salesTrend" :key="index" class="bar-item">
-            <div class="bar" :style="{ height: bar.value + '%' }"></div>
-            <span class="bar-label">{{ bar.label }}</span>
+            <div class="bar" :style="{ height: calculateBarHeight(bar.sales) + '%' }"></div>
+            <span class="bar-label">{{ bar.date }}</span>
           </div>
         </div>
       </div>
@@ -76,15 +79,20 @@
       <template #header>
         <span>热销商品TOP5</span>
       </template>
-      <div class="product-rank">
+      <div v-if="topProducts.length === 0" class="empty-list">
+        <el-empty description="暂无数据" :image-size="80" />
+      </div>
+      <div v-else class="product-rank">
         <div v-for="(product, index) in topProducts" :key="index" class="rank-item">
           <div class="rank-number" :class="{ top3: index < 3 }">{{ index + 1 }}</div>
-          <img :src="product.image" class="product-image" />
-          <div class="product-info">
-            <h4>{{ product.name }}</h4>
-            <p class="sales">销量：{{ product.sales }}</p>
+          <div class="product-image-placeholder">
+            <el-icon><Goods /></el-icon>
           </div>
-          <div class="product-amount">¥{{ product.amount.toFixed(2) }}</div>
+          <div class="product-info">
+            <h4>{{ product.productName }}</h4>
+            <p class="sales">销量：{{ product.salesVolume }}</p>
+          </div>
+          <div class="product-amount">¥{{ (product.salesVolume * 15).toFixed(2) }}</div>
         </div>
       </div>
     </el-card>
@@ -94,7 +102,10 @@
       <template #header>
         <span>订单状态分布</span>
       </template>
-      <div class="status-distribution">
+      <div v-if="orderStatus.length === 0" class="empty-list">
+        <el-empty description="暂无数据" :image-size="80" />
+      </div>
+      <div v-else class="status-distribution">
         <div v-for="(item, index) in orderStatus" :key="index" class="status-item">
           <div class="status-info">
             <span class="status-name">{{ item.name }}</span>
@@ -108,46 +119,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ArrowUp, ArrowDown, Goods } from '@element-plus/icons-vue'
+import { getMerchantStatistics } from '@/apis/merchant'
+import { ElMessage } from 'element-plus'
 
-const timeRange = ref('today')
+const timeRange = ref('week')
 
 const stats = reactive({
-  sales: 12580.5,
-  salesTrend: 12.5,
-  orders: 156,
-  ordersTrend: 8.3,
-  visitors: 2340,
-  visitorsTrend: -5.2,
-  conversionRate: 6.8,
-  conversionTrend: 2.1
+  sales: 0,
+  salesTrend: 0,
+  orders: 0,
+  ordersTrend: 0,
+  visitors: 0,
+  visitorsTrend: 0,
+  conversionRate: 0,
+  conversionTrend: 0
 })
 
-const salesTrend = ref([
-  { label: '00:00', value: 30 },
-  { label: '04:00', value: 20 },
-  { label: '08:00', value: 50 },
-  { label: '12:00', value: 80 },
-  { label: '16:00', value: 65 },
-  { label: '20:00', value: 90 },
-  { label: '24:00', value: 40 }
-])
+const salesTrend = ref<any[]>([])
+const topProducts = ref<any[]>([])
+const orderStatus = ref<any[]>([])
 
-const topProducts = ref([
-  { name: '新鲜有机西红柿', image: 'https://via.placeholder.com/60', sales: 256, amount: 7644.8 },
-  { name: '山东红富士苹果', image: 'https://via.placeholder.com/60', sales: 189, amount: 11334.9 },
-  { name: '五常大米', image: 'https://via.placeholder.com/60', sales: 156, amount: 12480 },
-  { name: '土鸡蛋', image: 'https://via.placeholder.com/60', sales: 134, amount: 5360 },
-  { name: '新鲜黄瓜', image: 'https://via.placeholder.com/60', sales: 98, amount: 1960 }
-])
+// 计算柱状图高度
+const calculateBarHeight = (sales: number) => {
+  const maxSales = Math.max(...salesTrend.value.map((d: any) => d.sales || 0), 1)
+  return Math.max((sales / maxSales) * 100, 5)
+}
 
-const orderStatus = ref([
-  { name: '已完成', count: 120, percentage: 60, color: '#67c23a' },
-  { name: '待发货', count: 45, percentage: 22.5, color: '#409eff' },
-  { name: '待收货', count: 25, percentage: 12.5, color: '#e6a23c' },
-  { name: '售后中', count: 10, percentage: 5, color: '#f56c6c' }
-])
+const loadStatistics = async () => {
+  try {
+    const res = await getMerchantStatistics(timeRange.value)
+    if (res) {
+      // 更新概览数据
+      stats.sales = res.sales || 0
+      stats.salesTrend = res.salesTrend || 0
+      stats.orders = res.orders || 0
+      stats.ordersTrend = res.ordersTrend || 0
+      stats.visitors = res.visitors || 0
+      stats.visitorsTrend = res.visitorsTrend || 0
+      stats.conversionRate = res.conversionRate || 0
+      stats.conversionTrend = res.conversionTrend || 0
+      
+      // 更新销售趋势
+      salesTrend.value = res.salesTrendData || []
+      
+      // 更新热销商品
+      topProducts.value = res.topProducts || []
+      
+      // 更新订单状态分布
+      orderStatus.value = res.orderStatusDistribution || []
+    }
+  } catch (error) {
+    console.error('获取统计数据失败', error)
+    ElMessage.error('获取统计数据失败')
+  }
+}
+
+onMounted(() => {
+  loadStatistics()
+})
 </script>
 
 <style scoped lang="scss">
@@ -210,6 +241,11 @@ const orderStatus = ref([
   margin-bottom: 20px;
 }
 
+.empty-chart,
+.empty-list {
+  padding: 40px 0;
+}
+
 .chart-placeholder {
   height: 200px;
   display: flex;
@@ -234,6 +270,7 @@ const orderStatus = ref([
         background: linear-gradient(to top, #67c23a, #95d475);
         border-radius: 4px 4px 0 0;
         transition: height 0.3s;
+        min-height: 5px;
       }
 
       .bar-label {
@@ -275,12 +312,16 @@ const orderStatus = ref([
       }
     }
 
-    .product-image {
+    .product-image-placeholder {
       width: 50px;
       height: 50px;
       border-radius: 4px;
-      object-fit: cover;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-right: 12px;
+      color: #909399;
     }
 
     .product-info {

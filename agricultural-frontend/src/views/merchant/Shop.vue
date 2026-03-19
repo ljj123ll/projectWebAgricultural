@@ -16,11 +16,13 @@
         <el-form-item label="店铺Logo">
           <el-upload
             class="logo-uploader"
-            action="#"
-            :auto-upload="false"
+            :action="uploadAction"
+            name="file"
             :show-file-list="false"
+            :on-success="handleUploadSuccess"
+            :before-upload="beforeUpload"
           >
-            <img v-if="shopForm.logo" :src="shopForm.logo" class="logo-preview" />
+            <img v-if="shopForm.logo" :src="getFullImageUrl(shopForm.logo)" class="logo-preview" />
             <div v-else class="upload-placeholder">
               <el-icon><Plus /></el-icon>
               <span>点击上传</span>
@@ -56,6 +58,13 @@
         <template #header>
           <span>经营信息</span>
         </template>
+        <el-form-item label="店铺类型">
+          <el-radio-group v-model="shopForm.shopType">
+            <el-radio label="individual">个体工商户</el-radio>
+            <el-radio label="enterprise">企业</el-radio>
+            <el-radio label="cooperative">农业合作社</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="主营类目">
           <el-checkbox-group v-model="shopForm.categories">
             <el-checkbox label="vegetables">新鲜蔬菜</el-checkbox>
@@ -87,7 +96,11 @@
         <div class="qualification-info">
           <div class="info-item">
             <span class="label">认证状态：</span>
-            <el-tag type="success">已认证</el-tag>
+            <el-tag :type="auditTagType">{{ auditText }}</el-tag>
+          </div>
+          <div v-if="shopForm.auditStatus === 2 && shopForm.rejectReason" class="info-item">
+            <span class="label">驳回原因：</span>
+            <span style="color: #f56c6c;">{{ shopForm.rejectReason }}</span>
           </div>
           <div class="info-item">
             <span class="label">经营者：</span>
@@ -98,8 +111,37 @@
             <span>{{ shopForm.idCard }}</span>
           </div>
           <div class="info-item">
+            <span class="label">身份证正面：</span>
+            <el-image
+              v-if="shopForm.idCardFront"
+              :src="getFullImageUrl(shopForm.idCardFront)"
+              :preview-src-list="[getFullImageUrl(shopForm.idCardFront)]"
+              style="width: 120px; height: 80px;"
+              fit="cover"
+            />
+            <span v-else style="color: #999;">未上传</span>
+          </div>
+          <div class="info-item">
+            <span class="label">身份证反面：</span>
+            <el-image
+              v-if="shopForm.idCardBack"
+              :src="getFullImageUrl(shopForm.idCardBack)"
+              :preview-src-list="[getFullImageUrl(shopForm.idCardBack)]"
+              style="width: 120px; height: 80px;"
+              fit="cover"
+            />
+            <span v-else style="color: #999;">未上传</span>
+          </div>
+          <div class="info-item">
             <span class="label">营业执照：</span>
-            <el-button link type="primary">查看</el-button>
+            <el-image
+              v-if="shopForm.licenseImg"
+              :src="getFullImageUrl(shopForm.licenseImg)"
+              :preview-src-list="[getFullImageUrl(shopForm.licenseImg)]"
+              style="width: 120px; height: 80px;"
+              fit="cover"
+            />
+            <span v-else style="color: #999;">未上传</span>
           </div>
         </div>
       </el-card>
@@ -108,27 +150,119 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, onMounted, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getShopInfo, updateShopInfo } from '@/apis/merchant'
+import type { UploadProps } from 'element-plus'
+import { getFullImageUrl } from '@/utils/image'
+
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
 
 const shopForm = reactive({
-  name: '绿色农场旗舰店',
+  name: '',
   logo: '',
-  description: '专注绿色有机农产品，为您提供最新鲜的蔬菜水果',
-  contactName: '张老板',
-  contactPhone: '138****8888',
-  address: '北京市朝阳区某某农产品批发市场A区101号',
-  categories: ['vegetables', 'fruits'],
+  description: '',
+  contactName: '',
+  contactPhone: '',
+  address: '',
+  shopType: 'individual',
+  categories: [] as string[],
   openTime: new Date(2024, 0, 1, 8, 0),
   closeTime: new Date(2024, 0, 1, 18, 0),
-  ownerName: '张三',
-  idCard: '110101********1234'
+  ownerName: '',
+  idCard: '',
+  idCardFront: '',
+  idCardBack: '',
+  licenseImg: '',
+  auditStatus: 0,
+  rejectReason: ''
 })
 
-const saveShop = () => {
-  ElMessage.success('保存成功')
+const auditText = computed(() => {
+  if (shopForm.auditStatus === 1) return '已通过'
+  if (shopForm.auditStatus === 2) return '已驳回'
+  return '待审核'
+})
+
+const auditTagType = computed(() => {
+  if (shopForm.auditStatus === 1) return 'success'
+  if (shopForm.auditStatus === 2) return 'danger'
+  return 'warning'
+})
+
+const loadShopInfo = async () => {
+  try {
+    const res = await getShopInfo();
+    if (res) {
+      shopForm.name = res.shopName || '';
+      shopForm.description = res.shopIntro || '';
+      shopForm.logo = res.qualificationImg || ''; 
+      shopForm.contactName = res.contactName || '';
+      shopForm.contactPhone = res.contactPhone || '';
+      shopForm.ownerName = res.ownerName || '';
+      shopForm.idCard = res.idCard || '';
+      shopForm.idCardFront = res.idCardFront || '';
+      shopForm.idCardBack = res.idCardBack || '';
+      shopForm.licenseImg = res.licenseImg || '';
+      shopForm.auditStatus = res.auditStatus ?? 0;
+      shopForm.rejectReason = res.rejectReason || '';
+      shopForm.shopType = res.shopType || 'individual';
+      if (res.categories) {
+        shopForm.categories = res.categories.split(',');
+      }
+      shopForm.address = res.shopAddress || '';
+    }
+  } catch (error) {
+    console.error('Failed to load shop info', error);
+  }
 }
+
+const handleUploadSuccess = (response: any) => {
+  if (response.code === 200) {
+    shopForm.logo = response.data;
+    ElMessage.success('上传成功');
+  } else {
+    ElMessage.error(response.msg || '上传失败');
+  }
+}
+
+const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
+  if (rawFile.type !== 'image/jpeg' && rawFile.type !== 'image/png') {
+    ElMessage.error('图片必须是 JPG/PNG 格式!')
+    return false
+  } else if (rawFile.size / 1024 / 1024 > 2) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  return true
+}
+
+const saveShop = async () => {
+  try {
+    await updateShopInfo({
+      shopName: shopForm.name,
+      shopIntro: shopForm.description,
+      qualificationImg: shopForm.logo,
+      shopType: shopForm.shopType,
+      categories: shopForm.categories.join(','),
+      shopAddress: shopForm.address
+    });
+    ElMessage.success('保存成功')
+  } catch (error) {
+    console.error('Failed to save shop info', error);
+  }
+}
+
+const getFullImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `http://localhost:8080/api${url}`; // Update with actual backend base URL if needed
+}
+
+onMounted(() => {
+  loadShopInfo();
+})
 </script>
 
 <style scoped lang="scss">

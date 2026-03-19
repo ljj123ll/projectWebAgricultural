@@ -1,6 +1,7 @@
 import request from '@/utils/request';
 import type { Product, PageResult, ProductCategory, ShopInfo } from '@/types';
 
+// 商品相关接口（与后端路径统一）
 export const searchProducts = (params: any) => request.get<any, PageResult<Product>>('/user/products/search', { params });
 export const getProductDetail = (id: number) => request.get<any, Product>(`/user/products/${id}`);
 export const hotProducts = (params: any) => request.get<any, Product[]>('/user/products/hot', { params });

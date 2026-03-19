@@ -10,11 +10,7 @@
             <span class="sub-title">消费帮扶 · 政采同行</span>
           </div>
         </div>
-        <div class="header-actions">
-          <router-link to="/login?role=user">登录</router-link>
-          <el-divider direction="vertical" />
-          <router-link to="/register">免费注册</router-link>
-        </div>
+
       </div>
     </header>
 
@@ -27,28 +23,28 @@
 
       <div class="entrance-container">
         <!-- User Entrance -->
-        <div class="entrance-card user-card">
+        <div class="entrance-card user-card" @click="goLogin('user')">
           <div class="icon-wrapper">
             <el-icon><User /></el-icon>
           </div>
           <div class="card-content">
             <h3>用户服务</h3>
             <p>面向个人消费者、企业采购</p>
-            <el-button type="danger" round size="large" @click="goLogin('user')">
+            <el-button type="danger" round size="large">
               用户登录入口 >
             </el-button>
           </div>
         </div>
 
         <!-- Merchant Entrance -->
-        <div class="entrance-card merchant-card">
+        <div class="entrance-card merchant-card" @click="goLogin('merchant')">
           <div class="icon-wrapper">
             <el-icon><Shop /></el-icon>
           </div>
           <div class="card-content">
             <h3>商家服务</h3>
             <p>面向农副产品供应商、合作社</p>
-            <el-button type="primary" round size="large" @click="goLogin('merchant')">
+            <el-button type="primary" round size="large">
               商家登录入口 >
             </el-button>
           </div>
@@ -111,10 +107,11 @@ import { Shop, User, Aim, Service, Box, CreditCard, View } from '@element-plus/i
 const router = useRouter();
 
 const goLogin = (role: 'user' | 'merchant') => {
-  router.push({
-    path: '/login',
-    query: { role }
-  });
+  if (role === 'user') {
+    router.push('/login');
+  } else {
+    router.push('/merchant/login');
+  }
 };
 
 const goHome = () => {

@@ -61,9 +61,18 @@
         size="large"
         class="pay-btn"
         :loading="paying"
-        @click="handlePay"
+        @click="handlePay(true)"
       >
         确认支付 ¥{{ orderAmount }}
+      </el-button>
+      <el-button 
+        type="warning" 
+        size="large"
+        class="pay-btn"
+        :loading="paying"
+        @click="handlePay(false)"
+      >
+        模拟支付失败
       </el-button>
       <el-button 
         link 
@@ -148,14 +157,14 @@ const handleTimeout = () => {
 };
 
 // 处理支付
-const handlePay = async () => {
+const handlePay = async (success: boolean = true) => {
   paying.value = true;
   payError.value = false;
 
   try {
     // 调用支付接口
     // 文档：POST /user/orders/{id}/pay
-    await payOrder(orderId);
+    await payOrder(orderId, success);
     
     ElMessage.success('支付成功');
     // 跳转到订单详情
@@ -164,7 +173,7 @@ const handlePay = async () => {
   } catch (error) {
     console.error('支付失败', error);
     payError.value = true;
-    ElMessage.error('支付失败，请重试');
+    ElMessage.error('支付异常，请重新支付');
   } finally {
     paying.value = false;
   }
@@ -173,7 +182,7 @@ const handlePay = async () => {
 // 重新支付
 const retryPay = () => {
   payError.value = false;
-  handlePay();
+  handlePay(true);
 };
 
 // 取消支付

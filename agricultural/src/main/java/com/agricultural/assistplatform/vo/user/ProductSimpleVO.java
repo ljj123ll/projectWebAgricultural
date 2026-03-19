@@ -13,4 +13,8 @@ public class ProductSimpleVO {
     private Integer stock;
     private String productImg;
     private BigDecimal score;
+    private String originPlace;
+    private String categoryName;
+    private String merchantName;
 }
+

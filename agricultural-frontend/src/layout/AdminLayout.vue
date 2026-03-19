@@ -73,7 +73,7 @@
     </aside>
 
     <!-- 主内容区 -->
-    <div class="main-container">
+    <div class="main-container" :class="{ 'sidebar-collapsed': isCollapsed }">
       <!-- 顶部导航 -->
       <header class="header">
         <div class="header-left">
@@ -172,11 +172,13 @@ const handleCommand = (command: string) => {
     justify-content: center;
     gap: 12px;
     background: #002140;
+    overflow: hidden; 
 
     .logo-text {
       color: #fff;
       font-size: 18px;
       font-weight: bold;
+      white-space: nowrap; 
     }
   }
 
@@ -191,9 +193,11 @@ const handleCommand = (command: string) => {
   transition: margin-left 0.3s;
   display: flex;
   flex-direction: column;
+  width: calc(100% - 210px); 
 
-  .sidebar.collapsed + & {
+  &.sidebar-collapsed {
     margin-left: 64px;
+    width: calc(100% - 64px); 
   }
 }
 
@@ -249,6 +253,7 @@ const handleCommand = (command: string) => {
 
   .main-container {
     margin-left: 0;
+    width: 100%;
   }
 }
 </style>

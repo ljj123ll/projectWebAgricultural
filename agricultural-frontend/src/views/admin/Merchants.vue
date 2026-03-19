@@ -11,25 +11,46 @@
     </div>
 
     <el-card>
-      <el-table :data="merchantList" style="width: 100%">
+      <el-table :data="merchantList" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="shopName" label="店铺名称" />
-        <el-table-column prop="ownerName" label="经营者" />
-        <el-table-column prop="phone" label="联系电话" />
-        <el-table-column prop="applyTime" label="申请时间" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="merchantName" label="商家名称" min-width="180" />
+        <el-table-column prop="contactPerson" label="联系人" width="120" />
+        <el-table-column prop="phone" label="联系电话" width="140" />
+        <el-table-column label="证件" width="180">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
+            <el-image
+              v-if="row.idCardFront"
+              :src="getFullImageUrl(row.idCardFront)"
+              :preview-src-list="[getFullImageUrl(row.idCardFront)]"
+              :preview-teleported="true"
+              style="width: 44px; height: 32px; margin-right: 8px;"
+              fit="cover"
+            />
+            <el-image
+              v-if="row.licenseImg"
+              :src="getFullImageUrl(row.licenseImg)"
+              :preview-src-list="[getFullImageUrl(row.licenseImg)]"
+              :preview-teleported="true"
+              style="width: 44px; height: 32px;"
+              fit="cover"
+            />
+            <span v-if="!row.idCardFront && !row.licenseImg" style="color: #999;">无</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="申请时间" width="180" />
+        <el-table-column prop="auditStatus" label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.auditStatus)">
+              {{ getStatusText(row.auditStatus) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="viewDetail(row)">查看</el-button>
-            <template v-if="row.status === 'pending'">
+            <template v-if="row.auditStatus === 0">
               <el-button link type="success" @click="approve(row)">通过</el-button>
-              <el-button link type="danger" @click="reject(row)">拒绝</el-button>
+              <el-button link type="danger" @click="reject(row)">驳回</el-button>
             </template>
           </template>
         </el-table-column>
@@ -49,102 +70,171 @@
     <el-dialog v-model="showDetailDialog" title="商家详情" width="90%">
       <div class="merchant-detail">
         <h4>基本信息</h4>
-        <p><strong>店铺名称：</strong>{{ currentMerchant.shopName }}</p>
-        <p><strong>经营者：</strong>{{ currentMerchant.ownerName }}</p>
+        <p><strong>商家名称：</strong>{{ currentMerchant.merchantName }}</p>
+        <p><strong>联系人：</strong>{{ currentMerchant.contactPerson }}</p>
         <p><strong>联系电话：</strong>{{ currentMerchant.phone }}</p>
-        <p><strong>店铺类型：</strong>{{ currentMerchant.type }}</p>
+        <p><strong>审核状态：</strong>{{ getStatusText(currentMerchant.auditStatus) }}</p>
+        <p v-if="currentMerchant.auditStatus === 2 && currentMerchant.rejectReason"><strong>驳回原因：</strong>{{ currentMerchant.rejectReason }}</p>
+
+        <h4>店铺信息</h4>
+        <p><strong>店铺名称：</strong>{{ currentMerchant.shopName }}</p>
+        <p><strong>店铺类型：</strong>{{ currentMerchant.shopType }}</p>
+        <p><strong>主营类目：</strong>
+          <template v-if="currentMerchant.categories">
+            <el-tag v-for="c in currentMerchant.categories.split(',')" :key="c" size="small" style="margin-right: 6px;">{{ c }}</el-tag>
+          </template>
+          <span v-else style="color: #999;">未填写</span>
+        </p>
+        <p><strong>店铺简介：</strong>{{ currentMerchant.shopIntro || '未填写' }}</p>
+        <p><strong>店铺Logo：</strong></p>
+        <el-image
+          v-if="currentMerchant.qualificationImg"
+          :src="getFullImageUrl(currentMerchant.qualificationImg)"
+          :preview-src-list="[getFullImageUrl(currentMerchant.qualificationImg)]"
+          :preview-teleported="true"
+          style="width: 120px; height: 120px;"
+          fit="cover"
+        />
+        <span v-else style="color: #999;">未上传</span>
         
         <h4>资质信息</h4>
         <p><strong>身份证号：</strong>{{ currentMerchant.idCard }}</p>
         <div class="idcard-images">
           <div class="idcard-item">
             <span>身份证正面</span>
-            <img :src="currentMerchant.idCardFront" />
+            <el-image
+              v-if="currentMerchant.idCardFront"
+              :src="getFullImageUrl(currentMerchant.idCardFront)"
+              :preview-src-list="[getFullImageUrl(currentMerchant.idCardFront)]"
+              :preview-teleported="true"
+              style="width: 200px; height: 130px;"
+              fit="cover"
+            />
+            <span v-else style="color: #999;">未上传</span>
           </div>
           <div class="idcard-item">
             <span>身份证反面</span>
-            <img :src="currentMerchant.idCardBack" />
+            <el-image
+              v-if="currentMerchant.idCardBack"
+              :src="getFullImageUrl(currentMerchant.idCardBack)"
+              :preview-src-list="[getFullImageUrl(currentMerchant.idCardBack)]"
+              :preview-teleported="true"
+              style="width: 200px; height: 130px;"
+              fit="cover"
+            />
+            <span v-else style="color: #999;">未上传</span>
           </div>
         </div>
         <p><strong>营业执照：</strong></p>
-        <img :src="currentMerchant.license" class="license-image" />
+        <el-image
+          v-if="currentMerchant.licenseImg"
+          :src="getFullImageUrl(currentMerchant.licenseImg)"
+          :preview-src-list="[getFullImageUrl(currentMerchant.licenseImg)]"
+          :preview-teleported="true"
+          class="license-image"
+          fit="cover"
+        />
+        <span v-else style="color: #999;">未上传</span>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listMerchantAudit, auditMerchant, getMerchantDetail } from '@/apis/admin'
+import { getFullImageUrl } from '@/utils/image'
 
 const filterStatus = ref('all')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(50)
+const total = ref(0)
 const showDetailDialog = ref(false)
 const currentMerchant = reactive<any>({})
+const loading = ref(false)
 
-const merchantList = ref([
-  {
-    id: 1,
-    shopName: '绿色农场旗舰店',
-    ownerName: '张三',
-    phone: '138****8888',
-    applyTime: '2024-03-08 10:30:00',
-    status: 'pending',
-    type: '个体工商户',
-    idCard: '110101********1234',
-    idCardFront: 'https://via.placeholder.com/300x200',
-    idCardBack: 'https://via.placeholder.com/300x200',
-    license: 'https://via.placeholder.com/300x400'
-  },
-  {
-    id: 2,
-    shopName: '山东苹果直销',
-    ownerName: '李四',
-    phone: '139****9999',
-    applyTime: '2024-03-07 14:20:00',
-    status: 'approved',
-    type: '农业合作社',
-    idCard: '370101********5678',
-    idCardFront: 'https://via.placeholder.com/300x200',
-    idCardBack: 'https://via.placeholder.com/300x200',
-    license: 'https://via.placeholder.com/300x400'
-  }
-])
+const merchantList = ref<any[]>([])
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger'
+const getStatusType = (auditStatus: number) => {
+  const map: Record<number, string> = {
+    0: 'warning',
+    1: 'success',
+    2: 'danger'
   }
-  return map[status] || 'info'
+  return map[auditStatus] || 'info'
 }
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝'
+const getStatusText = (auditStatus: number) => {
+  const map: Record<number, string> = {
+    0: '待审核',
+    1: '已通过',
+    2: '已驳回'
   }
-  return map[status] || status
+  return map[auditStatus] || '未知'
 }
 
-const viewDetail = (row: any) => {
-  Object.assign(currentMerchant, row)
+
+
+const auditStatusParam = () => {
+  if (filterStatus.value === 'pending') return 0
+  if (filterStatus.value === 'approved') return 1
+  if (filterStatus.value === 'rejected') return 2
+  return undefined
+}
+
+const loadList = async () => {
+  try {
+    loading.value = true
+    const res = await listMerchantAudit({
+      auditStatus: auditStatusParam(),
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    })
+    merchantList.value = res?.list || []
+    total.value = res?.total || 0
+  } finally {
+    loading.value = false
+  }
+}
+
+const viewDetail = async (row: any) => {
+  const res = await getMerchantDetail(row.id)
+  Object.assign(currentMerchant, res || {})
   showDetailDialog.value = true
 }
 
-const approve = (row: any) => {
-  row.status = 'approved'
-  ElMessage.success('审核通过')
+const approve = async (row: any) => {
+  await ElMessageBox.confirm('确认通过该商家入驻审核吗？', '审核确认', {
+    confirmButtonText: '通过',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+  await auditMerchant(row.id, { pass: true })
+  ElMessage.success('已通过')
+  await loadList()
 }
 
-const reject = (row: any) => {
-  row.status = 'rejected'
-  ElMessage.success('已拒绝')
+const reject = async (row: any) => {
+  const result = (await ElMessageBox.prompt('请输入驳回原因', '驳回审核', {
+    confirmButtonText: '驳回',
+    cancelButtonText: '取消',
+    inputType: 'textarea',
+    inputValidator: (val: string) => !!val?.trim(),
+    inputErrorMessage: '驳回原因不能为空'
+  })) as { value: string }
+  await auditMerchant(row.id, { pass: false, rejectReason: result.value })
+  ElMessage.success('已驳回')
+  await loadList()
 }
+
+watch([filterStatus, currentPage, pageSize], () => {
+  loadList()
+})
+
+onMounted(() => {
+  loadList()
+})
 </script>
 
 <style scoped lang="scss">

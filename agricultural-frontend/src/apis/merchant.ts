@@ -1,11 +1,19 @@
 import request from '@/utils/request';
-import type { PageResult, Order, Product, ShopInfo, MerchantAccount, AfterSale, AfterSaleMessage } from '@/types';
+import type { PageResult, Order, Product, MerchantAccount, AfterSale, AfterSaleMessage } from '@/types';
 
 export const merchantLogin = (data: any) => request.post('/merchant/login', data);
+export const merchantRegister = (data: any) => request.post('/merchant/register', data);
 export const merchantSendSms = (phone: string) => request.post('/merchant/sms/send', { phone });
 
-export const getShopInfo = () => request.get<any, ShopInfo>('/merchant/shop');
+export const getShopInfo = () => request.get<any, any>('/merchant/shop');
 export const updateShopInfo = (data: any) => request.put('/merchant/shop', data);
+
+// 工作台统计数据
+export const getMerchantStats = () => request.get<any, any>('/merchant/stats');
+
+// 统计页面数据
+export const getMerchantStatistics = (timeRange: string = 'week') => 
+  request.get<any, any>('/merchant/statistics', { params: { timeRange } });
 
 export const listAccounts = () => request.get<any, MerchantAccount[]>('/merchant/accounts');
 export const saveAccount = (data: any) => request.post('/merchant/accounts', data);
@@ -27,3 +35,11 @@ export const listAfterSaleMessages = (no: string, params: any) =>
   request.get<any, PageResult<AfterSaleMessage>>(`/merchant/after-sale/${no}/messages`, { params });
 export const sendAfterSaleMessage = (no: string, data: any) =>
   request.post(`/merchant/after-sale/${no}/messages`, data);
+
+// 对账明细
+export const listReconciliation = (params: any) => 
+  request.get<any, PageResult<any>>('/merchant/reconciliation', { params });
+
+// 补贴明细
+export const listSubsidy = (params: any) => 
+  request.get<any, PageResult<any>>('/merchant/subsidy', { params });

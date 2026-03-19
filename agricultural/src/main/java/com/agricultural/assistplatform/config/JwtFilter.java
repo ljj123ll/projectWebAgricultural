@@ -2,8 +2,7 @@ package com.agricultural.assistplatform.config;
 
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.util.JwtUtil;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +39,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
             }
             filterChain.doFilter(request, response);
-        } catch (ExpiredJwtException | SignatureException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             filterChain.doFilter(request, response);
         } finally {
             LoginContext.clear();

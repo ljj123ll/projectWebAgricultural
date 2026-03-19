@@ -177,7 +177,7 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'product-edit/:id',
         name: 'MerchantProductEdit',
-        component: () => import('@/views/merchant/ProductEdit.vue'),
+        component: () => import('@/views/merchant/ProductAdd.vue'),
         meta: { title: '编辑商品' }
       },
       {

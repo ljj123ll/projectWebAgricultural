@@ -140,6 +140,7 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
+import { sendSms, resetPassword as resetPasswordApi } from '@/apis/user';
 
 const router = useRouter();
 
@@ -156,6 +157,8 @@ const formData = reactive({
   confirmPassword: ''
 });
 
+const isCodeSent = ref(false);
+
 const validatePhone = (rule: any, value: string, callback: any) => {
   void rule;
   const phoneReg = /^1[3-9]\d{9}$/;
@@ -164,9 +167,21 @@ const validatePhone = (rule: any, value: string, callback: any) => {
   } else if (!phoneReg.test(value)) {
     callback(new Error('手机号格式不正确'));
   } else {
+    // 手机号变更时重置发送状态
+    if (isCodeSent.value) {
+       // 这里不能直接重置，因为validate会在输入时频繁触发
+       // 最好是用 watch 来监听 phone 变化
+    }
     callback();
   }
 };
+
+// 监听手机号变化重置验证码发送状态
+import { watch } from 'vue';
+watch(() => formData.phone, () => {
+  isCodeSent.value = false;
+  codeCountdown.value = 0;
+});
 
 const validateConfirmPassword = (rule: any, value: string, callback: any) => {
   void rule;
@@ -200,15 +215,20 @@ const sendCode = async () => {
     return;
   }
 
-  // 模拟发送验证码
-  ElMessage.success('验证码已发送：123456');
-  codeCountdown.value = 60;
-  const timer = setInterval(() => {
-    codeCountdown.value--;
-    if (codeCountdown.value <= 0) {
-      clearInterval(timer);
-    }
-  }, 1000);
+  try {
+    await sendSms(formData.phone);
+    ElMessage.success('验证码已发送');
+    isCodeSent.value = true;
+    codeCountdown.value = 60;
+    const timer = setInterval(() => {
+      codeCountdown.value--;
+      if (codeCountdown.value <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+  } catch (error) {
+    console.error('发送验证码失败:', error);
+  }
 };
 
 // 验证手机号
@@ -217,10 +237,11 @@ const verifyPhone = async () => {
 
   await formRef1.value.validate((valid) => {
     if (valid) {
-      if (formData.code !== '123456') {
-        ElMessage.error('验证码错误');
+      if (!isCodeSent.value) {
+        ElMessage.warning('请先获取验证码');
         return;
       }
+      // 前端只做格式校验，真实校验在提交时进行
       currentStep.value = 1;
     }
   });
@@ -230,14 +251,27 @@ const verifyPhone = async () => {
 const resetPassword = async () => {
   if (!formRef2.value) return;
 
-  await formRef2.value.validate((valid) => {
+  await formRef2.value.validate(async (valid) => {
     if (valid) {
       loading.value = true;
-      setTimeout(() => {
+      try {
+        await resetPasswordApi({
+          phone: formData.phone,
+          code: formData.code,
+          newPassword: formData.newPassword
+        });
         ElMessage.success('密码重置成功');
-        loading.value = false;
         currentStep.value = 2;
-      }, 1000);
+      } catch (error: any) {
+        console.error('重置密码失败:', error);
+        // 如果是验证码错误，切回第一步让用户重新输入
+        if (error.message && (error.message.includes('验证码') || error.message.includes('过期'))) {
+           currentStep.value = 0;
+           // 稍微延迟一点聚焦到验证码输入框体验更好，这里简单切回即可
+        }
+      } finally {
+        loading.value = false;
+      }
     }
   });
 };

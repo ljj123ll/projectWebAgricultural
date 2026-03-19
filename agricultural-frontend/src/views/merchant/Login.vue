@@ -1,90 +1,141 @@
 <template>
   <div class="merchant-login-page">
-    <div class="login-container">
-      <div class="login-header">
-        <el-icon size="48" color="#67c23a"><Shop /></el-icon>
-        <h1>商家登录</h1>
-        <p>助农电商平台商家端</p>
+    <!-- 返回首页按钮 -->
+    <div class="back-btn-wrapper">
+      <el-button link class="back-btn" @click="router.push('/')">
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回首页</span>
+      </el-button>
+    </div>
+    <div class="login-box">
+      <div class="login-left">
+        <div class="brand">
+          <el-icon size="40"><Shop /></el-icon>
+          <span>商家工作台</span>
+        </div>
+        <div class="welcome-text">
+          <h2>数据驱动农业</h2>
+          <p>连接消费者，优化供应链，实现精准助农</p>
+        </div>
       </div>
+      
+      <div class="login-right">
+        <div class="login-header">
+          <h3>欢迎登录</h3>
+        </div>
 
-      <el-form 
-        ref="formRef"
-        :model="formData"
-        :rules="rules"
-        class="login-form"
-        size="large"
-      >
-        <el-form-item prop="phone">
-          <el-input
-            v-model="formData.phone"
-            placeholder="请输入手机号"
-            maxlength="11"
+        <!-- 登录方式切换 -->
+        <div class="login-tabs">
+          <div 
+            class="tab-item" 
+            :class="{ active: loginType === 'code' }"
+            @click="loginType = 'code'"
           >
-            <template #prefix>
-              <el-icon><Iphone /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
+            验证码登录
+          </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: loginType === 'password' }"
+            @click="loginType = 'password'"
+          >
+            密码登录
+          </div>
+        </div>
 
-        <el-form-item prop="password">
-          <el-input
-            v-model="formData.password"
-            type="password"
-            placeholder="请输入密码"
-            show-password
-          >
-            <template #prefix>
-              <el-icon><Lock /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
+        <el-form 
+          ref="formRef"
+          :model="formData"
+          :rules="rules"
+          class="login-form"
+          size="large"
+          label-position="top"
+        >
+          <el-form-item label="手机号" prop="phone">
+            <el-input
+              v-model="formData.phone"
+              placeholder="请输入手机号"
+              maxlength="11"
+            />
+          </el-form-item>
 
-        <el-form-item>
-          <el-button 
-            type="primary" 
-            size="large" 
-            class="login-btn"
-            :loading="loading"
-            @click="handleLogin"
-          >
-            登 录
+          <!-- 验证码登录 -->
+          <template v-if="loginType === 'code'">
+            <el-form-item label="验证码" prop="code">
+              <div class="code-input">
+                <el-input
+                  v-model="formData.code"
+                  placeholder="请输入验证码"
+                  maxlength="6"
+                />
+                <el-button 
+                  type="primary" 
+                  :disabled="codeCountdown > 0"
+                  class="code-btn"
+                  @click="sendCode"
+                >
+                  {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
+                </el-button>
+              </div>
+            </el-form-item>
+          </template>
+
+          <!-- 密码登录 -->
+          <template v-else>
+            <el-form-item label="密码" prop="password">
+              <el-input
+                v-model="formData.password"
+                type="password"
+                placeholder="请输入密码"
+                show-password
+              />
+            </el-form-item>
+          </template>
+
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              size="large" 
+              class="login-btn"
+              :loading="loading"
+              @click="handleLogin"
+            >
+              登 录
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="login-footer">
+          <span>还没有店铺？</span>
+          <el-button link type="primary" @click="router.push('/merchant/register')">
+            立即入驻
           </el-button>
-        </el-form-item>
-      </el-form>
-
-      <div class="login-footer">
-        <span>还没有店铺？</span>
-        <el-button link type="primary" @click="router.push('/merchant/register')">
-          立即入驻
-        </el-button>
-      </div>
-
-      <div class="back-link">
-        <el-button link @click="router.push('/login')">
-          <el-icon><ArrowLeft /></el-icon>
-          返回用户端
-        </el-button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { merchantLogin } from '@/apis/merchant';
+import { merchantLogin, merchantSendSms } from '@/apis/merchant';
+import { Shop, ArrowLeft } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const userStore = useUserStore();
 
 const formRef = ref<FormInstance>();
 const loading = ref(false);
+const loginType = ref<'code' | 'password'>('code');
+const codeCountdown = ref(0);
+let timer: ReturnType<typeof setInterval> | null = null;
 
 const formData = reactive({
   phone: '',
+  code: '',
   password: ''
 });
 
@@ -102,32 +153,118 @@ const validatePhone = (rule: any, value: string, callback: any) => {
 
 const rules: FormRules = {
   phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 };
 
-const handleLogin = async () => {
-  if (!formRef.value) return;
+// 发送验证码
+const sendCode = async () => {
+  const phoneReg = /^1[3-9]\d{9}$/;
+  if (!phoneReg.test(formData.phone)) {
+    ElMessage.warning('请输入正确的手机号');
+    return;
+  }
 
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true;
-      try {
-        const res: any = await merchantLogin(formData);
-        // Ensure role is set
-        if (!res.userInfo.role) {
-          res.userInfo.role = 'merchant';
-        }
-        userStore.setLoginState(res);
-        ElMessage.success('登录成功');
-        router.push('/merchant/dashboard');
-      } catch (error) {
-        console.error(error);
-      } finally {
-        loading.value = false;
+  try {
+    await merchantSendSms(formData.phone);
+    ElMessage.success('验证码发送成功');
+    codeCountdown.value = 60;
+    timer = setInterval(() => {
+      codeCountdown.value--;
+      if (codeCountdown.value <= 0) {
+        if (timer) clearInterval(timer);
       }
-    }
-  });
+    }, 1000);
+  } catch (error) {
+    console.error(error);
+  }
 };
+
+const handleLogin = async () => {
+  if (!formRef.value) {
+    console.error('Form ref is null');
+    return;
+  }
+
+  // 验证表单
+  try {
+    await formRef.value.validate();
+  } catch (validationError) {
+    console.log('Form validation failed');
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const loginData = loginType.value === 'code' 
+      ? { phone: formData.phone, code: formData.code }
+      : { phone: formData.phone, password: formData.password };
+    
+    console.log('Sending login request:', loginData);
+    const res: any = await merchantLogin(loginData);
+    console.log('Login response:', res);
+    
+    // Transform response to match store expectation
+    const loginResult = {
+      token: res.token,
+      userInfo: {
+        id: res.merchantId,
+        nickname: res.merchantName,
+        phone: formData.phone,
+        role: 'merchant' as const
+      }
+    };
+    userStore.setLoginState(loginResult);
+    ElMessage.success('登录成功');
+    router.push('/merchant/dashboard');
+  } catch (error: any) {
+    console.error('Login error:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error keys:', Object.keys(error));
+    
+    // 处理各种错误情况
+    if (error?.response?.data) {
+      const responseData = error.response.data;
+      console.log('Error response data:', responseData);
+      
+      if (responseData.code === 403) {
+        const msg = responseData.msg || '';
+        if (msg.includes('审核中') || msg.includes('未审核')) {
+          ElMessage.warning('您的账号正在审核中，请耐心等待管理员审核');
+        } else if (msg.includes('审核未通过') || msg.includes('驳回')) {
+          ElMessage.error(msg);
+        } else {
+          ElMessage.error(msg || '登录失败');
+        }
+      } else if (responseData.code === 400) {
+        ElMessage.error(responseData.msg || '请求参数错误');
+      } else {
+        ElMessage.error(responseData.msg || '登录失败，请检查账号密码');
+      }
+    } else if (error?.code === 403) {
+      // 直接处理拦截器抛出的错误
+      const msg = error?.message || '';
+      if (msg.includes('审核中') || msg.includes('未审核')) {
+        ElMessage.warning('您的账号正在审核中，请耐心等待管理员审核');
+      } else if (msg.includes('审核未通过') || msg.includes('驳回')) {
+        ElMessage.error(msg);
+      } else {
+        ElMessage.error(msg || '登录失败');
+      }
+    } else if (error?.message) {
+      ElMessage.error(error.message);
+    } else {
+      ElMessage.error('登录失败，请稍后重试');
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 清理定时器
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
 </script>
 
 <style scoped lang="scss">
@@ -136,65 +273,196 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #304156 0%, #67c23a 100%);
-  padding: 20px;
+  background-color: #f0f2f5;
+  background-image: url('https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2940&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  position: relative;
 }
 
-.login-container {
-  width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px 32px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-}
+// 返回按钮
+.back-btn-wrapper {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
 
-.login-header {
-  text-align: center;
-  margin-bottom: 32px;
-
-  h1 {
-    font-size: 28px;
-    color: #304156;
-    margin: 16px 0 8px;
-  }
-
-  p {
-    font-size: 16px;
-    color: #909399;
-    margin: 0;
-  }
-}
-
-.login-form {
-  .login-btn {
-    width: 100%;
-    height: 48px;
-    font-size: 18px;
-    font-weight: 500;
-  }
-}
-
-.login-footer {
-  text-align: center;
-  margin-top: 24px;
-  color: #606266;
-}
-
-.back-link {
-  text-align: center;
-  margin-top: 16px;
-}
-
-@media (max-width: 768px) {
-  .login-container {
-    padding: 32px 24px;
-  }
-
-  .login-header {
-    h1 {
-      font-size: 24px;
+  .back-btn {
+    color: #fff;
+    font-size: 14px;
+    
+    &:hover {
+      color: #409eff;
     }
+
+    .el-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+.login-box {
+  display: flex;
+  width: 900px;
+  height: 560px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+}
+
+.login-left {
+  flex: 1;
+  background: linear-gradient(135deg, #1f2d3d 0%, #324157 100%);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+  
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  
+  .welcome-text {
+    h2 {
+      font-size: 32px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    p {
+      font-size: 16px;
+      opacity: 0.8;
+      line-height: 1.6;
+    }
+  }
+}
+
+.login-right {
+  width: 420px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  
+  .login-header {
+    margin-bottom: 20px;
+    h3 {
+      font-size: 24px;
+      color: #303133;
+      font-weight: 600;
+    }
+  }
+
+  // 登录方式切换
+  .login-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e4e7ed;
+
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      cursor: pointer;
+      color: #606266;
+      font-size: 14px;
+      transition: all 0.3s;
+      position: relative;
+
+      &:hover {
+        color: #409eff;
+      }
+
+      &.active {
+        color: #409eff;
+        font-weight: 500;
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 20%;
+          right: 20%;
+          height: 2px;
+          background: #409eff;
+          border-radius: 2px;
+        }
+      }
+    }
+  }
+  
+  .login-form {
+    :deep(.el-input__wrapper) {
+      box-shadow: 0 0 0 1px #dcdfe6 inset;
+      &:hover {
+        box-shadow: 0 0 0 1px #409eff inset;
+      }
+      &.is-focus {
+        box-shadow: 0 0 0 1px #409eff inset;
+      }
+    }
+
+    .code-input {
+      display: flex;
+      gap: 12px;
+
+      .el-input {
+        flex: 1;
+      }
+
+      .code-btn {
+        width: 120px;
+        font-size: 14px;
+      }
+    }
+    
+    .login-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: #324157;
+      border-color: #324157;
+      
+      &:hover {
+        background: #1f2d3d;
+        border-color: #1f2d3d;
+      }
+    }
+  }
+  
+  .login-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #606266;
+  }
+}
+
+@media (max-width: 900px) {
+  .back-btn-wrapper {
+    top: 10px;
+    left: 10px;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    margin: 60px 20px 20px;
+    flex-direction: column;
+  }
+  
+  .login-left {
+    display: none;
+  }
+  
+  .login-right {
+    width: 100%;
+    padding: 30px;
   }
 }
 </style>

@@ -2,10 +2,10 @@
   <div class="messages-page">
     <div class="page-header">
       <h2>消息中心</h2>
-      <el-button link type="primary" @click="markAllRead">全部已读</el-button>
+      <el-button v-if="unreadCount > 0" link type="primary" @click="markAllRead">全部已读</el-button>
     </div>
 
-    <el-tabs v-model="activeTab">
+    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="全部消息" name="all">
         <el-badge :value="unreadCount" v-if="unreadCount > 0" />
       </el-tab-pane>
@@ -14,9 +14,9 @@
       <el-tab-pane label="售后消息" name="aftersale" />
     </el-tabs>
 
-    <div class="message-list">
+    <div class="message-list" v-if="messageList.length > 0">
       <div
-        v-for="msg in messageList"
+        v-for="msg in filteredMessageList"
         :key="msg.id"
         class="message-item"
         :class="{ unread: !msg.isRead }"
@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <el-empty v-if="messageList.length === 0" description="暂无消息" />
+    <el-empty v-else description="暂无消息" />
 
     <!-- 消息详情弹窗 -->
     <el-dialog v-model="showDetailDialog" title="消息详情" width="90%">
@@ -52,57 +52,72 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Bell, Box, Warning, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { listOrders } from '@/apis/merchant'
+import { listAfterSale } from '@/apis/merchant'
 
 const activeTab = ref('all')
 const showDetailDialog = ref(false)
 const currentMessage = reactive<any>({})
-const unreadCount = ref(3)
 
-const messageList = ref([
-  {
-    id: 1,
-    type: 'order',
-    title: '新订单提醒',
-    content: '您有一个新订单待处理，订单号：ORD202403080001，请及时发货',
-    time: '10分钟前',
-    isRead: false
-  },
-  {
-    id: 2,
-    type: 'aftersale',
-    title: '售后申请提醒',
-    content: '订单ORD202403070001有新的售后申请，请及时处理',
-    time: '30分钟前',
-    isRead: false
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: '系统通知',
-    content: '您的店铺已通过实名认证审核，可以正常经营了',
-    time: '2小时前',
-    isRead: false
-  },
-  {
-    id: 4,
-    type: 'system',
-    title: '平台公告',
-    content: '关于春节期间物流安排的通知，请提前做好准备',
-    time: '昨天',
-    isRead: true
-  },
-  {
-    id: 5,
-    type: 'order',
-    title: '订单发货提醒',
-    content: '订单ORD202403060005已发货，请及时关注物流状态',
-    time: '昨天',
-    isRead: true
+const messageList = ref<any[]>([])
+
+const unreadCount = computed(() => {
+  return messageList.value.filter(msg => !msg.isRead).length;
+})
+
+const filteredMessageList = computed(() => {
+  if (activeTab.value === 'all') return messageList.value;
+  return messageList.value.filter(msg => msg.type === activeTab.value);
+})
+
+// 从订单和售后数据生成消息
+const loadMessages = async () => {
+  try {
+    const messages: any[] = []
+    
+    // 获取待发货订单作为消息
+    const orderRes = await listOrders({ pageNum: 1, pageSize: 10, orderStatus: 2 })
+    if (orderRes?.list) {
+      orderRes.list.forEach((order: any) => {
+        messages.push({
+          id: `order-${order.id}`,
+          title: '新订单待发货',
+          content: `订单号 ${order.orderNo} 待发货，请及时处理`,
+          time: order.createTime,
+          type: 'order',
+          isRead: false,
+          link: `/merchant/orders`
+        })
+      })
+    }
+    
+    // 获取待处理售后作为消息
+    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 10, afterSaleStatus: 0 })
+    if (afterSaleRes?.list) {
+      afterSaleRes.list.forEach((item: any) => {
+        messages.push({
+          id: `aftersale-${item.id}`,
+          title: '售后申请待处理',
+          content: `售后单号 ${item.afterSaleNo} 申请${item.afterSaleType === 1 ? '退款' : '退货退款'}，原因：${item.applyReason}`,
+          time: item.createTime,
+          type: 'aftersale',
+          isRead: false,
+          link: `/merchant/after-sales`
+        })
+      })
+    }
+    
+    // 按时间排序
+    messages.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    
+    messageList.value = messages
+  } catch (error) {
+    console.error('Failed to load messages', error)
   }
-])
+}
 
 const getIcon = (type: string) => {
   const map: Record<string, any> = {
@@ -128,18 +143,20 @@ const readMessage = (msg: any) => {
   Object.assign(currentMessage, msg)
   msg.isRead = true
   showDetailDialog.value = true
-  updateUnreadCount()
 }
 
 const markAllRead = () => {
   messageList.value.forEach(msg => msg.isRead = true)
-  updateUnreadCount()
   ElMessage.success('已全部标记为已读')
 }
 
-const updateUnreadCount = () => {
-  unreadCount.value = messageList.value.filter(msg => !msg.isRead).length
+const handleTabChange = () => {
+  // 切换标签时可以做额外处理
 }
+
+onMounted(() => {
+  loadMessages()
+})
 </script>
 
 <style scoped lang="scss">

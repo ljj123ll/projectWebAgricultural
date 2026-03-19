@@ -1,6 +1,7 @@
 import request from '@/utils/request';
 import type { LoginResult, UserInfo, PageResult, UserAddress, Comment, AfterSale, AfterSaleMessage, News, NewsCategory } from '@/types';
 
+// 用户认证接口
 export const loginPassword = (data: any) => request.post<any, LoginResult>('/user/login/password', data);
 export const loginSms = (data: any) => request.post<any, LoginResult>('/user/login/sms', data);
 export const register = (data: any) => request.post<any, LoginResult>('/user/register', data);

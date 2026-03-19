@@ -162,19 +162,26 @@ public class UserOrderService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void pay(Long id) {
+    public void pay(Long id, Boolean success) {
         Long userId = LoginContext.getUserId();
         if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
                 .eq(OrderMain::getId, id).eq(OrderMain::getUserId, userId));
         if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
-        if (main.getOrderStatus() != 1) throw new BusinessException(ResultCode.BAD_REQUEST, "订单状态不允许支付");
+        if (main.getOrderStatus() != 1 && main.getOrderStatus() != 6) throw new BusinessException(ResultCode.BAD_REQUEST, "订单状态不允许支付");
         if (main.getPayDeadline() != null && main.getPayDeadline().isBefore(LocalDateTime.now())) {
             main.setOrderStatus(5);
             main.setCancelReason("超时未付款");
             orderMainMapper.updateById(main);
             throw new BusinessException(ResultCode.BAD_REQUEST, "订单已超时取消");
         }
+        
+        if (!success) {
+            main.setOrderStatus(6); // 支付异常
+            orderMainMapper.updateById(main);
+            throw new BusinessException(ResultCode.SERVER_ERROR, "支付异常，请重新支付");
+        }
+        
         main.setOrderStatus(2);
         orderMainMapper.updateById(main);
         PaymentRecord pr = new PaymentRecord();

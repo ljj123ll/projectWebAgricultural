@@ -28,6 +28,12 @@ public class MerchantInfo {
     private Integer status;
     private String loginToken;
     private LocalDateTime tokenExpireTime;
+    
+    private String idCard;
+    private String idCardFront;
+    private String idCardBack;
+    private String licenseImg;
+
     @TableLogic
     private Integer deleteFlag;
     private LocalDateTime createTime;

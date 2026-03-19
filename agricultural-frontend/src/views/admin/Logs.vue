@@ -43,42 +43,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { listOperationLogs } from '@/apis/admin'
 
 const dateRange = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(1000)
-
-const logList = ref([
-  {
-    id: 1,
-    level: 'INFO',
-    module: '用户管理',
-    message: '管理员登录成功',
-    operator: 'admin',
-    ip: '192.168.1.100',
-    createTime: '2024-03-08 15:30:00'
-  },
-  {
-    id: 2,
-    level: 'WARN',
-    module: '订单管理',
-    message: '订单ORD202403080001支付超时',
-    operator: 'system',
-    ip: '-',
-    createTime: '2024-03-08 15:25:00'
-  },
-  {
-    id: 3,
-    level: 'ERROR',
-    module: '支付系统',
-    message: '微信支付接口调用失败',
-    operator: 'system',
-    ip: '-',
-    createTime: '2024-03-08 15:20:00'
-  }
-])
+const total = ref(0)
+const loading = ref(false)
+const logList = ref<any[]>([])
 
 const getLevelType = (level: string) => {
   const map: Record<string, string> = {
@@ -88,6 +62,38 @@ const getLevelType = (level: string) => {
   }
   return map[level] || 'info'
 }
+
+const loadLogs = async () => {
+  loading.value = true
+  try {
+    const params: any = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.startTime = dateRange.value[0]
+      params.endTime = dateRange.value[1]
+    }
+    const res: any = await listOperationLogs(params)
+    if (res) {
+      logList.value = res.list || []
+      total.value = res.total || 0
+    }
+  } catch (error) {
+    console.error('Failed to load logs', error)
+    ElMessage.error('加载日志失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+watch([currentPage, pageSize, dateRange], () => {
+  loadLogs()
+}, { deep: true })
+
+onMounted(() => {
+  loadLogs()
+})
 </script>
 
 <style scoped lang="scss">

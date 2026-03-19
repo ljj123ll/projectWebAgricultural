@@ -19,6 +19,20 @@ spring:
       timeout: 3000 # 连接超时时间 (毫秒)
       database: 0 # 使用的数据库索引
 
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+# 自定义配置
+app:
+  upload:
+    path: ./uploads # 文件上传路径
+    allowed-types: image/jpeg,image/png,image/gif,image/webp
+    max-size: 10485760 # 10MB
+
 # 服务器配置（接口文档 Base URL: http://localhost:8080/api）
 server:
   port: 8080

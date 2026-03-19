@@ -1,9 +1,16 @@
 <template>
   <div class="merchant-register-page">
     <div class="register-header">
-      <div class="logo">
-        <el-icon size="40"><Shop /></el-icon>
-        <span>商家入驻</span>
+      <div class="header-content">
+        <el-button link class="back-btn" @click="$router.push('/merchant/login')">
+          <el-icon><ArrowLeft /></el-icon>
+          返回登录
+        </el-button>
+        <div class="logo">
+          <el-icon size="40"><Shop /></el-icon>
+          <span>商家入驻</span>
+        </div>
+        <div class="placeholder"></div>
       </div>
     </div>
 
@@ -28,7 +35,7 @@
             </el-input>
           </el-form-item>
           <el-form-item label="验证码">
-            <el-input v-model="form.basic.code" placeholder="请输入验证码" maxlength="6" />
+            <el-input v-model="form.basic.code" placeholder="请输入验证码" maxlength="6" :disabled="!codeSent" />
           </el-form-item>
           <el-form-item label="登录密码">
             <el-input v-model="form.basic.password" type="password" placeholder="请设置登录密码" show-password />
@@ -51,34 +58,61 @@
           <el-form-item label="身份证正面">
             <el-upload
               class="idcard-uploader"
-              action="#"
-              :auto-upload="false"
+              :action="uploadAction"
+              :headers="uploadHeaders"
+              name="file"
               :show-file-list="false"
+              :on-success="handleUploadSuccess('idCardFront')"
+              :on-error="handleUploadError"
+              :before-upload="beforeUpload"
             >
-              <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">点击上传身份证正面</div>
+              <template #default>
+                <img v-if="form.qualification.idCardFront" :src="getFullImageUrl(form.qualification.idCardFront)" class="uploaded-img" @error="handleImageError" />
+                <div v-else class="upload-placeholder">
+                  <el-icon class="upload-icon"><Plus /></el-icon>
+                  <div class="upload-text">点击上传身份证正面</div>
+                </div>
+              </template>
             </el-upload>
           </el-form-item>
           <el-form-item label="身份证反面">
             <el-upload
               class="idcard-uploader"
-              action="#"
-              :auto-upload="false"
+              :action="uploadAction"
+              :headers="uploadHeaders"
+              name="file"
               :show-file-list="false"
+              :on-success="handleUploadSuccess('idCardBack')"
+              :on-error="handleUploadError"
+              :before-upload="beforeUpload"
             >
-              <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">点击上传身份证反面</div>
+              <template #default>
+                <img v-if="form.qualification.idCardBack" :src="getFullImageUrl(form.qualification.idCardBack)" class="uploaded-img" @error="handleImageError" />
+                <div v-else class="upload-placeholder">
+                  <el-icon class="upload-icon"><Plus /></el-icon>
+                  <div class="upload-text">点击上传身份证反面</div>
+                </div>
+              </template>
             </el-upload>
           </el-form-item>
           <el-form-item label="营业执照">
             <el-upload
               class="license-uploader"
-              action="#"
-              :auto-upload="false"
+              :action="uploadAction"
+              :headers="uploadHeaders"
+              name="file"
               :show-file-list="false"
+              :on-success="handleUploadSuccess('license')"
+              :on-error="handleUploadError"
+              :before-upload="beforeUpload"
             >
-              <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">点击上传营业执照</div>
+              <template #default>
+                <img v-if="form.qualification.license" :src="getFullImageUrl(form.qualification.license)" class="uploaded-img" @error="handleImageError" />
+                <div v-else class="upload-placeholder">
+                  <el-icon class="upload-icon"><Plus /></el-icon>
+                  <div class="upload-text">点击上传营业执照</div>
+                </div>
+              </template>
             </el-upload>
           </el-form-item>
         </el-form>
@@ -117,12 +151,21 @@
           <el-form-item label="店铺Logo">
             <el-upload
               class="logo-uploader"
-              action="#"
-              :auto-upload="false"
+              :action="uploadAction"
+              :headers="uploadHeaders"
+              name="file"
               :show-file-list="false"
+              :on-success="handleUploadSuccess('logo')"
+              :on-error="handleUploadError"
+              :before-upload="beforeUpload"
             >
-              <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">点击上传Logo</div>
+              <template #default>
+                <img v-if="form.shop.logo" :src="getFullImageUrl(form.shop.logo)" class="uploaded-img" @error="handleImageError" />
+                <div v-else class="upload-placeholder">
+                  <el-icon class="upload-icon"><Plus /></el-icon>
+                  <div class="upload-text">点击上传Logo</div>
+                </div>
+              </template>
             </el-upload>
           </el-form-item>
         </el-form>
@@ -157,12 +200,23 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { Shop, Plus, CircleCheck } from '@element-plus/icons-vue'
+import { Shop, Plus, CircleCheck, ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { merchantRegister, merchantSendSms } from '@/apis/merchant'
+import { getFullImageUrl } from '@/utils/image'
+import type { UploadProps } from 'element-plus'
 
 const activeStep = ref(0)
 const codeSending = ref(false)
+const codeSent = ref(false)
 const countdown = ref(60)
+
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
+const uploadHeaders = {
+  // Add headers if needed, e.g., Authorization
+}
+
+
 
 const form = reactive({
   basic: {
@@ -187,28 +241,175 @@ const form = reactive({
   }
 })
 
-const sendCode = () => {
-  if (!form.basic.phone || form.basic.phone.length !== 11) {
+const handleUploadSuccess = (field: string) => (response: any) => {
+  console.log('Upload success:', response)
+  if (response.code === 200) {
+    // Map the field string to the correct nested property
+    const imageUrl = response.data
+    if (field === 'idCardFront') form.qualification.idCardFront = imageUrl
+    else if (field === 'idCardBack') form.qualification.idCardBack = imageUrl
+    else if (field === 'license') form.qualification.license = imageUrl
+    else if (field === 'logo') form.shop.logo = imageUrl
+    ElMessage.success('上传成功')
+    console.log('Image URL:', imageUrl, 'Full URL:', getFullImageUrl(imageUrl))
+  } else {
+    ElMessage.error(response.msg || '上传失败')
+  }
+}
+
+const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
+  if (rawFile.type !== 'image/jpeg' && rawFile.type !== 'image/png') {
+    ElMessage.error('图片必须是 JPG/PNG 格式!')
+    return false
+  } else if (rawFile.size / 1024 / 1024 > 2) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  return true
+}
+
+const handleUploadError = (error: any) => {
+  console.error('Upload error:', error)
+  ElMessage.error('上传失败，请检查网络连接')
+}
+
+const handleImageError = (e: any) => {
+  console.error('Image load error:', e)
+  ElMessage.error('图片加载失败')
+}
+
+const validateStep = () => {
+  if (activeStep.value === 0) {
+    if (!form.basic.phone) {
+      ElMessage.warning('请输入手机号')
+      return false
+    }
+    if (!/^1[3-9]\d{9}$/.test(form.basic.phone)) {
+      ElMessage.warning('请输入正确的手机号')
+      return false
+    }
+    if (!codeSent.value) {
+      ElMessage.warning('请先获取验证码')
+      return false
+    }
+    if (!form.basic.code) {
+      ElMessage.warning('请输入验证码')
+      return false
+    }
+    if (!form.basic.password) {
+      ElMessage.warning('请设置登录密码')
+      return false
+    }
+    if (form.basic.password.length < 6) {
+      ElMessage.warning('密码长度至少6位')
+      return false
+    }
+    if (form.basic.password !== form.basic.confirmPassword) {
+      ElMessage.warning('两次输入的密码不一致')
+      return false
+    }
+  } else if (activeStep.value === 1) {
+    if (!form.qualification.name) {
+      ElMessage.warning('请输入经营者姓名')
+      return false
+    }
+    if (!form.qualification.idCard) {
+      ElMessage.warning('请输入身份证号')
+      return false
+    }
+    if (form.qualification.idCard.length !== 18) {
+      ElMessage.warning('请输入18位身份证号')
+      return false
+    }
+    if (!form.qualification.idCardFront) {
+      ElMessage.warning('请上传身份证正面')
+      return false
+    }
+    if (!form.qualification.idCardBack) {
+      ElMessage.warning('请上传身份证反面')
+      return false
+    }
+    if (!form.qualification.license) {
+      ElMessage.warning('请上传营业执照')
+      return false
+    }
+  } else if (activeStep.value === 2) {
+    if (!form.shop.name) {
+      ElMessage.warning('请输入店铺名称')
+      return false
+    }
+    if (form.shop.categories.length === 0) {
+      ElMessage.warning('请选择主营类目')
+      return false
+    }
+    if (!form.shop.description) {
+      ElMessage.warning('请输入店铺简介')
+      return false
+    }
+    if (!form.shop.logo) {
+      ElMessage.warning('请上传店铺Logo')
+      return false
+    }
+  }
+  return true
+}
+
+const sendCode = async () => {
+  if (!form.basic.phone || !/^1[3-9]\d{9}$/.test(form.basic.phone)) {
     ElMessage.warning('请输入正确的手机号')
     return
   }
-  codeSending.value = true
-  ElMessage.success('验证码已发送')
-  const timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(timer)
-      codeSending.value = false
-      countdown.value = 60
-    }
-  }, 1000)
+  
+  try {
+    codeSending.value = true
+    await merchantSendSms(form.basic.phone)
+    ElMessage.success('验证码已发送')
+    codeSent.value = true
+    
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+        codeSending.value = false
+        countdown.value = 60
+      }
+    }, 1000)
+  } catch (error: any) {
+    codeSending.value = false
+    ElMessage.error('发送失败，请稍后重试')
+    console.error(error)
+  }
 }
 
-const nextStep = () => {
+const nextStep = async () => {
+  if (!validateStep()) return
+
   if (activeStep.value === 2) {
-    ElMessage.success('提交成功')
+    try {
+      const payload = {
+        phone: form.basic.phone,
+        code: form.basic.code,
+        password: form.basic.password,
+        merchantName: form.shop.name,
+        contactPerson: form.qualification.name,
+        contactPhone: form.basic.phone,
+        idCard: form.qualification.idCard,
+        idCardFront: form.qualification.idCardFront,
+        idCardBack: form.qualification.idCardBack,
+        license: form.qualification.license,
+        shopType: form.shop.type,
+        categories: form.shop.categories,
+        shopDescription: form.shop.description,
+        logo: form.shop.logo
+      }
+      await merchantRegister(payload)
+      activeStep.value++
+    } catch (error) {
+      console.error(error)
+    }
+  } else {
+    activeStep.value++
   }
-  activeStep.value++
 }
 </script>
 
@@ -224,6 +425,27 @@ const nextStep = () => {
   text-align: center;
   color: #fff;
 
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .back-btn {
+    color: #fff;
+    font-size: 16px;
+    
+    .el-icon {
+      margin-right: 4px;
+    }
+    
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+
   .logo {
     display: flex;
     align-items: center;
@@ -234,6 +456,10 @@ const nextStep = () => {
       font-size: 24px;
       font-weight: 600;
     }
+  }
+
+  .placeholder {
+    width: 100px; // Match back button width roughly for centering
   }
 }
 
@@ -276,22 +502,53 @@ const nextStep = () => {
     font-size: 14px;
     margin-top: 8px;
   }
+
+  .uploaded-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 6px;
+  }
+
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+  }
 }
 
 .idcard-uploader {
   width: 100%;
   max-width: 300px;
+  height: 180px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .license-uploader {
   width: 100%;
   max-width: 300px;
+  height: 180px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logo-uploader {
   width: 120px;
   height: 120px;
-  padding: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .step-actions {

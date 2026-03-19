@@ -1,43 +1,55 @@
 <template>
   <div class="comments-page">
     <div class="page-header">
-      <h2>评论管理</h2>
-      <el-radio-group v-model="filterStatus" size="small">
-        <el-radio-button label="all">全部</el-radio-button>
-        <el-radio-button label="normal">正常</el-radio-button>
-        <el-radio-button label="reported">被举报</el-radio-button>
-        <el-radio-button label="hidden">已隐藏</el-radio-button>
-      </el-radio-group>
+      <h2>评价管理</h2>
+      <div class="header-actions">
+        <el-select v-model="auditStatus" placeholder="审核状态" clearable style="width: 150px; margin-right: 10px" @change="loadComments">
+          <el-option label="待审核" :value="0" />
+          <el-option label="通过" :value="1" />
+          <el-option label="拒绝" :value="2" />
+        </el-select>
+      </div>
     </div>
 
     <el-card>
-      <el-table :data="commentList" style="width: 100%">
+      <el-table :data="commentList" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="userName" label="用户" width="120" />
         <el-table-column prop="productName" label="商品" min-width="150" />
-        <el-table-column prop="content" label="评论内容" min-width="200">
+        <el-table-column prop="userId" label="用户ID" width="100" />
+        <el-table-column prop="rating" label="评分" width="120">
           <template #default="{ row }">
-            <div class="comment-content">
-              <el-rate v-model="row.rating" disabled />
-              <p>{{ row.content }}</p>
+            <el-rate v-model="row.rating" disabled show-score text-color="#ff9900" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="content" label="评价内容" min-width="200">
+          <template #default="{ row }">
+            <div class="content-text">{{ row.content }}</div>
+            <div v-if="row.images" class="content-images">
+              <el-image 
+                v-for="(img, index) in parseImages(row.images)" 
+                :key="index"
+                :src="img"
+                :preview-src-list="parseImages(row.images)"
+                class="comment-img"
+              />
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="评论时间" width="150" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="createTime" label="评价时间" width="160" />
+        <el-table-column prop="auditStatus" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.auditStatus)">
+              {{ getStatusText(row.auditStatus) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status !== 'hidden'" link type="danger" @click="hideComment(row)">
-              隐藏
-            </el-button>
-            <el-button v-else link type="success" @click="showComment(row)">
-              显示
-            </el-button>
-            <el-button link type="primary" @click="replyComment(row)">回复</el-button>
+            <template v-if="row.auditStatus === 0">
+              <el-button link type="success" @click="handleAudit(row, 1)">通过</el-button>
+              <el-button link type="warning" @click="handleAudit(row, 2)">拒绝</el-button>
+            </template>
+            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -48,154 +60,131 @@
           v-model:page-size="pageSize"
           :total="total"
           layout="total, prev, pager, next"
+          @current-change="loadComments"
         />
       </div>
     </el-card>
-
-    <!-- 回复弹窗 -->
-    <el-dialog v-model="showReplyDialog" title="回复评论" width="90%">
-      <div class="reply-content">
-        <div class="original-comment">
-          <h4>原评论</h4>
-          <p>{{ currentComment.content }}</p>
-        </div>
-        <el-input
-          v-model="replyContent"
-          type="textarea"
-          rows="4"
-          placeholder="请输入回复内容"
-        />
-      </div>
-      <template #footer>
-        <el-button @click="showReplyDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitReply">提交回复</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listComments, auditComment, deleteComment } from '@/apis/admin'
 
-const filterStatus = ref('all')
+const auditStatus = ref<number | undefined>(undefined)
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(100)
-const showReplyDialog = ref(false)
-const replyContent = ref('')
-const currentComment = reactive<any>({})
+const total = ref(0)
+const loading = ref(false)
 
-const commentList = ref([
-  {
-    id: 1,
-    userName: '张三',
-    productName: '新鲜有机西红柿',
-    content: '西红柿很新鲜，口感很好，下次还会购买！',
-    rating: 5,
-    createTime: '2024-03-08 14:30:00',
-    status: 'normal'
-  },
-  {
-    id: 2,
-    userName: '李四',
-    productName: '山东红富士苹果',
-    content: '苹果个头有点小，不太满意',
-    rating: 3,
-    createTime: '2024-03-07 10:20:00',
-    status: 'reported'
+const commentList = ref<any[]>([])
+
+const parseImages = (imagesStr: string) => {
+  if (!imagesStr) return [];
+  try {
+    return JSON.parse(imagesStr);
+  } catch (e) {
+    return imagesStr.split(',');
   }
-])
+}
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    normal: 'success',
-    reported: 'warning',
-    hidden: 'info'
+const getStatusType = (status: number) => {
+  const map: Record<number, string> = {
+    0: 'warning',
+    1: 'success',
+    2: 'danger'
   }
   return map[status] || 'info'
 }
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    normal: '正常',
-    reported: '被举报',
-    hidden: '已隐藏'
+const getStatusText = (status: number) => {
+  const map: Record<number, string> = {
+    0: '待审核',
+    1: '已通过',
+    2: '已拒绝'
   }
-  return map[status] || status
+  return map[status] || '未知'
 }
 
-const hideComment = (row: any) => {
-  row.status = 'hidden'
-  ElMessage.success('已隐藏')
-}
-
-const showComment = (row: any) => {
-  row.status = 'normal'
-  ElMessage.success('已显示')
-}
-
-const replyComment = (row: any) => {
-  Object.assign(currentComment, row)
-  showReplyDialog.value = true
-}
-
-const submitReply = () => {
-  if (!replyContent.value) {
-    ElMessage.warning('请输入回复内容')
-    return
+const loadComments = async () => {
+  loading.value = true;
+  try {
+    const res = await listComments({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      auditStatus: auditStatus.value
+    });
+    if (res) {
+      commentList.value = res.list || [];
+      total.value = res.total || 0;
+    }
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
   }
-  ElMessage.success('回复成功')
-  showReplyDialog.value = false
-  replyContent.value = ''
+}
+
+onMounted(() => {
+  loadComments();
+})
+
+const handleAudit = async (row: any, status: number) => {
+  try {
+    await auditComment(row.id, status);
+    ElMessage.success(status === 1 ? '已通过' : '已拒绝');
+    loadComments();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+const handleDelete = (row: any) => {
+  ElMessageBox.confirm('确定要删除这条评价吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await deleteComment(row.id);
+      ElMessage.success('删除成功');
+      loadComments();
+    } catch (error) {
+      console.error(error);
+    }
+  }).catch(() => {})
 }
 </script>
 
-<style scoped lang="scss">
-.comments-page {
-  padding: 20px;
-}
-
+<style scoped>
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-
-  h2 {
-    margin: 0;
-    font-size: 20px;
-  }
 }
 
-.comment-content {
-  p {
-    margin: 8px 0 0 0;
-    color: #666;
-  }
+.content-text {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.content-images {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comment-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
 }
 
 .pagination {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-}
-
-.reply-content {
-  .original-comment {
-    background: #f5f5f5;
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-
-    h4 {
-      margin: 0 0 8px 0;
-    }
-
-    p {
-      margin: 0;
-      color: #666;
-    }
-  }
 }
 </style>

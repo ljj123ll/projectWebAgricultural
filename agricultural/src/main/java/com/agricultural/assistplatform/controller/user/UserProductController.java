@@ -28,9 +28,10 @@ public class UserProductController {
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String originPlace,
+            @RequestParam(required = false) Integer isUnsalable,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(userProductService.search(keyword, sortBy, categoryId, originPlace, pageNum, pageSize));
+        return Result.ok(userProductService.search(keyword, sortBy, categoryId, originPlace, isUnsalable, pageNum, pageSize));
     }
 
     @Operation(summary = "商品详情")

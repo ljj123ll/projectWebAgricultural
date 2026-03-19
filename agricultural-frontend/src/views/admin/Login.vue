@@ -1,115 +1,119 @@
 <template>
   <div class="admin-login-page">
-    <div class="login-container">
+    <div class="login-box">
       <div class="login-header">
-        <el-icon size="48" color="#001529"><Setting /></el-icon>
-        <h1>管理后台</h1>
-        <p>助农电商平台管理员入口</p>
+        <div class="logo">
+          <el-icon size="32" color="#fff"><Setting /></el-icon>
+          <span>管理控制台</span>
+        </div>
       </div>
+      
+      <div class="login-content">
+        <h2 class="welcome-title">系统登录</h2>
+        <p class="welcome-desc">助农电商平台 · 后台管理系统</p>
 
-      <el-alert
-        title="安全提示"
-        description="此页面仅限授权管理员访问"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="security-notice"
-      />
+        <el-alert
+          title="非管理员请勿尝试登录"
+          type="info"
+          show-icon
+          :closable="false"
+          class="security-notice"
+        />
 
-      <el-form 
-        ref="formRef"
-        :model="formData"
-        :rules="rules"
-        class="login-form"
-        size="large"
-      >
-        <el-form-item prop="username">
-          <el-input
-            v-model="formData.username"
-            placeholder="请输入管理员账号"
-          >
-            <template #prefix>
-              <el-icon><User /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-
-        <el-form-item prop="password">
-          <el-input
-            v-model="formData.password"
-            type="password"
-            placeholder="请输入密码"
-            show-password
-          >
-            <template #prefix>
-              <el-icon><Lock /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-
-        <el-form-item prop="phone">
-          <el-input
-            v-model="formData.phone"
-            placeholder="请输入手机号"
-            maxlength="11"
-          >
-            <template #prefix>
-              <el-icon><Iphone /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-
-        <el-form-item prop="code">
-          <div class="code-input">
+        <el-form 
+          ref="formRef"
+          :model="formData"
+          :rules="rules"
+          class="login-form"
+          size="large"
+          hide-required-asterisk
+        >
+          <el-form-item prop="username">
             <el-input
-              v-model="formData.code"
-              placeholder="请输入短信验证码"
-              maxlength="6"
+              v-model="formData.username"
+              placeholder="管理员账号"
             >
               <template #prefix>
-                <el-icon><Message /></el-icon>
+                <el-icon><User /></el-icon>
               </template>
             </el-input>
+          </el-form-item>
+
+          <el-form-item prop="password">
+            <el-input
+              v-model="formData.password"
+              type="password"
+              placeholder="登录密码"
+              show-password
+            >
+              <template #prefix>
+                <el-icon><Lock /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="phone">
+            <el-input
+              v-model="formData.phone"
+              placeholder="安全手机号"
+              maxlength="11"
+            >
+              <template #prefix>
+                <el-icon><Iphone /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="code">
+            <div class="code-input">
+              <el-input
+                v-model="formData.code"
+                placeholder="动态验证码"
+                maxlength="6"
+              >
+                <template #prefix>
+                  <el-icon><Message /></el-icon>
+                </template>
+              </el-input>
+              <el-button 
+                class="code-btn"
+                :disabled="codeCountdown > 0"
+                @click="sendCode"
+              >
+                {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+
+          <el-form-item>
             <el-button 
               type="primary" 
-              :disabled="codeCountdown > 0"
-              @click="sendCode"
+              size="large" 
+              class="login-btn"
+              :loading="loading"
+              @click="handleLogin"
             >
-              {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
+              安全登录
             </el-button>
-          </div>
-        </el-form-item>
+          </el-form-item>
+        </el-form>
+      </div>
 
-        <el-form-item>
-          <el-button 
-            type="danger" 
-            size="large" 
-            class="login-btn"
-            :loading="loading"
-            @click="handleLogin"
-          >
-            登 录
-          </el-button>
-        </el-form-item>
-      </el-form>
-
-      <div class="back-link">
-        <el-button link type="info" @click="router.push('/')">
-          <el-icon><ArrowLeft /></el-icon>
-          返回首页
-        </el-button>
+      <div class="login-footer">
+        <p>&copy; 2024 助农电商平台 · 技术支持</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { adminLogin, adminSendSms } from '@/apis/admin';
+import { Setting, User, Lock, Iphone, Message } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -142,7 +146,7 @@ const rules: FormRules = {
   username: [{ required: true, message: '请输入管理员账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   phone: [{ required: true, validator: validatePhone, trigger: 'blur' }],
-  code: [{ required: true, message: '请输入短信验证码', trigger: 'blur' }]
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 };
 
 const sendCode = async () => {
@@ -174,7 +178,6 @@ const handleLogin = async () => {
       loading.value = true;
       try {
         const res: any = await adminLogin(formData);
-        // Ensure role is set
         if (!res.userInfo.role) {
           res.userInfo.role = 'admin';
         }
@@ -189,6 +192,10 @@ const handleLogin = async () => {
     }
   });
 };
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
 </script>
 
 <style scoped lang="scss">
@@ -197,76 +204,141 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #001529;
-  padding: 20px;
+  background: #2d3a4b;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #3a4b5f 0%, #2d3a4b 100%);
+    opacity: 0.5;
+  }
 }
 
-.login-container {
-  width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px 32px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+.login-box {
+  position: relative;
+  width: 420px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 .login-header {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+}
+
+.login-content {
+  padding: 40px;
+  background: #fff;
+}
+
+.welcome-title {
   text-align: center;
+  font-size: 24px;
+  color: #303133;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.welcome-desc {
+  text-align: center;
+  font-size: 14px;
+  color: #909399;
   margin-bottom: 24px;
-
-  h1 {
-    font-size: 28px;
-    color: #001529;
-    margin: 16px 0 8px;
-  }
-
-  p {
-    font-size: 16px;
-    color: #909399;
-    margin: 0;
-  }
 }
 
 .security-notice {
   margin-bottom: 24px;
+  background: #f4f4f5;
+  border: none;
 }
 
 .login-form {
+  :deep(.el-input__wrapper) {
+    background: #f5f7fa;
+    box-shadow: none;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    
+    &:hover, &.is-focus {
+      background: #fff;
+      border-color: #409eff;
+      box-shadow: 0 0 0 1px #409eff inset;
+    }
+  }
+
   .code-input {
     display: flex;
     gap: 12px;
 
-    .el-input {
-      flex: 1;
-    }
-
-    .el-button {
-      width: 120px;
+    .code-btn {
+      width: 110px;
+      background: #f5f7fa;
+      border: none;
+      color: #606266;
+      
+      &:hover {
+        color: #409eff;
+        background: #ecf5ff;
+      }
     }
   }
 
   .login-btn {
     width: 100%;
-    height: 48px;
-    font-size: 18px;
+    height: 44px;
+    font-size: 16px;
     font-weight: 500;
-  }
-}
-
-.back-link {
-  text-align: center;
-  margin-top: 24px;
-}
-
-@media (max-width: 768px) {
-  .login-container {
-    padding: 32px 24px;
-  }
-
-  .login-header {
-    h1 {
-      font-size: 24px;
+    margin-top: 10px;
+    background: #2d3a4b;
+    border-color: #2d3a4b;
+    
+    &:hover {
+      background: #3a4b5f;
+      border-color: #3a4b5f;
     }
+  }
+}
+
+.login-footer {
+  text-align: center;
+  padding: 15px;
+  background: #f5f7fa;
+  border-top: 1px solid #ebeef5;
+  
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: #909399;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    width: 100%;
+    margin: 20px;
+  }
+  
+  .login-content {
+    padding: 30px 20px;
   }
 }
 </style>

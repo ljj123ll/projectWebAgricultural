@@ -35,13 +35,13 @@
         <el-menu-item index="/merchant/orders">
           <el-icon><Document /></el-icon>
           <template #title>订单管理</template>
-          <el-badge v-if="unreadOrderCount > 0" :value="unreadOrderCount" class="menu-badge" />
+          <el-badge v-if="pendingOrderCount > 0" :value="pendingOrderCount > 99 ? '99+' : pendingOrderCount" class="menu-badge" />
         </el-menu-item>
 
         <el-menu-item index="/merchant/after-sales">
           <el-icon><Service /></el-icon>
           <template #title>售后处理</template>
-          <el-badge v-if="unreadAfterSaleCount > 0" :value="unreadAfterSaleCount" class="menu-badge" />
+          <el-badge v-if="pendingAfterSaleCount > 0" :value="pendingAfterSaleCount > 99 ? '99+' : pendingAfterSaleCount" class="menu-badge" />
         </el-menu-item>
 
         <el-menu-item index="/merchant/statistics">
@@ -52,6 +52,7 @@
         <el-menu-item index="/merchant/messages">
           <el-icon><Bell /></el-icon>
           <template #title>消息中心</template>
+          <el-badge v-if="totalUnreadCount > 0" :value="totalUnreadCount > 99 ? '99+' : totalUnreadCount" class="menu-badge" />
         </el-menu-item>
 
         <el-menu-item index="/merchant/account">
@@ -72,7 +73,7 @@
           <breadcrumb />
         </div>
         <div class="header-right">
-          <el-badge :value="unreadOrderCount" :hidden="unreadOrderCount === 0">
+          <el-badge :value="totalUnreadCount" :hidden="totalUnreadCount === 0">
             <el-button circle @click="router.push('/merchant/messages')">
               <el-icon><Bell /></el-icon>
             </el-button>
@@ -104,21 +105,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { listOrders, listAfterSale } from '@/apis/merchant';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 
 const isCollapsed = ref(false);
-const unreadOrderCount = ref(2);
-const unreadAfterSaleCount = ref(1);
+const pendingOrderCount = ref(0);
+const pendingAfterSaleCount = ref(0);
+
+// 总未读数
+const totalUnreadCount = computed(() => {
+  return pendingOrderCount.value + pendingAfterSaleCount.value;
+});
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
+};
+
+// 加载待处理数量
+const loadPendingCounts = async () => {
+  try {
+    // 获取待发货订单数
+    const orderRes = await listOrders({ pageNum: 1, pageSize: 1, orderStatus: 2 });
+    pendingOrderCount.value = orderRes?.total || 0;
+    
+    // 获取待处理售后数
+    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 1, afterSaleStatus: 0 });
+    pendingAfterSaleCount.value = afterSaleRes?.total || 0;
+  } catch (error) {
+    console.error('Failed to load pending counts', error);
+  }
 };
 
 const handleCommand = (command: string) => {
@@ -139,6 +161,12 @@ const handleCommand = (command: string) => {
       break;
   }
 };
+
+onMounted(() => {
+  loadPendingCounts();
+  // 每30秒刷新一次待处理数量
+  setInterval(loadPendingCounts, 30000);
+});
 </script>
 
 <style scoped lang="scss">
