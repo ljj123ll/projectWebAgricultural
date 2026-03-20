@@ -51,7 +51,7 @@
         </div>
 
         <div class="card-actions">
-          <el-button v-if="item.status === 0" type="primary" @click="openHandleDialog(item)">
+          <el-button v-if="item.status === 1" type="primary" @click="openHandleDialog(item)">
             立即处理
           </el-button>
           <el-button link type="primary" @click="viewDetail(item)">
@@ -118,21 +118,20 @@ const handleForm = reactive({
 const afterSalesList = ref<any[]>([])
 
 const getStatusType = (status: number) => {
-  const map: Record<number, string> = {
-    0: 'warning', // 待处理
-    1: 'success', // 已退款
-    2: 'danger'   // 已拒绝
-  }
-  return map[status] || 'info'
+  if (status === 1) return 'warning' // 待商家处理
+  if (status === 2) return 'info' // 协商中
+  if (status === 3 || status === 4) return 'success' // 已解决/管理员介入
+  if (status === 5) return 'danger' // 已驳回
+  return 'info'
 }
 
 const getStatusText = (status: number) => {
-  const map: Record<number, string> = {
-    0: '待处理',
-    1: '已同意',
-    2: '已拒绝'
-  }
-  return map[status] || '未知状态'
+  if (status === 1) return '待商家处理'
+  if (status === 2) return '协商中'
+  if (status === 3) return '已解决'
+  if (status === 4) return '管理员介入'
+  if (status === 5) return '已驳回'
+  return '未知状态'
 }
 
 const getTypeText = (type: number) => {
@@ -147,9 +146,9 @@ const getTypeText = (type: number) => {
 const loadAfterSales = async () => {
   try {
     let statusParam = undefined;
-    if (activeTab.value === 'pending') statusParam = 0;
-    else if (activeTab.value === 'processing') statusParam = 0; // Backend may not have processing
-    else if (activeTab.value === 'completed') statusParam = 1;
+    if (activeTab.value === 'pending') statusParam = 1; // 待商家处理
+    else if (activeTab.value === 'processing') statusParam = 2; // 协商中
+    else if (activeTab.value === 'completed') statusParam = 3; // 已解决
     
     const res = await listAfterSale({ pageNum: 1, pageSize: 20, afterSaleStatus: statusParam });
     if (res && res.list) {
@@ -188,11 +187,11 @@ const viewDetail = (item: any) => {
 
 const confirmHandle = async () => {
   try {
-    const status = handleForm.result === 'agree' ? 1 : 2;
+    const agree = handleForm.result === 'agree'
     await handleAfterSale(currentItem.value.id, {
-      status,
-      remark: handleForm.remark
-    });
+      agree,
+      handleResult: handleForm.remark || (agree ? '同意退款' : '拒绝退款')
+    })
     ElMessage.success('处理成功')
     showHandleDialog.value = false
     loadAfterSales()

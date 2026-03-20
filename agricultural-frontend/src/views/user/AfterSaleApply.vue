@@ -54,6 +54,7 @@
 import { reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { applyAfterSale } from '@/apis/user';
 
 const router = useRouter();
 const route = useRoute();
@@ -65,13 +66,25 @@ const form = reactive({
   description: ''
 });
 
-const submit = () => {
+const submit = async () => {
   if (!form.reason) {
     ElMessage.warning('请选择申请原因');
     return;
   }
-  ElMessage.success('售后申请已提交');
-  router.push('/orders');
+  const afterSaleType = form.type === 'refund' ? 1 : (form.type === 'return' ? 2 : 3);
+  try {
+    const res = await applyAfterSale({
+      orderNo: String(form.orderNo),
+      afterSaleType,
+      applyReason: form.reason,
+      proofImgUrls: '' // 当前页面未接入图片上传；可按需要后续完善
+    });
+    ElMessage.success('售后申请已提交');
+    // 后端返回 afterSaleNo，用于进入售后详情页
+    router.push(`/after-sale-detail/${res.afterSaleNo}`);
+  } catch (e) {
+    console.error(e);
+  }
 };
 </script>
 

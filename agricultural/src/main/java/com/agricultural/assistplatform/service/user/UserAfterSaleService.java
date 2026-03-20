@@ -24,7 +24,7 @@ public class UserAfterSaleService {
     private final AfterSaleMapper afterSaleMapper;
     private final OrderMainMapper orderMainMapper;
 
-    public void apply(AfterSaleApplyDTO dto) {
+    public AfterSaleVO apply(AfterSaleApplyDTO dto) {
         Long userId = LoginContext.getUserId();
         if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         OrderMain order = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
@@ -42,6 +42,7 @@ public class UserAfterSaleService {
         as.setProofImgUrls(dto.getProofImgUrls());
         as.setAfterSaleStatus(1);
         afterSaleMapper.insert(as);
+        return toVO(as);
     }
 
     public com.agricultural.assistplatform.common.PageResult<AfterSaleVO> list(Integer pageNum, Integer pageSize) {
@@ -63,6 +64,16 @@ public class UserAfterSaleService {
         if (as == null) throw new BusinessException(ResultCode.NOT_FOUND, "售后不存在");
         as.setAfterSaleStatus(4);
         afterSaleMapper.updateById(as);
+    }
+
+    public AfterSaleVO getDetailByNo(String afterSaleNo) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        AfterSale as = afterSaleMapper.selectOne(new LambdaQueryWrapper<AfterSale>()
+                .eq(AfterSale::getAfterSaleNo, afterSaleNo)
+                .eq(AfterSale::getUserId, userId));
+        if (as == null) throw new BusinessException(ResultCode.NOT_FOUND, "售后不存在");
+        return toVO(as);
     }
 
     private AfterSaleVO toVO(AfterSale a) {

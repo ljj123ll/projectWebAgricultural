@@ -9,16 +9,16 @@
 
     <div class="status-section">
       <el-icon size="48" color="#67c23a"><CircleCheckFilled /></el-icon>
-      <h2>售后处理中</h2>
-      <p>商家正在处理您的售后申请</p>
+      <h2>{{ statusTitle }}</h2>
+      <p>{{ statusDesc }}</p>
     </div>
 
     <div class="info-section">
       <h3>售后信息</h3>
       <p>售后单号：{{ afterSaleNo }}</p>
-      <p>售后类型：退款</p>
-      <p>申请原因：商品质量问题</p>
-      <p>申请时间：2024-03-01 10:30:00</p>
+      <p>售后类型：{{ afterSaleTypeText }}</p>
+      <p>申请原因：{{ afterSale?.applyReason || '-' }}</p>
+      <p>申请时间：{{ afterSale?.createTime || '-' }}</p>
     </div>
 
     <div class="progress-section">
@@ -26,15 +26,27 @@
       <el-timeline>
         <el-timeline-item type="primary">
           <h4>提交申请</h4>
-          <p>2024-03-01 10:30:00</p>
+          <p>{{ afterSale?.createTime || '-' }}</p>
         </el-timeline-item>
-        <el-timeline-item type="warning">
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === 1" type="warning">
           <h4>商家处理中</h4>
-          <p>等待商家审核</p>
+          <p>等待商家处理</p>
         </el-timeline-item>
-        <el-timeline-item>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === 2" type="warning">
+          <h4>协商中</h4>
+          <p>等待双方协商</p>
+        </el-timeline-item>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === 3" type="success">
           <h4>处理完成</h4>
-          <p>待处理</p>
+          <p>商家已处理完成</p>
+        </el-timeline-item>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === 4">
+          <h4>管理员介入</h4>
+          <p>平台正在处理</p>
+        </el-timeline-item>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === 5" type="danger">
+          <h4>处理结果</h4>
+          <p>售后已驳回</p>
         </el-timeline-item>
       </el-timeline>
     </div>
@@ -42,7 +54,15 @@
     <div class="message-section">
       <div class="message-header">
         <h3>售后沟通</h3>
-        <el-button type="danger" plain size="small" @click="applyAdminIntervention">申请管理员介入</el-button>
+        <el-button
+          v-if="afterSale?.afterSaleStatus === 1 || afterSale?.afterSaleStatus === 2"
+          type="danger"
+          plain
+          size="small"
+          @click="applyAdminIntervention"
+        >
+          申请管理员介入
+        </el-button>
       </div>
       <div class="message-list">
         <div v-for="msg in messages" :key="msg.id" class="message-item" :class="{ self: msg.sender === 'user' }">
@@ -68,40 +88,97 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { listAfterSaleMessages, sendAfterSaleMessage, escalateAfterSale, getAfterSaleDetail } from '@/apis/user';
+import type { AfterSale, AfterSaleMessage } from '@/types';
 
 const router = useRouter();
 const route = useRoute();
 
 const afterSaleNo = ref(route.params.afterSaleNo as string);
+const afterSale = ref<AfterSale | null>(null);
 const messageText = ref('');
-const messages = ref([
-  { id: 1, sender: 'user', content: '商品有异味，申请退款。', time: '2024-03-01 11:00' },
-  { id: 2, sender: 'merchant', content: '非常抱歉，能否提供照片？', time: '2024-03-01 11:20' }
-]);
+const messages = ref<Array<{ id: number; sender: 'user' | 'merchant' | 'admin'; content: string; time: string }>>([]);
 
-const sendMessage = () => {
+const senderToString = (senderType: number) => {
+  if (senderType === 1) return 'user';
+  if (senderType === 2) return 'merchant';
+  return 'admin';
+};
+
+const loadDetail = async () => {
+  if (!afterSaleNo.value) return;
+  const res = await getAfterSaleDetail(afterSaleNo.value);
+  afterSale.value = res || null;
+};
+
+const loadMessages = async () => {
+  if (!afterSaleNo.value) return;
+  const res = await listAfterSaleMessages(afterSaleNo.value, { pageNum: 1, pageSize: 50 });
+  const list = (res && res.list) ? res.list : [];
+  messages.value = list.map((msg: AfterSaleMessage) => ({
+    id: msg.id,
+    sender: senderToString(msg.senderType || 0) as 'user' | 'merchant' | 'admin',
+    content: msg.content,
+    time: (msg.createTime as any) || ''
+  }));
+};
+
+const sendMessage = async () => {
   if (!messageText.value.trim()) {
     ElMessage.warning('请输入沟通内容');
     return;
   }
-  messages.value.push({
-    id: Date.now(),
-    sender: 'user',
-    content: messageText.value.trim(),
-    time: new Date().toLocaleString()
-  });
+  await sendAfterSaleMessage(afterSaleNo.value, { content: messageText.value.trim() });
   messageText.value = '';
+  await loadMessages();
 };
 
-const applyAdminIntervention = () => {
+const applyAdminIntervention = async () => {
+  if (!afterSale.value?.id) return;
+  await escalateAfterSale(afterSale.value.id);
   ElMessage.success('已申请管理员介入，请耐心等待处理');
+  await loadDetail();
+  await loadMessages();
 };
 
-onMounted(() => {
-  console.log('加载售后单:', route.params.afterSaleNo);
+const afterSaleTypeText = computed(() => {
+  const t = afterSale.value?.afterSaleType;
+  if (t === 1) return '仅退款';
+  if (t === 2) return '退货退款';
+  if (t === 3) return '换货';
+  return '-';
+});
+
+const statusTitle = computed(() => {
+  const s = afterSale.value?.afterSaleStatus;
+  if (s === 1) return '商家处理中';
+  if (s === 2) return '协商中';
+  if (s === 3) return '处理完成';
+  if (s === 4) return '管理员介入';
+  if (s === 5) return '已驳回';
+  return '加载中...';
+});
+
+const statusDesc = computed(() => {
+  const s = afterSale.value?.afterSaleStatus;
+  if (s === 1) return '等待商家处理';
+  if (s === 2) return '等待双方协商';
+  if (s === 3) return '商家已处理完成';
+  if (s === 4) return '平台正在处理';
+  if (s === 5) return '售后已驳回';
+  return '请稍后';
+});
+
+onMounted(async () => {
+  try {
+    await loadDetail();
+    await loadMessages();
+  } catch (e) {
+    console.error(e);
+  }
 });
 </script>
 

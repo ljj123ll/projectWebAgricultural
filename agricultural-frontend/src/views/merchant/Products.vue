@@ -7,7 +7,7 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column label="商品图片" width="100">
         <template #default="scope">
-          <el-image :src="getFullImageUrl(scope.row.productImg)" style="width: 50px; height: 50px" />
+          <el-image :src="getFullImageUrl(scope.row.productImg?.split(',')[0])" style="width: 50px; height: 50px" />
         </template>
       </el-table-column>
       <el-table-column prop="productName" label="商品名称" />

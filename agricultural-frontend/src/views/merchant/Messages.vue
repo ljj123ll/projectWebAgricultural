@@ -95,7 +95,7 @@ const loadMessages = async () => {
     }
     
     // 获取待处理售后作为消息
-    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 10, afterSaleStatus: 0 })
+    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 10, afterSaleStatus: 1 })
     if (afterSaleRes?.list) {
       afterSaleRes.list.forEach((item: any) => {
         messages.push({

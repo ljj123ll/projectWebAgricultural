@@ -23,6 +23,9 @@ export const createProduct = (data: any) => request.post('/merchant/products', d
 export const updateProduct = (id: number, data: any) => request.put(`/merchant/products/${id}`, data);
 export const deleteProduct = (id: number) => request.delete(`/merchant/products/${id}`);
 export const updateProductStatus = (id: number, status: number) => request.put(`/merchant/products/${id}/status`, { status });
+// 生成/刷新溯源二维码（返回 data:image/png;base64...）
+export const generateProductQrcode = (id: number) =>
+  request.post<any>(`/merchant/products/${id}/qrcode`).then(res => res?.qrCodeUrl || '');
 
 export const listOrders = (params: any) => request.get<any, PageResult<Order>>('/merchant/orders', { params });
 export const getOrder = (id: number) => request.get<any, Order>(`/merchant/orders/${id}`);

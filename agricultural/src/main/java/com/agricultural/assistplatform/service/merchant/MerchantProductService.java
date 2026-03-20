@@ -48,6 +48,7 @@ public class MerchantProductService {
         p.setStock(dto.getStock() != null ? dto.getStock() : 0);
         p.setStockWarning(dto.getStockWarning() != null ? dto.getStockWarning() : 10);
         p.setProductImg(dto.getProductImg());
+        p.setProductDetailImg(dto.getProductDetailImg());
         p.setProductDesc(dto.getProductDesc());
         p.setOriginPlace(dto.getOriginPlace());
         p.setStatus(0);
@@ -78,6 +79,7 @@ public class MerchantProductService {
         if (dto.getStock() != null) p.setStock(dto.getStock());
         if (dto.getStockWarning() != null) p.setStockWarning(dto.getStockWarning());
         p.setProductImg(dto.getProductImg());
+        p.setProductDetailImg(dto.getProductDetailImg());
         p.setProductDesc(dto.getProductDesc());
         p.setOriginPlace(dto.getOriginPlace());
         productInfoMapper.updateById(p);

@@ -46,19 +46,19 @@
           </el-col>
         </el-row>
         
-        <el-form-item label="商品图片" prop="productImg">
+        <el-form-item label="商品主图 (可上传多张)" prop="productImg">
           <div class="upload-container">
             <el-upload
               :action="uploadAction"
               name="file"
               list-type="picture-card"
-              :show-file-list="false"
-              :on-success="handleUploadSuccess"
+              :file-list="productImgList"
+              :on-success="handleProductImgSuccess"
+              :on-remove="handleProductImgRemove"
               :before-upload="beforeUpload"
               class="upload-demo"
             >
-              <img v-if="productForm.productImg" :src="getFullImageUrl(productForm.productImg)" class="image-preview" />
-              <el-icon v-else><Plus /></el-icon>
+              <el-icon><Plus /></el-icon>
             </el-upload>
           </div>
         </el-form-item>
@@ -146,13 +146,13 @@
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="生产周期" prop="productionCycle">
-              <el-input v-model="productForm.productionCycle" placeholder="如：3月播种，9月采摘；或 孵化期30天，出栏180天" />
+            <el-form-item label="种植周期" prop="plantingCycle">
+              <el-input v-model="productForm.plantingCycle" placeholder="如：3月播种，9月采摘；或 孵化期30天，出栏180天" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="生产方式">
-              <el-select v-model="productForm.productionMethod" placeholder="请选择" style="width: 100%">
+            <el-form-item label="施肥类型">
+              <el-select v-model="productForm.fertilizerType" placeholder="请选择" style="width: 100%">
                 <el-option label="有机生产" value="有机生产" />
                 <el-option label="绿色生产" value="绿色生产" />
                 <el-option label="无公害" value="无公害" />
@@ -197,7 +197,7 @@
           <div class="qr-info">
             <h4>溯源二维码预览</h4>
             <p>包含产地、生产周期、生产方式等全链路信息，消费者扫码可见。</p>
-            <el-button type="primary" link :disabled="!qrCodeUrl">下载二维码图片</el-button>
+            <el-button type="primary" link :disabled="!qrCodeUrl" @click="downloadQrCode">下载二维码图片</el-button>
           </div>
         </div>
       </el-card>
@@ -207,7 +207,7 @@
         <template #header>
           <span>详细介绍</span>
         </template>
-        <el-form-item prop="productDesc">
+        <el-form-item prop="productDesc" label="文字描述">
           <el-input
             v-model="productForm.productDesc"
             type="textarea"
@@ -215,18 +215,34 @@
             placeholder="请详细描述商品的特色、口感、营养价值等..."
           />
         </el-form-item>
+        <el-form-item label="详情图片 (可上传多张)">
+          <div class="upload-container">
+            <el-upload
+              :action="uploadAction"
+              name="file"
+              list-type="picture-card"
+              :file-list="productDetailImgList"
+              :on-success="handleProductDetailImgSuccess"
+              :on-remove="handleProductDetailImgRemove"
+              :before-upload="beforeUpload"
+              class="upload-demo"
+            >
+              <el-icon><Plus /></el-icon>
+            </el-upload>
+          </div>
+        </el-form-item>
       </el-card>
     </el-form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, Plus, CircleCheck, QuestionFilled, Grid } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules, UploadProps } from 'element-plus';
-import { createProduct, updateProduct } from '@/apis/merchant';
+import { createProduct, updateProduct, generateProductQrcode } from '@/apis/merchant';
 import { getFullImageUrl } from '@/utils/image';
 import { regionData, codeToText } from 'element-china-area-data';
 
@@ -248,13 +264,51 @@ const handleRegionChange = (value: string[]) => {
   }
 };
 
-const handleUploadSuccess = (response: any) => {
+const productImgList = ref<any[]>([]);
+const productDetailImgList = ref<any[]>([]);
+
+const handleProductImgSuccess = (response: any, file: any, fileList: any[]) => {
   if (response.code === 200) {
-    productForm.productImg = response.data;
-    ElMessage.success('上传成功');
+    productImgList.value = fileList;
+    updateProductImgStr();
+    ElMessage.success('主图上传成功');
   } else {
     ElMessage.error(response.msg || '上传失败');
+    productImgList.value = fileList.filter(f => f.uid !== file.uid);
   }
+}
+
+const handleProductImgRemove = (file: any, fileList: any[]) => {
+  productImgList.value = fileList;
+  updateProductImgStr();
+}
+
+const updateProductImgStr = () => {
+  productForm.productImg = productImgList.value
+    .map(f => f.response ? f.response.data : f.url.replace(getFullImageUrl(''), ''))
+    .join(',');
+}
+
+const handleProductDetailImgSuccess = (response: any, file: any, fileList: any[]) => {
+  if (response.code === 200) {
+    productDetailImgList.value = fileList;
+    updateProductDetailImgStr();
+    ElMessage.success('详情图上传成功');
+  } else {
+    ElMessage.error(response.msg || '上传失败');
+    productDetailImgList.value = fileList.filter(f => f.uid !== file.uid);
+  }
+}
+
+const handleProductDetailImgRemove = (file: any, fileList: any[]) => {
+  productDetailImgList.value = fileList;
+  updateProductDetailImgStr();
+}
+
+const updateProductDetailImgStr = () => {
+  productForm.productDetailImg = productDetailImgList.value
+    .map(f => f.response ? f.response.data : f.url.replace(getFullImageUrl(''), ''))
+    .join(',');
 }
 
 const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
@@ -276,11 +330,12 @@ const productForm = reactive({
   stock: 0,
   stockWarning: 10,
   productImg: '',
+  productDetailImg: '',
   productDesc: '',
   originPlace: '', // 省/市/区
   originPlaceDetail: '', // 详细地址
-  productionCycle: '',
-  productionMethod: '',
+  plantingCycle: '',
+  fertilizerType: '',
   storageMethod: '',
   transportMethod: '普通物流'
 });
@@ -293,24 +348,32 @@ const rules: FormRules = {
   stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
   originPlace: [{ required: true, message: '请选择产地', trigger: 'change' }],
   originPlaceDetail: [{ required: true, message: '请输入详细产地', trigger: 'blur' }],
-  productionCycle: [{ required: true, message: '请输入生产周期', trigger: 'blur' }]
+  plantingCycle: [{ required: true, message: '请输入种植周期', trigger: 'blur' }]
 };
 
-// 模拟生成二维码
+// 由后端生成二维码（data:image/png;base64...）
 const qrCodeUrl = ref('');
 
-// 监听关键字段变化生成二维码
-watch(
-  () => [productForm.productName, productForm.originPlace, productForm.productionCycle],
-  ([name, origin, cycle]) => {
-    if (name && origin && cycle) {
-      // 模拟生成
-      qrCodeUrl.value = 'https://via.placeholder.com/150x150/000000/FFFFFF?text=TraceabilityQR';
-    } else {
-      qrCodeUrl.value = '';
-    }
+const refreshQrCode = async (id: number) => {
+  try {
+    const code = await generateProductQrcode(id);
+    qrCodeUrl.value = code || '';
+    return qrCodeUrl.value;
+  } catch (e) {
+    console.error('生成溯源码失败', e);
+    qrCodeUrl.value = '';
+    return '';
   }
-);
+};
+
+const downloadQrCode = () => {
+  if (!qrCodeUrl.value) return;
+  const link = document.createElement('a');
+  link.href = qrCodeUrl.value;
+  link.download = 'trace_qrcode.png';
+  link.click();
+  ElMessage.success('二维码已下载');
+};
 
 onMounted(() => {
   if (isEdit.value) {
@@ -320,12 +383,35 @@ onMounted(() => {
         const data = JSON.parse(state.productData);
         // 合并数据
         Object.assign(productForm, data);
+        
+        // 初始化图片列表
+        if (productForm.productImg) {
+          productImgList.value = productForm.productImg.split(',').map((url, index) => ({
+            name: `img_${index}`,
+            url: getFullImageUrl(url),
+            uid: index
+          }));
+        }
+        if (productForm.productDetailImg) {
+          productDetailImgList.value = productForm.productDetailImg.split(',').map((url, index) => ({
+            name: `detail_img_${index}`,
+            url: getFullImageUrl(url),
+            uid: index
+          }));
+        }
+
         // 尝试回显省市区 (这里比较复杂，因为只存了中文名，反向查code比较难，暂时忽略回显的Cascader绑定，或者仅显示文本)
         // 如果后端能返回 regionCode 最好，否则只能不回显 Cascader，只显示文本
          ElMessage.info('提示：编辑模式下，产地省市区请重新选择');
       } catch (e) {
         console.error('解析商品数据失败', e);
       }
+    }
+
+    // 编辑模式下，尝试直接生成/刷新溯源码预览
+    const id = Number(route.params.id);
+    if (!Number.isNaN(id) && id > 0) {
+      void refreshQrCode(id);
     }
   }
 });
@@ -338,13 +424,19 @@ const saveProduct = async () => {
       submitting.value = true;
       try {
         if (isEdit.value) {
-          await updateProduct(Number(route.params.id), productForm);
+          const id = Number(route.params.id);
+          await updateProduct(id, productForm);
+          const code = await refreshQrCode(id);
+          qrCodeUrl.value = code || '';
           ElMessage.success('商品更新成功');
         } else {
-          await createProduct(productForm);
+          const created = await createProduct(productForm);
+          const id = created?.id;
+          const code = id ? await refreshQrCode(id) : '';
+          qrCodeUrl.value = code || '';
           ElMessage.success('商品发布成功');
         }
-        router.back();
+        // 生成溯源码后留在当前页，方便用户预览/下载打印
       } catch (error) {
         console.error(error);
       } finally {

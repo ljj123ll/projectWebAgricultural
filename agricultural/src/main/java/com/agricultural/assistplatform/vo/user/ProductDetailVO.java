@@ -16,6 +16,7 @@ public class ProductDetailVO {
     private Long categoryId;
     private Integer stock;
     private String productImg;
+    private String productDetailImg; // 详细介绍图片，逗号分隔多图
     private String productDesc;
     private String originPlace;
     private Integer salesVolume;

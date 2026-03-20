@@ -24,6 +24,7 @@ export const listComments = (params: any) => request.get<any, PageResult<Comment
 export const submitComment = (data: any) => request.post('/user/comments', data);
 
 export const applyAfterSale = (data: any) => request.post('/user/after-sale', data);
+export const getAfterSaleDetail = (no: string) => request.get<any, AfterSale>(`/user/after-sale/${no}`);
 export const listAfterSale = (params: any) => request.get<any, PageResult<AfterSale>>('/user/after-sale', { params });
 export const escalateAfterSale = (id: number) => request.put(`/user/after-sale/${id}/escalate`);
 export const listAfterSaleMessages = (no: string, params: any) =>

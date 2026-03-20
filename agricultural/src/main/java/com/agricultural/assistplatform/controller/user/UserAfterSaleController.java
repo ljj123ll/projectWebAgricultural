@@ -21,9 +21,8 @@ public class UserAfterSaleController {
 
     @Operation(summary = "发起售后")
     @PostMapping("/after-sale")
-    public Result<Void> apply(@Valid @RequestBody AfterSaleApplyDTO dto) {
-        userAfterSaleService.apply(dto);
-        return Result.ok();
+    public Result<AfterSaleVO> apply(@Valid @RequestBody AfterSaleApplyDTO dto) {
+        return Result.ok(userAfterSaleService.apply(dto));
     }
 
     @Operation(summary = "售后列表")
@@ -39,5 +38,11 @@ public class UserAfterSaleController {
     public Result<Void> escalate(@PathVariable Long id) {
         userAfterSaleService.escalate(id);
         return Result.ok();
+    }
+
+    @Operation(summary = "售后详情（根据售后单号）")
+    @GetMapping("/after-sale/{no}")
+    public Result<AfterSaleVO> detail(@PathVariable("no") String no) {
+        return Result.ok(userAfterSaleService.getDetailByNo(no));
     }
 }

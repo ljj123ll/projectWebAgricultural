@@ -136,7 +136,8 @@ const loadPendingCounts = async () => {
     pendingOrderCount.value = orderRes?.total || 0;
     
     // 获取待处理售后数
-    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 1, afterSaleStatus: 0 });
+    // 后端售后状态：1-待商家处理
+    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 1, afterSaleStatus: 1 });
     pendingAfterSaleCount.value = afterSaleRes?.total || 0;
   } catch (error) {
     console.error('Failed to load pending counts', error);
@@ -222,6 +223,7 @@ onMounted(() => {
   transition: margin-left 0.3s;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* 防止内容撑开 */
 
   .sidebar.collapsed + & {
     margin-left: 64px;
