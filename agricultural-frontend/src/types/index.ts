@@ -72,15 +72,19 @@ export interface Order {
   totalAmount: number;
   orderStatus: number; // 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消
   createTime: string;
+  updateTime?: string;
   orderItems: OrderItem[];
   items?: OrderItem[];
   cancelReason?: string;
   payDeadline?: string;
+  payTime?: string;
   receiver?: string;
   receiverPhone?: string;
   receiverAddress?: string;
   logisticsCompany?: string;
   logisticsNo?: string;
+  logisticsStatus?: number;
+  abnormalReason?: string;
 }
 
 export interface OrderItem {
@@ -90,6 +94,7 @@ export interface OrderItem {
   productImg: string;
   productPrice: number;
   productNum: number;
+  productAmount?: number;
 }
 
 // 商家信息

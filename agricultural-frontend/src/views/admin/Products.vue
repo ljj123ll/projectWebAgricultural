@@ -197,6 +197,7 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listProductAudit, auditProduct } from '@/apis/admin'
+import { getProductCategoryName } from '@/constants/category'
 
 const filterStatus = ref('all')
 const currentPage = ref(1)
@@ -228,14 +229,8 @@ const getStatusText = (status: number) => {
 }
 
 const getCategoryText = (product: any) => {
-  const map: Record<number, string> = {
-    1: '生鲜果蔬',
-    2: '粮油副食',
-    3: '干货特产',
-    4: '畜禽肉蛋'
-  }
-  if (product?.categoryId && map[product.categoryId]) return map[product.categoryId]
-  if (product?.categoryName) return product.categoryName
+  const name = getProductCategoryName(product?.categoryId, product?.categoryName)
+  if (name) return name
   if (product?.categoryId) return `分类${product.categoryId}`
   return '-'
 }

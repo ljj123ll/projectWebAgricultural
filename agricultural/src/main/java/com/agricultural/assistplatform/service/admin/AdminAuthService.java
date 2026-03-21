@@ -6,14 +6,17 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.SysUserMapper;
 import com.agricultural.assistplatform.service.SmsService;
 import com.agricultural.assistplatform.util.JwtUtil;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AdminAuthService {
 
@@ -34,11 +37,40 @@ public class AdminAuthService {
         if (!isDevCode && (code == null || phone == null || !smsService.verifyCode(phone, code)))
             throw new BusinessException(ResultCode.BAD_REQUEST, "短信验证码错误或已过期");
             
-        SysUser admin = sysUserMapper.selectOne(
+        List<SysUser> adminCandidates = sysUserMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysUser>()
-                        .eq(SysUser::getUsername, username));
-        if (admin == null || admin.getStatus() != 1) throw new BusinessException(ResultCode.BAD_REQUEST, "账号不存在或已禁用");
-        if (!encoder.matches(password, admin.getPassword())) throw new BusinessException(ResultCode.BAD_REQUEST, "密码错误");
+                        .eq(SysUser::getUsername, username)
+                        .eq(SysUser::getDeleteFlag, 0)
+                        .orderByDesc(SysUser::getUpdateTime)
+                        .orderByDesc(SysUser::getId));
+        if (adminCandidates == null || adminCandidates.isEmpty()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "账号不存在或已禁用");
+        }
+
+        // 安全手机号必须匹配
+        if (phone != null && !phone.isBlank()) {
+            adminCandidates = adminCandidates.stream()
+                    .filter(item -> phone.equals(item.getPhone()))
+                    .toList();
+            if (adminCandidates.isEmpty()) {
+                throw new BusinessException(ResultCode.BAD_REQUEST, "安全手机号不匹配");
+            }
+        }
+
+        if (adminCandidates.size() > 1) {
+            log.warn("检测到重复管理员账号，username={}, 命中{}条，默认使用最新记录id={}",
+                    username, adminCandidates.size(), adminCandidates.get(0).getId());
+        }
+
+        List<SysUser> activeAdmins = adminCandidates.stream()
+                .filter(item -> item.getStatus() != null && item.getStatus() == 1)
+                .toList();
+        if (activeAdmins.isEmpty()) throw new BusinessException(ResultCode.BAD_REQUEST, "账号不存在或已禁用");
+
+        SysUser admin = activeAdmins.stream()
+                .filter(item -> encoder.matches(password, item.getPassword()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ResultCode.BAD_REQUEST, "密码错误"));
         admin.setLastLoginTime(LocalDateTime.now());
         sysUserMapper.updateById(admin);
         String token = jwtUtil.generateToken(String.valueOf(admin.getId()), "admin");
