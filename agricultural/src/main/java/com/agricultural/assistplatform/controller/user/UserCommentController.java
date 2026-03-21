@@ -5,6 +5,7 @@ import com.agricultural.assistplatform.dto.user.CommentSubmitDTO;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.entity.Comment;
 import com.agricultural.assistplatform.service.user.UserCommentService;
+import com.agricultural.assistplatform.vo.user.ProductCommentVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,5 +33,14 @@ public class UserCommentController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.ok(userCommentService.list(pageNum, pageSize));
+    }
+
+    @Operation(summary = "商品评价列表")
+    @GetMapping("/products/{productId}/comments")
+    public Result<PageResult<ProductCommentVO>> listByProduct(
+            @PathVariable Long productId,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return Result.ok(userCommentService.listByProduct(productId, pageNum, pageSize));
     }
 }

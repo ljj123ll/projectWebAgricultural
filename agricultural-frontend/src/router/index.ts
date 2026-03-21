@@ -34,6 +34,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '商品详情' }
       },
       {
+        path: 'shop/:merchantId',
+        name: 'UserMerchantShop',
+        component: () => import('@/views/user/MerchantShop.vue'),
+        meta: { title: '店铺详情' }
+      },
+      {
         path: 'news',
         name: 'News',
         component: () => import('@/views/user/News.vue'),
@@ -315,6 +321,13 @@ router.beforeEach((to, _from, next) => {
   const userStore = useUserStore();
   const isAuthenticated = !!userStore.token;
   const userRole = userStore.role;
+  const targetRole = to.meta.role as string | undefined;
+
+  const getLoginPathByRole = (role?: string) => {
+    if (role === 'merchant') return '/merchant/login';
+    if (role === 'admin') return '/admin/login';
+    return '/login';
+  };
 
   // 设置页面标题
   if (to.meta.title) {
@@ -324,20 +337,14 @@ router.beforeEach((to, _from, next) => {
   // 需要登录的页面
   if (to.meta.requiresAuth && !isAuthenticated) {
     ElMessage.warning('请先登录');
-    next({ name: 'UserLogin', query: { redirect: to.fullPath } });
+    next({ path: getLoginPathByRole(targetRole), query: { redirect: to.fullPath } });
     return;
   }
 
   // 角色权限检查
-  if (to.meta.role && to.meta.role !== userRole) {
+  if (targetRole && targetRole !== userRole) {
     ElMessage.error('权限不足');
-    if (isAuthenticated) {
-      if (userRole === 'merchant') next('/merchant/dashboard');
-      else if (userRole === 'admin') next('/admin/dashboard');
-      else next('/');
-    } else {
-      next('/login');
-    }
+    next(getLoginPathByRole(targetRole));
     return;
   }
 

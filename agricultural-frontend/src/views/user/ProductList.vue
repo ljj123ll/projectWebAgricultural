@@ -115,6 +115,7 @@ import { searchProducts, listCategories } from '@/apis/product';
 import type { Product, ProductCategory } from '@/types';
 import { regionData, codeToText } from 'element-china-area-data';
 import { getFullImageUrl } from '@/utils/image';
+import { PRODUCT_CATEGORY_OPTIONS, getProductCategoryName } from '@/constants/category';
 
 const router = useRouter();
 const route = useRoute();
@@ -132,12 +133,12 @@ const total = ref(0);
 // 选项数据
 const originOptions = regionData; // 使用省市区数据
 const categoryOptions = ref<ProductCategory[]>([]);
-const fixedCategoryOptions: ProductCategory[] = [
-  { id: 1, categoryName: '生鲜果蔬', parentId: 0, categoryLevel: 1 },
-  { id: 2, categoryName: '粮油副食', parentId: 0, categoryLevel: 1 },
-  { id: 3, categoryName: '干货特产', parentId: 0, categoryLevel: 1 },
-  { id: 4, categoryName: '畜禽肉蛋', parentId: 0, categoryLevel: 1 }
-];
+const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((item) => ({
+  id: item.value,
+  categoryName: item.label,
+  parentId: 0,
+  categoryLevel: 1
+}));
 
 // 列表数据
 const products = ref<Product[]>([]);
@@ -172,15 +173,7 @@ const loadOptions = async () => {
 };
 
 const getCategoryText = (product: Product) => {
-  const map: Record<number, string> = {
-    1: '生鲜果蔬',
-    2: '粮油副食',
-    3: '干货特产',
-    4: '畜禽肉蛋'
-  };
-  if (product.categoryId && map[product.categoryId]) return map[product.categoryId];
-  if (product.categoryName) return product.categoryName;
-  return '生鲜果蔬';
+  return getProductCategoryName(product.categoryId, product.categoryName) || '生鲜果蔬';
 };
 
 const getCoverImage = (raw?: string) => {
@@ -389,3 +382,4 @@ const goToProduct = (id: number) => {
   }
 }
 </style>
+

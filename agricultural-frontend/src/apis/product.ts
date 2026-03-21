@@ -1,5 +1,5 @@
 import request from '@/utils/request';
-import type { Product, PageResult, ProductCategory, ShopInfo } from '@/types';
+import type { Product, PageResult, ProductCategory, ProductComment, ShopInfo } from '@/types';
 
 // 商品相关接口（与后端路径统一）
 export const searchProducts = (params: any) => request.get<any, PageResult<Product>>('/user/products/search', { params });
@@ -11,6 +11,8 @@ export const listOrigins = () => request.get<any, string[]>('/user/origins');
 export const getMerchantShop = (id: number) => request.get<any, ShopInfo>(`/user/merchants/${id}`);
 export const getMerchantProductsPublic = (id: number, params: any) =>
   request.get<any, PageResult<Product>>(`/user/merchants/${id}/products`, { params });
+export const getProductComments = (id: number, params: any) =>
+  request.get<any, PageResult<ProductComment>>(`/user/products/${id}/comments`, { params });
 
 export const getMerchantProducts = (params: any) => request.get<any, PageResult<Product>>('/merchant/products', { params });
 export const addProduct = (data: any) => request.post('/merchant/products', data);

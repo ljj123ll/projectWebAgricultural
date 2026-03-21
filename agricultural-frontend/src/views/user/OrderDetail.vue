@@ -18,7 +18,7 @@
     <div v-if="order" class="order-items">
       <h3>商品信息</h3>
       <div v-for="item in order.items || order.orderItems" :key="item.productId || item.id" class="item">
-        <img :src="item.productImg" :alt="item.productName" />
+        <img :src="getCoverImage(item.productImg)" :alt="item.productName" />
         <div class="item-info">
           <h4>{{ item.productName }}</h4>
           <p>¥{{ item.productPrice }} × {{ item.productNum }}</p>
@@ -73,12 +73,14 @@
         </el-form-item>
         <el-form-item label="上传图片/视频">
           <el-upload
-            action="#"
+            :action="uploadAction"
             list-type="picture-card"
-            :auto-upload="false"
-            :file-list="reviewForm.files"
+            :file-list="fileList"
+            multiple
+            :limit="6"
+            :on-success="handleUploadSuccess"
             :on-remove="handleFileRemove"
-            :on-change="handleFileChange"
+            :on-exceed="handleExceed"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -95,19 +97,28 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useOrderStore } from '@/stores/modules/order';
 import { ElMessage } from 'element-plus';
 import { Plus, ArrowLeft, CircleCheckFilled } from '@element-plus/icons-vue';
 import { getOrderDetail } from '@/apis/order';
 import { submitComment } from '@/apis/user';
 import type { Order } from '@/types';
+import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
 const route = useRoute();
-const orderStore = useOrderStore();
 
 const orderId = Number(route.params.orderId);
 const order = ref<Order | null>(null);
+const uploadAction = `${import.meta.env.VITE_API_BASE_URL || '/api'}/common/upload`;
+
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw
+    .split(',')
+    .map(item => item.trim())
+    .find(Boolean) || '';
+  return getFullImageUrl(first);
+};
 
 const reviewDialogVisible = ref(false);
 const reviewForm = reactive({
@@ -153,17 +164,37 @@ const formatDate = (date: string) => {
 const openReviewDialog = () => {
   const items = order.value?.items || order.value?.orderItems;
   if (items && items.length > 0) {
-    reviewForm.productId = items[0].productId;
+    reviewForm.productId = items[0]?.productId || 0;
   }
   reviewDialogVisible.value = true;
 };
 
-const handleFileChange = (_file: any, files: any[]) => {
+const syncUploadedImages = () => {
+  reviewForm.imgUrls = fileList.value
+    .map(file => {
+      if (file?.response?.code === 200) return file.response.data;
+      return file?.url || '';
+    })
+    .filter(Boolean)
+    .join(',');
+};
+
+const handleUploadSuccess = (response: any, _file: any, files: any[]) => {
+  if (response?.code !== 200) {
+    ElMessage.error(response?.msg || '图片上传失败');
+    return;
+  }
   fileList.value = files;
+  syncUploadedImages();
 };
 
 const handleFileRemove = (_file: any, files: any[]) => {
   fileList.value = files;
+  syncUploadedImages();
+};
+
+const handleExceed = () => {
+  ElMessage.warning('最多上传6张图片');
 };
 
 const submitReview = async () => {
@@ -177,9 +208,7 @@ const submitReview = async () => {
   }
   
   try {
-    // 模拟图片上传，实际应先上传图片获取URL
-    // reviewForm.imgUrls = fileList.value.map(f => f.url).join(',');
-    
+    syncUploadedImages();
     await submitComment({
       orderNo: order.value?.orderNo,
       productId: reviewForm.productId,
@@ -191,7 +220,9 @@ const submitReview = async () => {
     ElMessage.success('评价提交成功');
     reviewDialogVisible.value = false;
     reviewForm.content = '';
+    reviewForm.imgUrls = '';
     fileList.value = [];
+    router.replace(`/product/${reviewForm.productId}?tab=reviews`);
   } catch (error) {
     console.error('评价失败', error);
     ElMessage.error('评价提交失败');

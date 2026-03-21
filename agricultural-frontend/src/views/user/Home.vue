@@ -153,7 +153,7 @@
                 <div class="card-content">
                   <h3 class="product-name text-ellipsis" :title="product.productName">{{ product.productName }}</h3>
                   <div class="product-tags">
-                    <el-tag size="small" effect="plain" type="success">{{ product.categoryName || '生鲜' }}</el-tag>
+                    <el-tag size="small" effect="plain" type="success">{{ getCategoryText(product) }}</el-tag>
                     <span class="origin"><el-icon><Location /></el-icon> {{ product.originPlace ? product.originPlace.split('/').slice(0, 2).join('/') : '四川' }}</span>
                   </div>
                   <div class="price-row">
@@ -236,11 +236,12 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Menu, ArrowRight, TrendCharts, WarningFilled, Document, StarFilled, Location, Shop } from '@element-plus/icons-vue';
-import { searchProducts, hotProducts, listCategories } from '@/apis/product';
+import { searchProducts, hotProducts } from '@/apis/product';
 import { listNews, getUserInfo, logout as userLogout } from '@/apis/user';
 import type { Product, News, ProductCategory } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
 import { ElMessage } from 'element-plus';
+import { PRODUCT_CATEGORY_OPTIONS, getProductCategoryName } from '@/constants/category';
 
 const router = useRouter();
 const loading = ref(false);
@@ -256,6 +257,13 @@ const banners = [
 const searchKeyword = ref('');
 const categoryOptions = ref<ProductCategory[]>([]);
 const products = ref<Product[]>([]);
+
+const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((item) => ({
+  id: item.value,
+  categoryName: item.label,
+  parentId: 0,
+  categoryLevel: 1
+}));
 const hotProductList = ref<Product[]>([]);
 const newsList = ref<News[]>([]);
 
@@ -295,12 +303,7 @@ const logout = async () => {
 };
 
 const loadCategories = async () => {
-  try {
-    const res = await listCategories();
-    if (res) categoryOptions.value = res;
-  } catch (error) {
-    console.error(error);
-  }
+  categoryOptions.value = fixedCategoryOptions;
 };
 
 const loadProducts = async () => {
@@ -329,6 +332,10 @@ const loadNews = async () => {
     const res = await listNews({ pageNum: 1, pageSize: 5 });
     if (res && res.list) newsList.value = res.list;
   } catch (error) {}
+};
+
+const getCategoryText = (product: Product) => {
+  return getProductCategoryName(product.categoryId, product.categoryName) || '生鲜果蔬';
 };
 
 const handleSearch = () => {
@@ -710,3 +717,4 @@ const goToProduct = (id: number) => {
   }
 }
 </style>
+

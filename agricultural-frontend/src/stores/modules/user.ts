@@ -29,22 +29,33 @@ export const useUserStore = defineStore('user', () => {
     };
   };
 
-  const localState = readAuthFromStorage(localStorage);
-  const sessionState = localState ? null : readAuthFromStorage(sessionStorage);
+  // 当 session/local 同时存在时，优先 session（通常代表最近一次登录）
+  const sessionState = readAuthFromStorage(sessionStorage);
+  const localState = sessionState ? null : readAuthFromStorage(localStorage);
 
-  if (localState) {
-    token.value = localState.token;
-    userInfo.value = localState.userInfo;
-    role.value = localState.role;
-    tokenExpiresAt.value = localState.tokenExpiresAt;
-  } else if (sessionState) {
+  if (sessionState) {
     token.value = sessionState.token;
     userInfo.value = sessionState.userInfo;
     role.value = sessionState.role;
     tokenExpiresAt.value = sessionState.tokenExpiresAt;
+  } else if (localState) {
+    token.value = localState.token;
+    userInfo.value = localState.userInfo;
+    role.value = localState.role;
+    tokenExpiresAt.value = localState.tokenExpiresAt;
   }
 
   function setLoginState(data: LoginResult, options?: { expiresAt?: number; remember?: boolean }) {
+    // 切换身份登录前先清空两端存储，避免残留旧角色导致路由守卫误判
+    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('role');
+    localStorage.removeItem('tokenExpiresAt');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userInfo');
+    sessionStorage.removeItem('role');
+    sessionStorage.removeItem('tokenExpiresAt');
+
     token.value = data.token;
     userInfo.value = data.userInfo;
     if (data.userInfo.role) {

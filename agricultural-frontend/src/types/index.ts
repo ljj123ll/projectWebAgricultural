@@ -142,6 +142,19 @@ export interface Comment {
   createTime?: string;
 }
 
+export interface ProductComment {
+  id: number;
+  orderNo: string;
+  productId: number;
+  userId: number;
+  nickname?: string;
+  avatarUrl?: string;
+  score: number;
+  content?: string;
+  imgUrls?: string;
+  createTime?: string;
+}
+
 export interface AfterSale {
   id: number;
   afterSaleNo: string;
@@ -177,6 +190,9 @@ export interface ShopInfo {
   shopName: string;
   shopIntro?: string;
   qualificationImg?: string;
+  shopType?: string;
+  categories?: string;
+  shopAddress?: string;
 }
 
 export interface MerchantAccount {

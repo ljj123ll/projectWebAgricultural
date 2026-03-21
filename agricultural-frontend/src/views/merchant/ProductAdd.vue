@@ -37,10 +37,12 @@
           <el-col :span="8">
             <el-form-item label="商品品类" prop="categoryId">
               <el-select v-model="productForm.categoryId" placeholder="请选择品类" style="width: 100%">
-                <el-option label="生鲜果蔬" :value="1" />
-                <el-option label="粮油副食" :value="2" />
-                <el-option label="干货特产" :value="3" />
-                <el-option label="畜禽肉蛋" :value="4" />
+                <el-option
+                  v-for="item in PRODUCT_CATEGORY_OPTIONS"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -245,6 +247,7 @@ import type { FormInstance, FormRules, UploadProps } from 'element-plus';
 import { createProduct, updateProduct, generateProductQrcode } from '@/apis/merchant';
 import { getFullImageUrl } from '@/utils/image';
 import { regionData, codeToText } from 'element-china-area-data';
+import { PRODUCT_CATEGORY_OPTIONS } from '@/constants/category';
 
 const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
 const router = useRouter();

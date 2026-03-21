@@ -64,6 +64,10 @@ public class UserProductService {
         vo.setProductName(p.getProductName());
         vo.setPrice(p.getPrice());
         vo.setCategoryId(p.getCategoryId());
+        if (p.getCategoryId() != null) {
+            ProductCategory category = productCategoryMapper.selectById(p.getCategoryId());
+            vo.setCategoryName(category != null ? category.getCategoryName() : null);
+        }
         vo.setStock(p.getStock());
         vo.setProductImg(p.getProductImg());
         vo.setProductDetailImg(p.getProductDetailImg());

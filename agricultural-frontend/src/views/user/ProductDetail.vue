@@ -59,7 +59,7 @@
               <el-divider direction="vertical" />
               <div class="stat-item">
                 <span>累计评价</span>
-                <span class="value">{{ product.score ? '99+' : '0' }}</span>
+                <span class="value">{{ reviewTotal }}</span>
               </div>
               <el-divider direction="vertical" />
               <div class="stat-item">
@@ -85,7 +85,7 @@
             <dl class="meta-row" v-if="merchant">
               <dt>商家</dt>
               <dd class="merchant-link" @click="goToMerchant">
-                {{ merchant.merchantName }}
+                {{ merchant.shopName }}
                 <el-tag size="small" type="warning" effect="plain">金牌农户</el-tag>
               </dd>
             </dl>
@@ -155,12 +155,24 @@
               <div class="detail-content">
                 <div class="attr-list">
                   <div class="attr-item">
+                    <span class="label">商品名称</span>
+                    <span class="value">{{ product.productName || '-' }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">店铺名称</span>
+                    <span class="value">{{ merchant?.shopName || product.merchantName || '-' }}</span>
+                  </div>
+                  <div class="attr-item">
                     <span class="label">品类</span>
-                    <span class="value">{{ product.categoryName }}</span>
+                    <span class="value">{{ categoryText }}</span>
                   </div>
                   <div class="attr-item">
                     <span class="label">产地</span>
-                    <span class="value">{{ product.originPlaceDetail || product.originPlace }}</span>
+                    <span class="value">{{ product.originPlace || '-' }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">详细产地</span>
+                    <span class="value">{{ product.originPlaceDetail || '-' }}</span>
                   </div>
                   <div class="attr-item">
                     <span class="label">种植周期</span>
@@ -170,9 +182,35 @@
                     <span class="label">施肥方式</span>
                     <span class="value">{{ product.fertilizerType || '无公害' }}</span>
                   </div>
+                  <div class="attr-item">
+                    <span class="label">储存方式</span>
+                    <span class="value">{{ product.storageMethod || '常温保存' }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">运输方式</span>
+                    <span class="value">{{ product.transportMethod || '普通物流' }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">库存</span>
+                    <span class="value">{{ product.stock ?? 0 }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">销量</span>
+                    <span class="value">{{ product.salesVolume ?? 0 }}</span>
+                  </div>
+                  <div class="attr-item">
+                    <span class="label">评分</span>
+                    <span class="value">{{ Number(product.score || 0).toFixed(1) }}</span>
+                  </div>
                 </div>
-                
-                <div class="rich-text">
+
+                <div class="desc-card">
+                  <h4>商品简介</h4>
+                  <p>{{ product.productDesc || '暂无文字介绍' }}</p>
+                </div>
+
+                <div class="detail-images-wrap">
+                  <h4>详情图片</h4>
                   <div v-if="detailImageList.length > 0" class="detail-image-list">
                     <el-image
                       v-for="(img, idx) in detailImageList"
@@ -190,7 +228,37 @@
               </div>
             </el-tab-pane>
             <el-tab-pane label="累计评价" name="reviews">
-              <el-empty description="暂无评价" />
+              <div class="reviews-pane" v-loading="reviewLoading">
+                <div v-if="reviewList.length" class="review-list">
+                  <div v-for="review in reviewList" :key="review.id" class="review-item">
+                    <div class="review-head">
+                      <div class="review-user">
+                        <el-avatar :src="getFullImageUrl(review.avatarUrl)" :size="36">
+                          {{ (review.nickname || '用户').slice(0, 1) }}
+                        </el-avatar>
+                        <div class="user-meta">
+                          <span class="name">{{ review.nickname || '匿名用户' }}</span>
+                          <span class="time">{{ formatDate(review.createTime) }}</span>
+                        </div>
+                      </div>
+                      <el-rate :model-value="review.score" disabled />
+                    </div>
+                    <p class="review-text">{{ review.content || '该用户未填写评价内容' }}</p>
+                    <div v-if="parseImages(review.imgUrls).length" class="review-image-list">
+                      <el-image
+                        v-for="(img, idx) in parseImages(review.imgUrls)"
+                        :key="`${review.id}-${idx}`"
+                        :src="img"
+                        :preview-src-list="parseImages(review.imgUrls)"
+                        class="review-image-item"
+                        fit="cover"
+                        preview-teleported
+                      />
+                    </div>
+                  </div>
+                </div>
+                <el-empty v-else description="暂无评价" />
+              </div>
             </el-tab-pane>
             <el-tab-pane label="售后保障" name="guarantee">
               <div class="guarantee-content">
@@ -241,16 +309,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { CircleCheck, ArrowLeft } from '@element-plus/icons-vue';
-import { getProductDetail, getMerchantShop } from '@/apis/product';
+import { getProductComments, getProductDetail, getMerchantShop, listCategories } from '@/apis/product';
 import { addToCart, getCart } from '@/apis/order'; // Import API
 import { useUserStore } from '@/stores/modules/user';
 import { useCartStore } from '@/stores/modules/cart';
-import type { Product, ShopInfo } from '@/types';
+import type { Product, ProductComment, ShopInfo } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
+import { getProductCategoryName } from '@/constants/category';
 
 const route = useRoute();
 const router = useRouter();
@@ -265,6 +334,10 @@ const quantity = ref(1);
 const activeTab = ref('detail');
 const showTrace = ref(false);
 const addCartLoading = ref(false);
+const reviewLoading = ref(false);
+const reviewTotal = ref(0);
+const reviewList = ref<ProductComment[]>([]);
+const categoryNameMap = ref<Record<number, string>>({});
 
 const activeImageIndex = ref(0);
 
@@ -298,8 +371,13 @@ const nextImage = () => {
 
 onMounted(async () => {
   if (productId) {
-    await loadProductData();
+    await Promise.all([loadCategories(), loadProductData(), loadProductReviews()]);
   }
+  applyTabFromQuery();
+});
+
+watch(() => route.query.tab, () => {
+  applyTabFromQuery();
 });
 
 const loadProductData = async () => {
@@ -323,6 +401,19 @@ const loadProductData = async () => {
   }
 };
 
+const loadCategories = async () => {
+  try {
+    const list = await listCategories();
+    const map: Record<number, string> = {};
+    (list || []).forEach(item => {
+      if (item?.id) map[item.id] = item.categoryName;
+    });
+    categoryNameMap.value = map;
+  } catch (error) {
+    console.warn('加载品类失败', error);
+  }
+};
+
 const loadMerchantInfo = async (merchantId: number) => {
   try {
     const res = await getMerchantShop(merchantId);
@@ -331,6 +422,46 @@ const loadMerchantInfo = async (merchantId: number) => {
     }
   } catch (error) {
     console.warn('加载商家信息失败', error);
+  }
+};
+
+const loadProductReviews = async () => {
+  reviewLoading.value = true;
+  try {
+    const res = await getProductComments(productId, { pageNum: 1, pageSize: 50 });
+    reviewList.value = res?.list || [];
+    reviewTotal.value = Number(res?.total || 0);
+  } catch (error) {
+    console.warn('加载商品评价失败', error);
+    reviewList.value = [];
+    reviewTotal.value = 0;
+  } finally {
+    reviewLoading.value = false;
+  }
+};
+
+const formatDate = (date?: string) => {
+  if (!date) return '';
+  return date.substring(0, 16).replace('T', ' ');
+};
+
+const categoryText = computed(() => {
+  const directName = getProductCategoryName(product.value.categoryId, product.value.categoryName);
+  if (directName) return directName;
+
+  const fallbackName = getProductCategoryName(
+    product.value.categoryId,
+    categoryNameMap.value[Number(product.value.categoryId)]
+  );
+  if (fallbackName) return fallbackName;
+
+  return product.value.categoryId ? `分类ID ${product.value.categoryId}` : '-';
+});
+
+const applyTabFromQuery = () => {
+  const tab = String(route.query.tab || '').trim();
+  if (tab === 'reviews' || tab === 'detail' || tab === 'guarantee') {
+    activeTab.value = tab;
   }
 };
 
@@ -407,10 +538,9 @@ const handleBuyNow = async () => {
 };
 
 const goToMerchant = () => {
-  if (merchant.value?.id) {
-    // 假设有商家详情页
-    // router.push(`/merchant/${merchant.value.id}`);
-  }
+  const id = merchant.value?.merchantId || product.value.merchantId;
+  if (!id) return;
+  router.push(`/shop/${id}`);
 };
 </script>
 
@@ -634,7 +764,7 @@ const goToMerchant = () => {
     margin-bottom: 20px;
     
     .attr-item {
-      width: 33.33%;
+      width: 50%;
       display: flex;
       border-right: 1px solid #ebeef5;
       border-bottom: 1px solid #ebeef5;
@@ -658,6 +788,35 @@ const goToMerchant = () => {
     }
   }
 
+  .desc-card {
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
+    background: #fafcff;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+
+    h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #303133;
+    }
+
+    p {
+      margin: 0;
+      color: #606266;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+  }
+
+  .detail-images-wrap {
+    h4 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      color: #303133;
+    }
+  }
+
   .detail-image-list {
     display: flex;
     flex-direction: column;
@@ -668,6 +827,73 @@ const goToMerchant = () => {
   .detail-image-item {
     width: 100%;
     border-radius: 8px;
+  }
+}
+
+.reviews-pane {
+  padding: 16px;
+
+  .review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .review-item {
+    border: 1px solid #ebeef5;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fff;
+  }
+
+  .review-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .review-user {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .name {
+      font-size: 14px;
+      color: #303133;
+      font-weight: 600;
+    }
+
+    .time {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
+
+  .review-text {
+    margin: 10px 0 0;
+    color: #606266;
+    line-height: 1.7;
+  }
+
+  .review-image-list {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .review-image-item {
+    width: 88px;
+    height: 88px;
+    border-radius: 8px;
+    overflow: hidden;
   }
 }
 
@@ -690,5 +916,10 @@ const goToMerchant = () => {
   .attr-list .attr-item {
     width: 100% !important;
   }
+
+  .reviews-pane {
+    padding: 10px;
+  }
 }
 </style>
+

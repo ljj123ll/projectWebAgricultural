@@ -14,6 +14,7 @@ public class ProductDetailVO {
     private String productName;
     private BigDecimal price;
     private Long categoryId;
+    private String categoryName;
     private Integer stock;
     private String productImg;
     private String productDetailImg; // 详细介绍图片，逗号分隔多图
