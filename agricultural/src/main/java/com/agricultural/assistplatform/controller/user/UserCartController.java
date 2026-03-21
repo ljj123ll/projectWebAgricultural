@@ -28,8 +28,8 @@ public class UserCartController {
     @Operation(summary = "添加商品")
     @PostMapping("/cart")
     public Result<Void> add(@RequestBody Map<String, Object> body) {
-        Long productId = body.get("productId") != null ? Long.valueOf(body.get("productId").toString()) : null;
-        Integer num = body.get("productNum") != null ? Integer.valueOf(body.get("productNum").toString()) : 1;
+        Long productId = parseLong(body != null ? body.get("productId") : null);
+        Integer num = parseInteger(body != null ? body.get("productNum") : null, 1);
         if (productId == null) return Result.fail(400, "商品ID不能为空");
         userCartService.add(productId, num);
         return Result.ok();
@@ -55,5 +55,27 @@ public class UserCartController {
     public Result<Void> clear() {
         userCartService.clear();
         return Result.ok();
+    }
+
+    private Long parseLong(Object value) {
+        if (value == null) return null;
+        String text = value.toString().trim();
+        if (text.isEmpty()) return null;
+        try {
+            return Long.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer parseInteger(Object value, Integer defaultValue) {
+        if (value == null) return defaultValue;
+        String text = value.toString().trim();
+        if (text.isEmpty()) return defaultValue;
+        try {
+            return Integer.valueOf(text);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }

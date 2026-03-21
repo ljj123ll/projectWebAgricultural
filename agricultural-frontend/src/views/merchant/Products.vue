@@ -62,11 +62,7 @@ const getStatusType = (status?: number) => {
 };
 
 const handleEdit = (row: Product) => {
-  // 由于后端暂无详情接口，将当前行数据通过 state 传递给编辑页
-  router.push({
-    path: `/merchant/product-edit/${row.id}`,
-    state: { productData: JSON.stringify(row) }
-  });
+  router.push(`/merchant/product-edit/${row.id}`);
 };
 
 const handleToggleStatus = async (row: Product) => {

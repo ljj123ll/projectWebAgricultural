@@ -2,11 +2,15 @@ package com.agricultural.assistplatform.service.admin;
 
 import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.entity.MerchantInfo;
+import com.agricultural.assistplatform.entity.ProductCategory;
 import com.agricultural.assistplatform.entity.ProductInfo;
+import com.agricultural.assistplatform.entity.ProductTrace;
 import com.agricultural.assistplatform.entity.ShopInfo;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.MerchantInfoMapper;
+import com.agricultural.assistplatform.mapper.ProductCategoryMapper;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
+import com.agricultural.assistplatform.mapper.ProductTraceMapper;
 import com.agricultural.assistplatform.mapper.ShopInfoMapper;
 import com.agricultural.assistplatform.vo.admin.AdminProductAuditVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -27,6 +31,8 @@ public class AdminAuditService {
     private final MerchantInfoMapper merchantInfoMapper;
     private final ProductInfoMapper productInfoMapper;
     private final ShopInfoMapper shopInfoMapper;
+    private final ProductCategoryMapper productCategoryMapper;
+    private final ProductTraceMapper productTraceMapper;
 
     public com.agricultural.assistplatform.common.PageResult<MerchantInfo> merchantAuditList(Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -59,13 +65,25 @@ public class AdminAuditService {
         q.orderByDesc(ProductInfo::getCreateTime);
         Page<ProductInfo> page = productInfoMapper.selectPage(new Page<>(pageNum, pageSize), q);
         Set<Long> merchantIds = page.getRecords().stream().map(ProductInfo::getMerchantId).collect(Collectors.toSet());
+        Set<Long> categoryIds = page.getRecords().stream().map(ProductInfo::getCategoryId).collect(Collectors.toSet());
+        Set<Long> productIds = page.getRecords().stream().map(ProductInfo::getId).collect(Collectors.toSet());
         Map<Long, MerchantInfo> merchantMap = new HashMap<>();
         Map<Long, ShopInfo> shopMap = new HashMap<>();
+        Map<Long, ProductCategory> categoryMap = new HashMap<>();
+        Map<Long, ProductTrace> traceMap = new HashMap<>();
         if (!merchantIds.isEmpty()) {
             merchantInfoMapper.selectList(new LambdaQueryWrapper<MerchantInfo>().in(MerchantInfo::getId, merchantIds))
                     .forEach(m -> merchantMap.put(m.getId(), m));
             shopInfoMapper.selectList(new LambdaQueryWrapper<ShopInfo>().in(ShopInfo::getMerchantId, merchantIds))
                     .forEach(s -> shopMap.put(s.getMerchantId(), s));
+        }
+        if (!categoryIds.isEmpty()) {
+            productCategoryMapper.selectList(new LambdaQueryWrapper<ProductCategory>().in(ProductCategory::getId, categoryIds))
+                    .forEach(c -> categoryMap.put(c.getId(), c));
+        }
+        if (!productIds.isEmpty()) {
+            productTraceMapper.selectList(new LambdaQueryWrapper<ProductTrace>().in(ProductTrace::getProductId, productIds))
+                    .forEach(t -> traceMap.put(t.getProductId(), t));
         }
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(),
                 page.getRecords().stream().map(p -> {
@@ -78,10 +96,23 @@ public class AdminAuditService {
                     ShopInfo s = shopMap.get(p.getMerchantId());
                     if (s != null) vo.setShopName(s.getShopName());
                     vo.setCategoryId(p.getCategoryId());
+                    ProductCategory c = categoryMap.get(p.getCategoryId());
+                    if (c != null) vo.setCategoryName(c.getCategoryName());
                     vo.setPrice(p.getPrice());
                     vo.setStock(p.getStock());
                     vo.setProductImg(p.getProductImg());
+                    vo.setProductDetailImg(p.getProductDetailImg());
                     vo.setProductDesc(p.getProductDesc());
+                    vo.setOriginPlace(p.getOriginPlace());
+                    ProductTrace t = traceMap.get(p.getId());
+                    if (t != null) {
+                        vo.setPlantingCycle(t.getPlantingCycle());
+                        vo.setOriginPlaceDetail(t.getOriginPlaceDetail());
+                        vo.setFertilizerType(t.getFertilizerType());
+                        vo.setStorageMethod(t.getStorageMethod());
+                        vo.setTransportMethod(t.getTransportMethod());
+                        vo.setQrCodeUrl(t.getQrCodeUrl());
+                    }
                     vo.setStatus(p.getStatus());
                     vo.setRejectReason(p.getRejectReason());
                     vo.setCreateTime(p.getCreateTime());

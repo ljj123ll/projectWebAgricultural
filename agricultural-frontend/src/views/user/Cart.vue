@@ -44,7 +44,7 @@
               />
             </div>
             <div class="col col-img" @click="goToProduct(item.productId)">
-              <img :src="item.productImg" />
+              <img :src="getCoverImage(item.productImg)" />
             </div>
             <div class="col col-name" @click="goToProduct(item.productId)">
               <div class="name">{{ item.productName }}</div>
@@ -117,9 +117,16 @@ import { ShoppingCart, Delete, ArrowLeft } from '@element-plus/icons-vue';
 import { useCartStore } from '@/stores/modules/cart';
 import { getCart, updateCartItem, deleteCartItem, clearCart } from '@/apis/order';
 import type { CartItem } from '@/types';
+import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
 const cartStore = useCartStore();
+
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
+  return getFullImageUrl(first);
+};
 
 onMounted(() => {
   loadCart();

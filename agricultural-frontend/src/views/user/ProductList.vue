@@ -48,7 +48,7 @@
 
       <!-- 商品列表 -->
       <section class="section-block">
-        <el-skeleton :loading="loading" animated :count="4" v-if="loading">
+        <el-skeleton :loading="loading" animated :count="4">
           <template #template>
             <el-col :span="6">
               <el-skeleton-item variant="image" style="width: 100%; height: 200px" />
@@ -69,13 +69,13 @@
                 @click="goToProduct(product.id)"
               >
                 <div class="image-wrapper">
-                  <img :src="getFullImageUrl(product.productImg)" class="product-image" />
+                  <img :src="getCoverImage(product.productImg)" class="product-image" />
                   <div v-if="product.stock <= 10" class="stock-badge">仅剩 {{ product.stock }} 件</div>
                 </div>
                 <div class="card-content">
                   <h3 class="product-name text-ellipsis">{{ product.productName }}</h3>
                   <div class="product-tags">
-                    <el-tag size="small" effect="plain">{{ product.categoryName || '生鲜' }}</el-tag>
+                    <el-tag size="small" effect="plain">{{ getCategoryText(product) }}</el-tag>
                     <span class="origin"><el-icon><Location /></el-icon> {{ product.originPlace ? product.originPlace.split('/').slice(0, 2).join('/') : '四川' }}</span>
                   </div>
                   <div class="price-row">
@@ -132,6 +132,12 @@ const total = ref(0);
 // 选项数据
 const originOptions = regionData; // 使用省市区数据
 const categoryOptions = ref<ProductCategory[]>([]);
+const fixedCategoryOptions: ProductCategory[] = [
+  { id: 1, categoryName: '生鲜果蔬', parentId: 0, categoryLevel: 1 },
+  { id: 2, categoryName: '粮油副食', parentId: 0, categoryLevel: 1 },
+  { id: 3, categoryName: '干货特产', parentId: 0, categoryLevel: 1 },
+  { id: 4, categoryName: '畜禽肉蛋', parentId: 0, categoryLevel: 1 }
+];
 
 // 列表数据
 const products = ref<Product[]>([]);
@@ -157,11 +163,30 @@ watch(
 // 加载选项
 const loadOptions = async () => {
   try {
-    const categoriesRes = await listCategories();
-    if (categoriesRes) categoryOptions.value = categoriesRes;
+    await listCategories();
+    categoryOptions.value = fixedCategoryOptions;
   } catch (error) {
     console.error('加载选项失败', error);
+    categoryOptions.value = fixedCategoryOptions;
   }
+};
+
+const getCategoryText = (product: Product) => {
+  const map: Record<number, string> = {
+    1: '生鲜果蔬',
+    2: '粮油副食',
+    3: '干货特产',
+    4: '畜禽肉蛋'
+  };
+  if (product.categoryId && map[product.categoryId]) return map[product.categoryId];
+  if (product.categoryName) return product.categoryName;
+  return '生鲜果蔬';
+};
+
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
+  return getFullImageUrl(first);
 };
 
 const applyQueryFilters = () => {

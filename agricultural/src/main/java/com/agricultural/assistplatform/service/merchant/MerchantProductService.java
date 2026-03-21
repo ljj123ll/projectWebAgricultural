@@ -9,6 +9,7 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductTraceMapper;
 import com.agricultural.assistplatform.util.QrCodeUtil;
+import com.agricultural.assistplatform.vo.merchant.MerchantProductDetailVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,37 @@ public class MerchantProductService {
         Page<ProductInfo> page = productInfoMapper.selectPage(new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<ProductInfo>().eq(ProductInfo::getMerchantId, merchantId).orderByDesc(ProductInfo::getCreateTime));
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), page.getRecords());
+    }
+
+    public MerchantProductDetailVO detail(Long id) {
+        Long merchantId = LoginContext.getUserId();
+        if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        ProductInfo p = productInfoMapper.selectOne(new LambdaQueryWrapper<ProductInfo>()
+                .eq(ProductInfo::getId, id).eq(ProductInfo::getMerchantId, merchantId));
+        if (p == null) throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在");
+        ProductTrace trace = productTraceMapper.selectOne(new LambdaQueryWrapper<ProductTrace>()
+                .eq(ProductTrace::getProductId, id));
+        MerchantProductDetailVO vo = new MerchantProductDetailVO();
+        vo.setId(p.getId());
+        vo.setProductName(p.getProductName());
+        vo.setCategoryId(p.getCategoryId());
+        vo.setPrice(p.getPrice());
+        vo.setStock(p.getStock());
+        vo.setStockWarning(p.getStockWarning());
+        vo.setProductImg(p.getProductImg());
+        vo.setProductDetailImg(p.getProductDetailImg());
+        vo.setProductDesc(p.getProductDesc());
+        vo.setOriginPlace(p.getOriginPlace());
+        vo.setStatus(p.getStatus());
+        if (trace != null) {
+            vo.setPlantingCycle(trace.getPlantingCycle());
+            vo.setOriginPlaceDetail(trace.getOriginPlaceDetail());
+            vo.setFertilizerType(trace.getFertilizerType());
+            vo.setStorageMethod(trace.getStorageMethod());
+            vo.setTransportMethod(trace.getTransportMethod());
+            vo.setQrCodeUrl(trace.getQrCodeUrl());
+        }
+        return vo;
     }
 
     @Transactional(rollbackFor = Exception.class)

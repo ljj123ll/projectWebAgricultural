@@ -53,7 +53,7 @@
         
         <div class="goods-list">
           <div class="goods-item" v-for="item in selectedItems" :key="item.productId">
-            <img :src="item.productImg" class="thumb" />
+            <img :src="getCoverImage(item.productImg)" class="thumb" />
             <div class="info">
               <div class="name">{{ item.productName }}</div>
               <div class="props">
@@ -118,6 +118,7 @@ import { createOrder } from '@/apis/order';
 import { getAddresses } from '@/apis/user';
 import { getProductDetail } from '@/apis/product';
 import type { UserAddress, CartItem } from '@/types';
+import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
 const route = useRoute();
@@ -128,6 +129,12 @@ const submitting = ref(false);
 const addressList = ref<UserAddress[]>([]);
 const selectedAddressId = ref<number | undefined>(undefined);
 const remark = ref('');
+
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
+  return getFullImageUrl(first);
+};
 
 // 直接购买的商品
 const directBuyItem = ref<CartItem | null>(null);

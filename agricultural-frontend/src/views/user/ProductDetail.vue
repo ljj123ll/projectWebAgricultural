@@ -7,8 +7,8 @@
         </el-button>
         <!-- 面包屑导航 -->
         <el-breadcrumb separator="/" class="breadcrumb" style="margin-bottom: 0;">
-          <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-          <el-breadcrumb-item>{{ product.categoryName || '商品详情' }}</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/products' }">全部商品</el-breadcrumb-item>
           <el-breadcrumb-item>{{ product.productName }}</el-breadcrumb-item>
         </el-breadcrumb>
       </div>
@@ -17,21 +17,23 @@
         <!-- 左侧图片展示 -->
         <div class="gallery">
           <div class="main-image-wrapper">
-            <el-image 
-              :src="currentImage" 
+            <el-image
+              :src="mainImageList[activeImageIndex]"
               fit="contain" 
               class="main-image"
-              :preview-src-list="imageList" 
-              :initial-index="currentImageIndex"
+              :preview-src-list="mainImageList"
+              :initial-index="activeImageIndex"
             />
+            <button v-if="mainImageList.length > 1" class="gallery-nav prev" @click="prevImage">‹</button>
+            <button v-if="mainImageList.length > 1" class="gallery-nav next" @click="nextImage">›</button>
           </div>
-          <div class="thumbnail-list" v-if="imageList.length > 1">
-            <div 
-              v-for="(img, idx) in imageList" 
-              :key="idx" 
+          <div class="thumbnail-list" v-if="mainImageList.length > 1">
+            <div
+              v-for="(img, idx) in mainImageList"
+              :key="idx"
               class="thumbnail-item"
-              :class="{ active: currentImage === img }"
-              @mouseenter="setCurrentImage(img, idx)"
+              :class="{ active: activeImageIndex === idx }"
+              @click="setActiveImageIndex(idx)"
             >
               <img :src="img" />
             </div>
@@ -111,7 +113,8 @@
                 type="warning" 
                 size="large" 
                 class="btn-cart" 
-                :disabled="product.stock === 0"
+                :loading="addCartLoading"
+                :disabled="product.stock === 0 || addCartLoading"
                 @click="handleAddToCart"
               >
                 加入购物车
@@ -170,9 +173,19 @@
                 </div>
                 
                 <div class="rich-text">
-                   <!-- 模拟详情图 -->
-                   <p>此处展示商品详情图文介绍...</p>
-                   <img v-if="product.productImg" :src="product.productImg" style="max-width: 100%; margin-top: 20px;" />
+                  <div v-if="detailImageList.length > 0" class="detail-image-list">
+                    <el-image
+                      v-for="(img, idx) in detailImageList"
+                      :key="`${img}-${idx}`"
+                      :src="img"
+                      :preview-src-list="detailImageList"
+                      :initial-index="idx"
+                      fit="cover"
+                      class="detail-image-item"
+                      preview-teleported
+                    />
+                  </div>
+                  <el-empty v-else description="暂无详情图片" />
                 </div>
               </div>
             </el-tab-pane>
@@ -233,13 +246,16 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { CircleCheck, ArrowLeft } from '@element-plus/icons-vue';
 import { getProductDetail, getMerchantShop } from '@/apis/product';
-import { addToCart } from '@/apis/order'; // Import API
+import { addToCart, getCart } from '@/apis/order'; // Import API
 import { useUserStore } from '@/stores/modules/user';
+import { useCartStore } from '@/stores/modules/cart';
 import type { Product, ShopInfo } from '@/types';
+import { getFullImageUrl } from '@/utils/image';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const cartStore = useCartStore();
 
 const loading = ref(false);
 const productId = Number(route.params.id);
@@ -248,21 +264,36 @@ const merchant = ref<ShopInfo | null>(null);
 const quantity = ref(1);
 const activeTab = ref('detail');
 const showTrace = ref(false);
+const addCartLoading = ref(false);
 
-const currentImage = ref('');
-const currentImageIndex = ref(0);
+const activeImageIndex = ref(0);
 
-// 图片列表处理（由于后端目前只返回单图，这里做个兼容，如果是多图可以扩展）
-const imageList = computed(() => {
-  if (product.value.productImg) {
-    return [product.value.productImg];
-  }
-  return [];
-});
+const parseImages = (value?: string) => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .map(url => getFullImageUrl(url));
+};
 
-const setCurrentImage = (img: string, idx: number) => {
-  currentImage.value = img;
-  currentImageIndex.value = idx;
+const mainImageList = computed(() => parseImages(product.value.productImg));
+const detailImageList = computed(() => parseImages(product.value.productDetailImg));
+
+const setActiveImageIndex = (index: number) => {
+  activeImageIndex.value = index;
+};
+
+const prevImage = () => {
+  const total = mainImageList.value.length;
+  if (!total) return;
+  activeImageIndex.value = (activeImageIndex.value - 1 + total) % total;
+};
+
+const nextImage = () => {
+  const total = mainImageList.value.length;
+  if (!total) return;
+  activeImageIndex.value = (activeImageIndex.value + 1) % total;
 };
 
 onMounted(async () => {
@@ -277,7 +308,7 @@ const loadProductData = async () => {
     const res = await getProductDetail(productId);
     if (res) {
       product.value = res;
-      currentImage.value = res.productImg;
+      activeImageIndex.value = 0;
       
       // 加载商家信息
       if (res.merchantId) {
@@ -304,6 +335,7 @@ const loadMerchantInfo = async (merchantId: number) => {
 };
 
 const handleAddToCart = async () => {
+  if (addCartLoading.value) return;
   if (!userStore.token) {
     ElMessage.warning('请先登录');
     router.push(`/login?redirect=${route.fullPath}`);
@@ -313,13 +345,36 @@ const handleAddToCart = async () => {
   if (!product.value.id) return;
 
   try {
+    addCartLoading.value = true;
     await addToCart({
       productId: product.value.id,
       productNum: quantity.value
     });
+    cartStore.addToCart({
+      id: 0,
+      productId: product.value.id,
+      productName: product.value.productName,
+      productImg: product.value.productImg,
+      price: Number(product.value.price || 0),
+      productNum: quantity.value,
+      stock: product.value.stock || 0,
+      selectStatus: true
+    });
+    void syncCartBadge();
     ElMessage.success('已加入购物车');
   } catch (error) {
     console.error(error);
+  } finally {
+    addCartLoading.value = false;
+  }
+};
+
+const syncCartBadge = async () => {
+  try {
+    const cartItems = await getCart();
+    cartStore.setCartList(cartItems || []);
+  } catch (error) {
+    console.warn('同步购物车角标失败', error);
   }
 };
 
@@ -409,10 +464,37 @@ const goToMerchant = () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     
     .main-image {
       width: 100%;
       height: 100%;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .gallery-nav.prev {
+      left: 12px;
+    }
+
+    .gallery-nav.next {
+      right: 12px;
     }
   }
   
@@ -574,6 +656,18 @@ const goToMerchant = () => {
         font-size: 13px;
       }
     }
+  }
+
+  .detail-image-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .detail-image-item {
+    width: 100%;
+    border-radius: 8px;
   }
 }
 

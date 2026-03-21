@@ -5,6 +5,7 @@ import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.merchant.ProductSaveDTO;
 import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.service.merchant.MerchantProductService;
+import com.agricultural.assistplatform.vo.merchant.MerchantProductDetailVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,12 @@ public class MerchantProductController {
     @PostMapping("/products")
     public Result<ProductInfo> add(@RequestBody ProductSaveDTO dto) {
         return Result.ok(merchantProductService.add(dto));
+    }
+
+    @Operation(summary = "商品详情")
+    @GetMapping("/products/{id}")
+    public Result<MerchantProductDetailVO> detail(@PathVariable Long id) {
+        return Result.ok(merchantProductService.detail(id));
     }
 
     @Operation(summary = "编辑商品")

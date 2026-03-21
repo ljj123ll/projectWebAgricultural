@@ -37,6 +37,7 @@ export interface Product {
   price: number;
   stock: number;
   productImg: string;
+  productDetailImg?: string;
   productDesc?: string;
   originPlace?: string;
   salesVolume?: number;

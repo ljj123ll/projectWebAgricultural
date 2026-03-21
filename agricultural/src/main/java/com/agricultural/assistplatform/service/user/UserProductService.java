@@ -43,7 +43,7 @@ public class UserProductService {
             q.and(w -> w.like(ProductInfo::getProductName, keyword).or().like(ProductInfo::getOriginPlace, keyword));
         }
         if (categoryId != null) q.eq(ProductInfo::getCategoryId, categoryId);
-        if (originPlace != null && !originPlace.isBlank()) q.eq(ProductInfo::getOriginPlace, originPlace);
+        if (originPlace != null && !originPlace.isBlank()) q.likeRight(ProductInfo::getOriginPlace, originPlace);
         if (isUnsalable != null) q.eq(ProductInfo::getIsUnsalable, isUnsalable);
         if ("sales".equals(sortBy)) q.orderByDesc(ProductInfo::getSalesVolume);
         else if ("price_asc".equals(sortBy)) q.orderByAsc(ProductInfo::getPrice);
@@ -66,6 +66,7 @@ public class UserProductService {
         vo.setCategoryId(p.getCategoryId());
         vo.setStock(p.getStock());
         vo.setProductImg(p.getProductImg());
+        vo.setProductDetailImg(p.getProductDetailImg());
         vo.setProductDesc(p.getProductDesc());
         vo.setOriginPlace(p.getOriginPlace());
         vo.setSalesVolume(p.getSalesVolume() != null ? p.getSalesVolume() : 0);
@@ -117,6 +118,7 @@ public class UserProductService {
         v.setProductImg(p.getProductImg());
         v.setScore(p.getScore() != null ? p.getScore() : java.math.BigDecimal.ZERO);
         v.setOriginPlace(p.getOriginPlace());
+        v.setCategoryId(p.getCategoryId());
         
         if (p.getCategoryId() != null) {
             ProductCategory category = productCategoryMapper.selectById(p.getCategoryId());

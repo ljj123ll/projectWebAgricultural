@@ -10,6 +10,7 @@ import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.vo.user.CartItemVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,20 +55,50 @@ public class UserCartService {
         if (p == null || p.getStatus() != 1) throw new BusinessException(ResultCode.BAD_REQUEST, "商品不存在或已下架");
         int stock = p.getStock() != null ? p.getStock() : 0;
         if (stock < num) throw new BusinessException(ResultCode.BAD_REQUEST, "当前仅 " + stock + " 件可购");
-        Cart exist = cartMapper.selectOne(new LambdaQueryWrapper<Cart>()
+        List<Cart> exists = cartMapper.selectList(new LambdaQueryWrapper<Cart>()
                 .eq(Cart::getUserId, userId).eq(Cart::getProductId, productId));
+        Cart exist = exists.isEmpty() ? null : exists.get(0);
         if (exist != null) {
-            int newNum = exist.getProductNum() + num;
+            int totalExistNum = exists.stream().mapToInt(item -> item.getProductNum() == null ? 0 : item.getProductNum()).sum();
+            int newNum = totalExistNum + num;
             if (stock < newNum) throw new BusinessException(ResultCode.BAD_REQUEST, "当前仅 " + stock + " 件可购");
             exist.setProductNum(newNum);
             cartMapper.updateById(exist);
+            if (exists.size() > 1) {
+                exists.stream().skip(1).forEach(item -> cartMapper.deleteById(item.getId()));
+            }
         } else {
             Cart cart = new Cart();
             cart.setUserId(userId);
             cart.setProductId(productId);
             cart.setProductNum(num);
             cart.setSelectStatus(1);
-            cartMapper.insert(cart);
+            try {
+                cartMapper.insert(cart);
+            } catch (DuplicateKeyException e) {
+                List<Cart> concurrentList = cartMapper.selectList(new LambdaQueryWrapper<Cart>()
+                        .eq(Cart::getUserId, userId).eq(Cart::getProductId, productId));
+                if (concurrentList.isEmpty()) {
+                    cartMapper.purgeDeletedByUserAndProduct(userId, productId);
+                    try {
+                        cartMapper.insert(cart);
+                        return;
+                    } catch (DuplicateKeyException retryException) {
+                        concurrentList = cartMapper.selectList(new LambdaQueryWrapper<Cart>()
+                                .eq(Cart::getUserId, userId).eq(Cart::getProductId, productId));
+                        if (concurrentList.isEmpty()) throw retryException;
+                    }
+                }
+                Cart concurrent = concurrentList.get(0);
+                int currentTotal = concurrentList.stream().mapToInt(item -> item.getProductNum() == null ? 0 : item.getProductNum()).sum();
+                int newNum = currentTotal + num;
+                if (stock < newNum) throw new BusinessException(ResultCode.BAD_REQUEST, "当前仅 " + stock + " 件可购");
+                concurrent.setProductNum(newNum);
+                cartMapper.updateById(concurrent);
+                if (concurrentList.size() > 1) {
+                    concurrentList.stream().skip(1).forEach(item -> cartMapper.deleteById(item.getId()));
+                }
+            }
         }
     }
 
