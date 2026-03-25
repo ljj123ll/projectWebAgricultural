@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.service.user;
 
+import cn.hutool.core.util.IdUtil;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.ResultCode;
@@ -7,6 +8,7 @@ import com.agricultural.assistplatform.dto.user.CreateOrderDTO;
 import com.agricultural.assistplatform.entity.*;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.*;
+import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
 import com.agricultural.assistplatform.vo.user.OrderItemVO;
 import com.agricultural.assistplatform.vo.user.OrderVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -18,11 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 订单状态 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消 6-支付异常
+ * 订单状态 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消 6-支付异常 7-售后中 8-已完成售后
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,7 @@ public class UserOrderService {
     private final UserAddressMapper userAddressMapper;
     private final PaymentRecordMapper paymentRecordMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
+    private final MerchantRealtimeEventService merchantRealtimeEventService;
 
     private static final int PAY_DEADLINE_MINUTES = 15;
 
@@ -91,7 +96,7 @@ public class UserOrderService {
             }
         }
         if (items.isEmpty() || merchantId == null) throw new BusinessException(ResultCode.BAD_REQUEST, "请选择商品");
-        String orderNo = "O" + System.currentTimeMillis() + (userId % 10000);
+        String orderNo = generateUniqueOrderNo();
         OrderMain main = new OrderMain();
         main.setOrderNo(orderNo);
         main.setUserId(userId);
@@ -102,6 +107,7 @@ public class UserOrderService {
         main.setReceiver(addr.getReceiver());
         main.setReceiverPhone(addr.getPhone());
         main.setReceiverAddress(addr.getProvince() + addr.getCity() + addr.getCounty() + addr.getTown() + addr.getDetailAddress());
+        main.setRemark(dto.getRemark());
         main.setMerchantId(merchantId);
         orderMainMapper.insert(main);
         for (OrderItem oi : items) {
@@ -116,13 +122,32 @@ public class UserOrderService {
         return getByOrderNo(orderNo);
     }
 
+    /**
+     * 订单号全局唯一，避免极端并发下同毫秒重复导致同单号多记录问题
+     */
+    private String generateUniqueOrderNo() {
+        while (true) {
+            String orderNo = "O" + IdUtil.getSnowflakeNextIdStr();
+            Long exists = orderMainMapper.selectCount(new LambdaQueryWrapper<OrderMain>().eq(OrderMain::getOrderNo, orderNo));
+            if (Objects.equals(exists, 0L)) {
+                return orderNo;
+            }
+        }
+    }
+
     public PageResult<OrderVO> list(Integer orderStatus, Integer pageNum, Integer pageSize) {
         Long userId = LoginContext.getUserId();
         if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
         LambdaQueryWrapper<OrderMain> q = new LambdaQueryWrapper<OrderMain>().eq(OrderMain::getUserId, userId);
-        if (orderStatus != null) q.eq(OrderMain::getOrderStatus, orderStatus);
+        if (orderStatus != null) {
+            if (orderStatus == 4) {
+                q.in(OrderMain::getOrderStatus, 4, 8);
+            } else {
+                q.eq(OrderMain::getOrderStatus, orderStatus);
+            }
+        }
         q.orderByDesc(OrderMain::getCreateTime);
         Page<OrderMain> page = orderMainMapper.selectPage(new Page<>(pageNum, pageSize), q);
         List<OrderVO> list = page.getRecords().stream().map(this::toVO).collect(Collectors.toList());
@@ -203,6 +228,7 @@ public class UserOrderService {
         if (main.getOrderStatus() != 3) throw new BusinessException(ResultCode.BAD_REQUEST, "仅待收货订单可确认收货");
         main.setOrderStatus(4);
         orderMainMapper.updateById(main);
+        merchantRealtimeEventService.publishRefresh(main.getMerchantId(), "ORDER_RECEIVED", main.getOrderNo());
     }
 
     public LogisticsInfo logistics(Long id) {
@@ -225,6 +251,7 @@ public class UserOrderService {
         vo.setReceiver(main.getReceiver());
         vo.setReceiverPhone(main.getReceiverPhone());
         vo.setReceiverAddress(main.getReceiverAddress());
+        vo.setRemark(main.getRemark());
         vo.setMerchantId(main.getMerchantId());
         vo.setCreateTime(main.getCreateTime());
         LogisticsInfo log = logisticsInfoMapper.selectOne(new LambdaQueryWrapper<LogisticsInfo>().eq(LogisticsInfo::getOrderNo, main.getOrderNo()));

@@ -211,7 +211,7 @@ const codeSending = ref(false)
 const codeSent = ref(false)
 const countdown = ref(60)
 
-const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload/qualification'
 const uploadHeaders = {
   // Add headers if needed, e.g., Authorization
 }

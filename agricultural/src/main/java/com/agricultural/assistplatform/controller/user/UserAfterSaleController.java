@@ -3,6 +3,7 @@ package com.agricultural.assistplatform.controller.user;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.user.AfterSaleApplyDTO;
+import com.agricultural.assistplatform.dto.user.AfterSaleReturnLogisticsDTO;
 import com.agricultural.assistplatform.service.user.UserAfterSaleService;
 import com.agricultural.assistplatform.vo.user.AfterSaleVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,5 +45,12 @@ public class UserAfterSaleController {
     @GetMapping("/after-sale/{no}")
     public Result<AfterSaleVO> detail(@PathVariable("no") String no) {
         return Result.ok(userAfterSaleService.getDetailByNo(no));
+    }
+
+    @Operation(summary = "填写退货快递单号")
+    @PutMapping("/after-sale/{id}/return-logistics")
+    public Result<Void> submitReturnLogistics(@PathVariable Long id, @Valid @RequestBody AfterSaleReturnLogisticsDTO dto) {
+        userAfterSaleService.submitReturnLogistics(id, dto);
+        return Result.ok();
     }
 }

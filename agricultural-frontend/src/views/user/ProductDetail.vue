@@ -244,15 +244,25 @@
                       <el-rate :model-value="review.score" disabled />
                     </div>
                     <p class="review-text">{{ review.content || '该用户未填写评价内容' }}</p>
-                    <div v-if="parseImages(review.imgUrls).length" class="review-image-list">
+                    <div v-if="parseReviewImages(review).length" class="review-image-list">
                       <el-image
-                        v-for="(img, idx) in parseImages(review.imgUrls)"
+                        v-for="(img, idx) in parseReviewImages(review)"
                         :key="`${review.id}-${idx}`"
                         :src="img"
-                        :preview-src-list="parseImages(review.imgUrls)"
+                        :preview-src-list="parseReviewImages(review)"
                         class="review-image-item"
                         fit="cover"
                         preview-teleported
+                      />
+                    </div>
+                    <div v-if="parseReviewVideos(review).length" class="review-video-list">
+                      <video
+                        v-for="(video, idx) in parseReviewVideos(review)"
+                        :key="`${review.id}-video-${idx}`"
+                        :src="video"
+                        class="review-video-item"
+                        controls
+                        preload="metadata"
                       />
                     </div>
                   </div>
@@ -348,6 +358,34 @@ const parseImages = (value?: string) => {
     .map(item => item.trim())
     .filter(Boolean)
     .map(url => getFullImageUrl(url));
+};
+
+const isVideoUrl = (url: string) => {
+  const target = (url || '').toLowerCase();
+  return target.endsWith('.mp4')
+    || target.endsWith('.webm')
+    || target.endsWith('.mov')
+    || target.endsWith('.avi')
+    || target.endsWith('.mkv')
+    || target.includes('video');
+};
+
+const parseReviewMedia = (review: ProductComment) => {
+  const source = review.mediaUrls || review.imgUrls || '';
+  if (!source) return [];
+  return source
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .map(url => getFullImageUrl(url));
+};
+
+const parseReviewImages = (review: ProductComment) => {
+  return parseReviewMedia(review).filter(url => !isVideoUrl(url));
+};
+
+const parseReviewVideos = (review: ProductComment) => {
+  return parseReviewMedia(review).filter(url => isVideoUrl(url));
 };
 
 const mainImageList = computed(() => parseImages(product.value.productImg));
@@ -894,6 +932,22 @@ const goToMerchant = () => {
     height: 88px;
     border-radius: 8px;
     overflow: hidden;
+  }
+
+  .review-video-list {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .review-video-item {
+    width: 176px;
+    height: 112px;
+    border-radius: 8px;
+    border: 1px solid #ebeef5;
+    background: #000;
+    object-fit: cover;
   }
 }
 

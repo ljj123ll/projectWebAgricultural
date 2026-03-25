@@ -39,15 +39,24 @@ public class MerchantStatsController {
     @GetMapping("/reconciliation")
     public Result<PageResult<ReconciliationDetail>> reconciliation(
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(merchantStatsService.reconciliation(pageNum, pageSize));
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Integer transferStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return Result.ok(merchantStatsService.reconciliation(pageNum, pageSize, transferStatus, keyword, startDate, endDate));
     }
 
     @Operation(summary = "补贴明细")
     @GetMapping("/subsidy")
     public Result<PageResult<SubsidyDetail>> subsidy(
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(merchantStatsService.subsidy(pageNum, pageSize));
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Integer auditStatus,
+            @RequestParam(required = false) Integer grantStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return Result.ok(merchantStatsService.subsidy(pageNum, pageSize, auditStatus, grantStatus, keyword, startDate, endDate));
     }
 }

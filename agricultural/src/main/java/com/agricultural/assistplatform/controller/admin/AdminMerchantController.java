@@ -4,6 +4,7 @@ import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.MerchantInfo;
 import com.agricultural.assistplatform.service.admin.AdminMerchantService;
+import com.agricultural.assistplatform.vo.admin.AdminMerchantDetailVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,5 +36,11 @@ public class AdminMerchantController {
         Integer status = body != null ? body.get("status") : null;
         adminMerchantService.updateStatus(id, status);
         return Result.ok();
+    }
+
+    @Operation(summary = "商家详情")
+    @GetMapping("/merchants/{id}")
+    public Result<AdminMerchantDetailVO> detail(@PathVariable Long id) {
+        return Result.ok(adminMerchantService.detail(id));
     }
 }

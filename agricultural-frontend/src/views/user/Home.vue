@@ -4,7 +4,7 @@
     <div class="top-nav">
       <div class="container">
         <div class="left">
-          <span>欢迎来到助农电商平台！</span>
+          <span>欢迎来到助农电商平台！精选产地好物，天天有新鲜。</span>
           <template v-if="!userInfo">
             <el-button link type="primary" @click="$router.push('/login')">请登录</el-button>
             <el-button link @click="$router.push('/register')">免费注册</el-button>
@@ -15,11 +15,7 @@
           </template>
         </div>
         <div class="right">
-          <el-button link @click="$router.push('/profile')">个人中心</el-button>
-          <el-button link @click="$router.push('/cart')">购物车</el-button>
-          <el-button link @click="$router.push('/orders')">我的订单</el-button>
           <el-button link @click="$router.push('/merchant/login')">商家入口</el-button>
-          <el-button link @click="$router.push('/admin/login')">管理员入口</el-button>
         </div>
       </div>
     </div>
@@ -28,7 +24,13 @@
     <div class="header-search">
       <div class="container">
         <div class="logo" @click="$router.push('/')">
-          <img src="https://via.placeholder.com/200x60/e6a23c/fff?text=助农电商" alt="Logo" />
+          <div class="logo-icon">
+            <el-icon><Shop /></el-icon>
+          </div>
+          <div class="logo-text">
+            <h1>助农电商</h1>
+            <p>田间好货 直达餐桌</p>
+          </div>
         </div>
         <div class="search-box">
           <el-input
@@ -42,13 +44,13 @@
               <el-button type="primary" class="search-btn" @click="handleSearch">搜索</el-button>
             </template>
           </el-input>
-          <div class="hot-keywords">
-            <span v-for="kw in ['猕猴桃', '土鸡蛋', '腊肉', '蜂蜜']" :key="kw" @click="quickSearch(kw)">{{ kw }}</span>
-          </div>
         </div>
         <div class="cart-entry" @click="$router.push('/cart')">
           <el-badge :value="cartCount" class="item" :hidden="cartCount === 0">
-            <el-button icon="ShoppingCart" size="large" plain>我的购物车</el-button>
+            <el-button size="large" plain>
+              <el-icon><ShoppingCart /></el-icon>
+              我的购物车
+            </el-button>
           </el-badge>
         </div>
       </div>
@@ -130,7 +132,7 @@
           <div class="more" @click="$router.push('/products')">查看更多 <el-icon><ArrowRight /></el-icon></div>
         </div>
         
-        <el-skeleton :loading="loading" animated :count="4" v-if="loading">
+        <el-skeleton :loading="loading" animated :count="4">
           <template #template>
             <el-col :span="6">
               <el-skeleton-item variant="image" style="width: 100%; height: 260px" />
@@ -147,7 +149,7 @@
                 @click="goToProduct(product.id)"
               >
                 <div class="image-wrapper">
-                  <img :src="getFullImageUrl(product.productImg)" class="product-image" />
+                  <img :src="getCoverImage(product.productImg)" class="product-image" />
                   <div v-if="product.stock <= 10" class="stock-badge">仅剩 {{ product.stock }} 件</div>
                 </div>
                 <div class="card-content">
@@ -172,33 +174,57 @@
       </section>
 
       <!-- 楼层：按分类 -->
-      <section class="section-block" v-for="cat in categoryOptions.slice(0, 3)" :key="cat.id">
+      <section class="section-block" v-for="cat in categoryOptions" :key="cat.id">
          <div class="section-header-large">
-          <h2>{{ cat.categoryName }}</h2>
+          <h2>{{ cat.categoryName }} · 销量榜</h2>
           <div class="more" @click="filterByCategory(cat.id)">更多 <el-icon><ArrowRight /></el-icon></div>
         </div>
-        <!-- 这里简单复用推荐商品列表，实际应该按分类加载 -->
-        <!-- 为演示效果，这里仅展示占位，实际开发需根据分类ID请求 -->
         <div class="product-grid">
-           <!-- 仅展示部分商品作为演示 -->
            <el-card
-                v-for="product in products.filter(p => p.categoryId === cat.id || !p.categoryId).slice(0, 4)"
+                v-for="(product, index) in categoryTopProductsMap[cat.id] || []"
                 :key="product.id"
                 class="product-card"
                 :body-style="{ padding: '0px' }"
                 shadow="hover"
                 @click="goToProduct(product.id)"
               >
+                <div class="rank-badge">TOP {{ index + 1 }}</div>
                 <div class="image-wrapper">
-                  <img :src="getFullImageUrl(product.productImg)" class="product-image" />
+                  <img :src="getCoverImage(product.productImg)" class="product-image" />
                 </div>
                 <div class="card-content">
                   <h3 class="product-name text-ellipsis">{{ product.productName }}</h3>
                    <div class="price-row">
                     <span class="price">¥{{ product.price }}</span>
+                    <span class="sales">已售 {{ product.salesVolume || 0 }}</span>
                   </div>
                 </div>
             </el-card>
+            <el-empty
+              v-if="(categoryTopProductsMap[cat.id] || []).length === 0"
+              description="该分类暂无商品"
+            />
+        </div>
+      </section>
+
+      <section class="section-block" v-if="newsList.length > 0">
+        <div class="section-header-large">
+          <h2>助农资讯精选</h2>
+          <div class="more" @click="$router.push('/news')">更多 <el-icon><ArrowRight /></el-icon></div>
+        </div>
+        <div class="news-grid">
+          <div
+            v-for="item in newsList.slice(0, 4)"
+            :key="item.id"
+            class="news-card"
+            @click="$router.push(`/news/${item.id}`)"
+          >
+            <img :src="item.coverImg || defaultNewsCover" class="news-cover" />
+            <div class="news-content">
+              <h4 class="text-ellipsis">{{ item.title }}</h4>
+              <p>{{ formatDate(item.createTime) }}</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -233,10 +259,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Menu, ArrowRight, TrendCharts, WarningFilled, Document, StarFilled, Location, Shop } from '@element-plus/icons-vue';
-import { searchProducts, hotProducts } from '@/apis/product';
+import { Menu, ArrowRight, TrendCharts, WarningFilled, Document, StarFilled, Location, Shop, ShoppingCart } from '@element-plus/icons-vue';
+import { searchProducts } from '@/apis/product';
 import { listNews, getUserInfo, logout as userLogout } from '@/apis/user';
 import type { Product, News, ProductCategory } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
@@ -257,6 +283,8 @@ const banners = [
 const searchKeyword = ref('');
 const categoryOptions = ref<ProductCategory[]>([]);
 const products = ref<Product[]>([]);
+const categoryTopProductsMap = reactive<Record<number, Product[]>>({});
+const defaultNewsCover = 'https://picsum.photos/seed/agri_home_news/800/450';
 
 const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((item) => ({
   id: item.value,
@@ -264,7 +292,6 @@ const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((it
   parentId: 0,
   categoryLevel: 1
 }));
-const hotProductList = ref<Product[]>([]);
 const newsList = ref<News[]>([]);
 
 onMounted(async () => {
@@ -276,8 +303,8 @@ onMounted(async () => {
   await Promise.all([
     loadCategories(),
     loadProducts(),
-    loadHotProducts(),
-    loadNews()
+    loadNews(),
+    loadCategoryTopProducts()
   ]);
 });
 
@@ -309,7 +336,7 @@ const loadCategories = async () => {
 const loadProducts = async () => {
   loading.value = true;
   try {
-    const res = await searchProducts({ pageNum: 1, pageSize: 8 });
+    const res = await searchProducts({ pageNum: 1, pageSize: 8, sortBy: 'sales' });
     if (res && res.list) {
       products.value = res.list;
     }
@@ -320,30 +347,52 @@ const loadProducts = async () => {
   }
 };
 
-const loadHotProducts = async () => {
+const loadNews = async () => {
   try {
-    const res = await hotProducts({ limit: 5 });
-    if (res) hotProductList.value = res;
+    const res = await listNews({ pageNum: 1, pageSize: 6 });
+    if (res && res.list) newsList.value = res.list;
   } catch (error) {}
 };
 
-const loadNews = async () => {
+const loadCategoryTopProducts = async () => {
   try {
-    const res = await listNews({ pageNum: 1, pageSize: 5 });
-    if (res && res.list) newsList.value = res.list;
-  } catch (error) {}
+    const tasks = fixedCategoryOptions.map((cat) =>
+      searchProducts({
+        pageNum: 1,
+        pageSize: 4,
+        categoryId: cat.id,
+        sortBy: 'sales'
+      })
+    );
+    const responses = await Promise.all(tasks);
+    fixedCategoryOptions.forEach((cat, index) => {
+      categoryTopProductsMap[cat.id] = responses[index]?.list || [];
+    });
+  } catch (error) {
+    console.error('加载分类热销商品失败', error);
+    fixedCategoryOptions.forEach((cat) => {
+      categoryTopProductsMap[cat.id] = [];
+    });
+  }
 };
 
 const getCategoryText = (product: Product) => {
   return getProductCategoryName(product.categoryId, product.categoryName) || '生鲜果蔬';
 };
 
-const handleSearch = () => {
-  router.push(`/products?keyword=${searchKeyword.value}`);
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw.split(',').map((item) => item.trim()).find(Boolean) || '';
+  return getFullImageUrl(first);
 };
 
-const quickSearch = (kw: string) => {
-  router.push(`/products?keyword=${kw}`);
+const formatDate = (value?: string) => {
+  if (!value) return '刚刚更新';
+  return String(value).slice(0, 10);
+};
+
+const handleSearch = () => {
+  router.push(`/products?keyword=${searchKeyword.value}`);
 };
 
 const filterByCategory = (id: number) => {
@@ -357,20 +406,37 @@ const goToProduct = (id: number) => {
 
 <style scoped lang="scss">
 .home-page {
-  background-color: #f5f5f5;
+  background: linear-gradient(180deg, #f1f8ef 0%, #f7f8fb 220px, #f7f8fb 100%);
   min-height: 100vh;
 }
 
-.container {
-  max-width: 1200px;
+.main-container {
+  width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 22px clamp(12px, 2.2vw, 20px) 0;
+  box-sizing: border-box;
+}
+
+.section-block {
+  background: #fff;
+  border: 1px solid #e3ebe1;
+  border-radius: 14px;
+  padding: 22px 22px 8px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 24px rgba(32, 64, 37, 0.05);
+}
+
+.container {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 0 clamp(12px, 2.2vw, 20px);
+  box-sizing: border-box;
 }
 
 /* 顶部通栏 */
 .top-nav {
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #edf5ea;
+  border-bottom: 1px solid #d8e7d2;
   height: 36px;
   line-height: 36px;
   font-size: 12px;
@@ -383,7 +449,7 @@ const goToProduct = (id: number) => {
     .left {
       display: flex;
       gap: 10px;
-      .username { color: #f56c6c; }
+      .username { color: #3f9f43; font-weight: 600; }
     }
     
     .right {
@@ -397,7 +463,8 @@ const goToProduct = (id: number) => {
 /* 头部搜索区 */
 .header-search {
   background: #fff;
-  padding: 25px 0;
+  padding: 22px 0;
+  border-bottom: 1px solid #e4ece2;
   
   .container {
     display: flex;
@@ -406,7 +473,37 @@ const goToProduct = (id: number) => {
     
     .logo {
       cursor: pointer;
-      img { height: 60px; }
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .logo-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #6dcf63, #3f9f43);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 8px 18px rgba(63, 159, 67, 0.28);
+      }
+
+      .logo-text {
+        h1 {
+          margin: 0;
+          font-size: 24px;
+          color: #21452a;
+          letter-spacing: 1px;
+        }
+
+        p {
+          margin: 2px 0 0;
+          color: #8a9687;
+          font-size: 12px;
+        }
+      }
     }
     
     .search-box {
@@ -414,8 +511,8 @@ const goToProduct = (id: number) => {
       
       .search-input {
         :deep(.el-input-group__append) {
-          background-color: #f56c6c;
-          border-color: #f56c6c;
+          background-color: #3f9f43;
+          border-color: #3f9f43;
           color: #fff;
           font-weight: bold;
           
@@ -423,12 +520,6 @@ const goToProduct = (id: number) => {
         }
       }
       
-      .hot-keywords {
-        margin-top: 6px;
-        font-size: 12px;
-        color: #999;
-        span { margin-right: 12px; cursor: pointer; &:hover { color: #f56c6c; } }
-      }
     }
     
     .cart-entry {
@@ -440,7 +531,7 @@ const goToProduct = (id: number) => {
 /* 主导航 */
 .main-nav {
   background: #fff;
-  border-bottom: 2px solid #f56c6c;
+  border-bottom: 1px solid #e4ece2;
   
   .container {
     display: flex;
@@ -448,7 +539,7 @@ const goToProduct = (id: number) => {
     
     .all-categories {
       width: 200px;
-      background: #f56c6c;
+      background: linear-gradient(135deg, #4fb84f, #3f9f43);
       color: #fff;
       display: flex;
       align-items: center;
@@ -473,7 +564,7 @@ const goToProduct = (id: number) => {
         font-weight: 500;
         
         &:hover { color: #f56c6c; }
-        &.active { color: #f56c6c; font-weight: bold; }
+        &.active { color: #3f9f43; font-weight: bold; }
       }
     }
   }
@@ -481,23 +572,22 @@ const goToProduct = (id: number) => {
 
 /* Banner 区 */
 .banner-section {
-  background: #f5f5f5;
-  margin-bottom: 20px;
+  background: transparent;
+  margin-bottom: 24px;
   
   .container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
     position: relative;
     
     .category-sidebar {
       width: 200px;
-      background: #333;
+      background: #2e4433;
       color: #fff;
-      position: absolute;
-      top: 0;
-      left: 20px;
-      z-index: 10;
+      position: relative;
+      z-index: 1;
       height: 400px;
-      background: rgba(0,0,0,0.7);
+      border-radius: 10px 0 0 10px;
       
       ul {
         list-style: none;
@@ -520,13 +610,17 @@ const goToProduct = (id: number) => {
     }
     
     .banner-content {
-      flex: 1;
-      margin-left: 200px;
+      width: 100%;
+      min-width: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(25, 50, 28, 0.15);
       
       .banner-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        border-radius: 10px;
       }
     }
   }
@@ -536,7 +630,7 @@ const goToProduct = (id: number) => {
 .feature-section {
   display: flex;
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 18px;
   
   .feature-card {
     flex: 1;
@@ -549,6 +643,7 @@ const goToProduct = (id: number) => {
     cursor: pointer;
     transition: transform 0.3s;
     box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+    border: 1px solid #e3ebe1;
     
     &:hover { transform: translateY(-5px); }
     
@@ -569,13 +664,13 @@ const goToProduct = (id: number) => {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   
   h2 {
     font-size: 24px;
     margin: 0;
-    color: #333;
-    .highlight { color: #f56c6c; }
+    color: #213229;
+    .highlight { color: #3f9f43; }
   }
   
   .more {
@@ -584,24 +679,38 @@ const goToProduct = (id: number) => {
     font-size: 14px;
     display: flex;
     align-items: center;
-    &:hover { color: #f56c6c; }
+    &:hover { color: #3f9f43; }
   }
 }
 
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 40px;
+  gap: 18px;
+  margin-bottom: 14px;
 }
 
 .product-card {
-  border: none;
+  border: 1px solid #e3ebe1;
+  border-radius: 10px;
   transition: all 0.3s;
   
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+
+  .rank-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    font-size: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff7a45, #f56c6c);
+    border-radius: 999px;
+    padding: 2px 8px;
+    box-shadow: 0 4px 10px rgba(245, 108, 108, 0.32);
   }
   
   .image-wrapper {
@@ -664,8 +773,8 @@ const goToProduct = (id: number) => {
 }
 
 .site-footer {
-  background: #333;
-  color: #999;
+  background: #223228;
+  color: #aeb8ad;
   padding: 40px 0 20px;
   margin-top: 40px;
   
@@ -682,13 +791,56 @@ const goToProduct = (id: number) => {
       gap: 10px;
       
       h4 { color: #fff; font-size: 16px; margin-bottom: 10px; }
-      a { color: #999; text-decoration: none; font-size: 14px; &:hover { color: #fff; } }
+      a { color: #aeb8ad; text-decoration: none; font-size: 14px; &:hover { color: #fff; } }
     }
   }
   
   .copyright {
     text-align: center;
     font-size: 12px;
+    color: #9ca89a;
+  }
+}
+
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.news-card {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e3ebe1;
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(18, 40, 20, 0.12);
+  }
+}
+
+.news-cover {
+  width: 100%;
+  height: 155px;
+  object-fit: cover;
+}
+
+.news-content {
+  padding: 12px 14px;
+
+  h4 {
+    margin: 0;
+    font-size: 15px;
+    color: #1f2c24;
+  }
+
+  p {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #8a9788;
   }
 }
 
@@ -698,9 +850,57 @@ const goToProduct = (id: number) => {
   text-overflow: ellipsis;
 }
 
+@media (max-width: 1024px) {
+  .feature-section {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .feature-section .feature-card {
+    flex: 0 0 calc(50% - 7px);
+    min-width: 0;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .main-nav .container {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .main-nav .nav-list {
+    min-width: max-content;
+  }
+}
+
 @media (max-width: 768px) {
+  .main-container {
+    padding: 12px 12px 0;
+  }
+
+  .section-block {
+    padding: 14px 12px 6px;
+    border-radius: 10px;
+  }
+
+  .feature-section {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .feature-section .feature-card {
+    flex: 0 0 calc(50% - 6px);
+    min-width: 0;
+  }
+
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .news-grid {
+    grid-template-columns: repeat(1, 1fr);
   }
   
   .header-search .container {
@@ -710,6 +910,10 @@ const goToProduct = (id: number) => {
   
   .banner-section .category-sidebar {
     display: none;
+  }
+
+  .banner-section .container {
+    display: block;
   }
   
   .banner-section .banner-content {

@@ -14,23 +14,39 @@
     <el-card>
       <el-table :data="commentList" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="productName" label="商品" min-width="150" />
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="rating" label="评分" width="120">
+        <el-table-column label="商品" min-width="150">
           <template #default="{ row }">
-            <el-rate v-model="row.rating" disabled show-score text-color="#ff9900" />
+            商品ID {{ row.productId }}
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="评价内容" min-width="200">
+        <el-table-column prop="userId" label="用户ID" width="100" />
+        <el-table-column label="评分" width="120">
+          <template #default="{ row }">
+            <el-rate :model-value="row.score" disabled show-score text-color="#ff9900" />
+          </template>
+        </el-table-column>
+        <el-table-column label="评价内容" min-width="200">
           <template #default="{ row }">
             <div class="content-text">{{ row.content }}</div>
-            <div v-if="row.images" class="content-images">
+            <div v-if="parseImages(row).length" class="content-images">
               <el-image 
-                v-for="(img, index) in parseImages(row.images)" 
+                v-for="(img, index) in parseImages(row)" 
                 :key="index"
                 :src="img"
-                :preview-src-list="parseImages(row.images)"
+                :preview-src-list="parseImages(row)"
+                preview-teleported
+                :z-index="6000"
                 class="comment-img"
+              />
+            </div>
+            <div v-if="parseVideos(row).length" class="content-videos">
+              <video
+                v-for="(video, index) in parseVideos(row)"
+                :key="`video-${index}`"
+                :src="video"
+                class="comment-video"
+                controls
+                preload="metadata"
               />
             </div>
           </template>
@@ -43,12 +59,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.auditStatus === 0">
-              <el-button link type="success" @click="handleAudit(row, 1)">通过</el-button>
-              <el-button link type="warning" @click="handleAudit(row, 2)">拒绝</el-button>
-            </template>
+            <el-button link type="success" @click="handleAudit(row, 1)">审核通过</el-button>
+            <el-button link type="warning" @click="handleAudit(row, 2)">审核不通过</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -71,6 +85,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listComments, auditComment, deleteComment } from '@/apis/admin'
+import { getFullImageUrl } from '@/utils/image';
 
 const auditStatus = ref<number | undefined>(undefined)
 const currentPage = ref(1)
@@ -80,14 +95,30 @@ const loading = ref(false)
 
 const commentList = ref<any[]>([])
 
-const parseImages = (imagesStr: string) => {
-  if (!imagesStr) return [];
+const parseMedia = (row: any) => {
+  const mediaStr = row?.mediaUrls || row?.imgUrls || '';
+  if (!mediaStr) return [];
   try {
-    return JSON.parse(imagesStr);
+    const parsed = JSON.parse(mediaStr);
+    if (Array.isArray(parsed)) return parsed.map(item => getFullImageUrl(String(item || ''))).filter(Boolean);
   } catch (e) {
-    return imagesStr.split(',');
+    // 非 JSON 数组时按逗号处理
   }
+  return mediaStr.split(',').map((item: string) => getFullImageUrl(item.trim())).filter(Boolean);
 }
+
+const isVideoUrl = (url: string) => {
+  const target = (url || '').toLowerCase();
+  return target.endsWith('.mp4')
+    || target.endsWith('.webm')
+    || target.endsWith('.mov')
+    || target.endsWith('.avi')
+    || target.endsWith('.mkv')
+    || target.includes('video');
+}
+
+const parseImages = (row: any) => parseMedia(row).filter((url: string) => !isVideoUrl(url))
+const parseVideos = (row: any) => parseMedia(row).filter((url: string) => isVideoUrl(url))
 
 const getStatusType = (status: number) => {
   const map: Record<number, string> = {
@@ -176,15 +207,34 @@ const handleDelete = (row: any) => {
   flex-wrap: wrap;
 }
 
+.content-videos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
 .comment-img {
   width: 60px;
   height: 60px;
   border-radius: 4px;
 }
 
+.comment-video {
+  width: 160px;
+  height: 100px;
+  border-radius: 6px;
+  border: 1px solid #ebeef5;
+  background: #000;
+}
+
 .pagination {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+:global(.el-image-viewer__wrapper) {
+  z-index: 6000 !important;
 }
 </style>

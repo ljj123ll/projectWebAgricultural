@@ -70,7 +70,7 @@ export interface Order {
   id: number;
   orderNo: string;
   totalAmount: number;
-  orderStatus: number; // 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消
+  orderStatus: number; // 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消 6-支付异常 7-售后中 8-已完成售后
   createTime: string;
   updateTime?: string;
   orderItems: OrderItem[];
@@ -81,6 +81,7 @@ export interface Order {
   receiver?: string;
   receiverPhone?: string;
   receiverAddress?: string;
+  remark?: string;
   logisticsCompany?: string;
   logisticsNo?: string;
   logisticsStatus?: number;
@@ -104,6 +105,23 @@ export interface MerchantInfo {
   contactPerson: string;
   phone: string;
   auditStatus: number; // 0-待审核 1-通过 2-驳回
+}
+
+export interface SysRole {
+  id: number;
+  roleName: string;
+  roleCode: string;
+  description?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface SysPermission {
+  id: number;
+  permName: string;
+  permCode: string;
+  parentId?: number;
+  createTime?: string;
 }
 
 export interface NewsCategory {
@@ -143,6 +161,7 @@ export interface Comment {
   score: number;
   content?: string;
   imgUrls?: string;
+  mediaUrls?: string;
   auditStatus?: number;
   createTime?: string;
 }
@@ -157,6 +176,7 @@ export interface ProductComment {
   score: number;
   content?: string;
   imgUrls?: string;
+  mediaUrls?: string;
   createTime?: string;
 }
 
@@ -168,6 +188,10 @@ export interface AfterSale {
   applyReason: string;
   proofImgUrls?: string;
   afterSaleStatus: number;
+  originOrderStatus?: number;
+  returnLogisticsCompany?: string;
+  returnLogisticsNo?: string;
+  returnShipTime?: string;
   handleResult?: string;
   createTime?: string;
 }
@@ -179,6 +203,18 @@ export interface AfterSaleMessage {
   senderId: number;
   content: string;
   isRead: number;
+  createTime?: string;
+}
+
+export interface UserMessage {
+  id: number;
+  userId: number;
+  senderType: number; // 1-系统 2-商家 3-管理员
+  title?: string;
+  content: string;
+  refType?: string;
+  refNo?: string;
+  isRead: number; // 0-未读 1-已读
   createTime?: string;
 }
 
@@ -208,6 +244,97 @@ export interface MerchantAccount {
   accountName: string;
   verifyStatus?: number;
   auditStatus?: number;
+  verifyAmount?: number;
+  verifyExpireTime?: string;
+  verifiedTime?: string;
+  auditSubmitTime?: string;
+  rejectReason?: string;
+}
+
+export interface MerchantAuditStatus {
+  auditStatus: number;
+  rejectReason?: string;
+  status?: number;
+}
+
+export interface MerchantAccountOverview {
+  balance: number;
+  totalIncome: number;
+  totalServiceFee: number;
+  todayIncome: number;
+  weekIncome: number;
+  monthIncome: number;
+  pendingTransferCount: number;
+  failedTransferCount: number;
+  manualFallbackCount: number;
+  subsidyTotal: number;
+  subsidyMonth: number;
+  subsidyOrderCount: number;
+  subsidyPendingCount: number;
+  subsidyRejectedCount: number;
+  hasPassedReceivingAccount: boolean;
+  approvedAccountType?: number;
+  approvedAccountName?: string;
+  approvedAccountNoMask?: string;
+  withdrawAvailableAmount?: number;
+  withdrawFrozenAmount?: number;
+  withdrawSuccessAmount?: number;
+}
+
+export interface ReconciliationRecord {
+  id: number;
+  merchantId: number;
+  orderNo?: string;
+  orderAmount: number;
+  actualIncome: number;
+  serviceFee: number;
+  paymentTime?: string;
+  transferStatus?: number; // 0-待打款 1-已打款 2-失败待重试 3-人工兜底
+  transferTime?: string;
+  transferNo?: string;
+  retryCount?: number;
+  createTime?: string;
+}
+
+export interface SubsidyRecord {
+  id: number;
+  merchantId: number;
+  orderNo?: string;
+  subsidyType: string;
+  subsidyAmount: number;
+  auditStatus?: number; // 0-待审核 1-已通过 2-已驳回
+  grantStatus?: number; // 0-待发放 1-已发放
+  grantTime?: string;
+  rejectReason?: string;
+  createTime?: string;
+}
+
+export interface MerchantWithdrawRecord {
+  id: number;
+  withdrawNo: string;
+  merchantId: number;
+  accountId: number;
+  accountType: number;
+  accountNo: string;
+  accountName: string;
+  applyAmount: number;
+  feeAmount: number;
+  actualAmount: number;
+  status: number; // 0-待审核 1-待打款 2-已驳回 3-打款成功 4-打款失败待重试 5-打款失败人工处理 6-已取消
+  auditAdminId?: number;
+  auditRemark?: string;
+  auditTime?: string;
+  transferNo?: string;
+  transferTime?: string;
+  retryCount?: number;
+  failReason?: string;
+  createTime?: string;
+}
+
+export interface RegionNode {
+  value: string;
+  label: string;
+  children?: RegionNode[];
 }
 
 export interface LogisticsInfo {
@@ -230,4 +357,16 @@ export interface PaymentRecord {
   refundStatus?: number;
   refundAmount?: number;
   refundTime?: string;
+}
+
+export interface OrderChatMessage {
+  id: number;
+  orderNo: string;
+  senderType: number; // 1-用户 2-商家 3-管理员
+  senderId: number;
+  messageType?: number; // 1-文本 2-图片 3-视频
+  content: string;
+  mediaUrl?: string;
+  mediaName?: string;
+  createTime?: string;
 }

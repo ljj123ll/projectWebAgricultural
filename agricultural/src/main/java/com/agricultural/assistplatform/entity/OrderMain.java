@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * 订单主表
- * 订单状态 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消 6-支付异常
+ * 订单状态 1-待付款 2-待发货 3-待收货 4-已完成 5-已取消 6-支付异常 7-售后中 8-已完成售后
  */
 @Data
 @TableName("order_main")
@@ -28,6 +28,7 @@ public class OrderMain {
     private String receiver;
     private String receiverPhone;
     private String receiverAddress;
+    private String remark;
     private Long merchantId;
     @TableLogic
     private Integer deleteFlag;

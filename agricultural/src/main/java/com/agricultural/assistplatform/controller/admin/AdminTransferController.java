@@ -5,6 +5,7 @@ import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.OrderMain;
 import com.agricultural.assistplatform.entity.ReconciliationDetail;
 import com.agricultural.assistplatform.service.admin.AdminTransferService;
+import com.agricultural.assistplatform.vo.admin.RiskOrderVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -39,5 +40,13 @@ public class AdminTransferController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.ok(adminTransferService.logisticsAbnormal(pageNum, pageSize));
+    }
+
+    @Operation(summary = "异常订单风控（同址大额/高频）")
+    @GetMapping("/orders/risk-abnormal")
+    public Result<PageResult<RiskOrderVO>> riskAbnormal(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return Result.ok(adminTransferService.riskOrders(pageNum, pageSize));
     }
 }

@@ -106,6 +106,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '我的评价', requiresAuth: true }
       },
       {
+        path: 'messages',
+        name: 'UserMessages',
+        component: () => import('@/views/user/Messages.vue'),
+        meta: { title: '我的消息', requiresAuth: true }
+      },
+      {
         path: 'after-sale/:orderNo',
         name: 'AfterSaleApply',
         component: () => import('@/views/user/AfterSaleApply.vue'),
@@ -267,10 +273,40 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '订单管理' }
       },
       {
+        path: 'after-sales',
+        name: 'AdminAfterSales',
+        component: () => import('@/views/admin/AfterSales.vue'),
+        meta: { title: '售后裁决' }
+      },
+      {
         path: 'payments',
         name: 'AdminPayments',
         component: () => import('@/views/admin/Payments.vue'),
         meta: { title: '资金管控' }
+      },
+      {
+        path: 'risk-monitor',
+        name: 'AdminRiskMonitor',
+        component: () => import('@/views/admin/RiskMonitor.vue'),
+        meta: { title: '风控监控' }
+      },
+      {
+        path: 'transfers',
+        name: 'AdminTransfers',
+        component: () => import('@/views/admin/Transfers.vue'),
+        meta: { title: '打款台账' }
+      },
+      {
+        path: 'merchant-accounts',
+        name: 'AdminMerchantAccounts',
+        component: () => import('@/views/admin/MerchantAccounts.vue'),
+        meta: { title: '收款账户审核' }
+      },
+      {
+        path: 'withdrawals',
+        name: 'AdminWithdrawals',
+        component: () => import('@/views/admin/Withdrawals.vue'),
+        meta: { title: '提现审核' }
       },
       {
         path: 'comments',
@@ -295,6 +331,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'AdminLogs',
         component: () => import('@/views/admin/Logs.vue'),
         meta: { title: '系统日志' }
+      },
+      {
+        path: 'roles',
+        name: 'AdminRoles',
+        component: () => import('@/views/admin/Roles.vue'),
+        meta: { title: '角色权限' }
       },
       {
         path: 'backup',

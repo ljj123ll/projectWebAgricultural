@@ -41,14 +41,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { View, ArrowLeft, UserFilled } from '@element-plus/icons-vue';
+import { useRoute } from 'vue-router';
+import { View, ArrowLeft } from '@element-plus/icons-vue';
 import { getNewsDetail } from '@/apis/user';
 import { getFullImageUrl } from '@/utils/image';
 import { MdPreview } from 'md-editor-v3';
 import 'md-editor-v3/lib/preview.css';
 
-const router = useRouter();
 const route = useRoute();
 const id = 'preview-only';
 const loading = ref(false);
@@ -79,51 +78,56 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .news-detail-page {
-  background-color: #f4f5f5;
+  background: linear-gradient(180deg, #f3f8f1 0%, #f6f8fc 28%, #f6f8fc 100%);
   min-height: 100vh;
-  padding-top: 20px;
+  padding: 20px 0 28px;
 }
 
 .main-container {
-  max-width: 800px;
+  width: min(1120px, 100%);
   margin: 0 auto;
+  padding: 0 clamp(12px, 2.5vw, 24px);
+  box-sizing: border-box;
 }
 
 .back-btn {
-  margin-bottom: 20px;
-  font-size: 16px;
-  color: #606266;
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: #5a6472;
   
   &:hover {
-    color: var(--el-color-primary);
+    color: #4caa45;
   }
 }
 
 .article-container {
-  background: #fff;
-  border-radius: 4px;
-  padding: 32px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 18px;
+  padding: clamp(20px, 3.2vw, 40px);
   min-height: 500px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid #e4ece1;
+  box-shadow: 0 14px 38px rgba(31, 55, 37, 0.08);
 }
 
 .article-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf2ea;
   
   .news-title {
-    font-size: 32px;
+    font-size: clamp(28px, 3.8vw, 40px);
     font-weight: 600;
-    color: #252933;
-    line-height: 1.31;
-    margin: 0 0 20px 0;
+    color: #1f2f28;
+    line-height: 1.35;
+    margin: 0 0 16px 0;
   }
   
   .meta-info {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 20px;
-    color: #8a919f;
+    gap: 14px 20px;
+    color: #7a8493;
     font-size: 14px;
     
     .meta-item {
@@ -133,51 +137,116 @@ onMounted(async () => {
     }
     
     .author {
-      color: #515767;
+      color: #445064;
       font-weight: 500;
       
       .author-avatar {
-        background: #e4e6eb;
+        background: #dbe7d8;
         color: #fff;
       }
+    }
+
+    .category-tag {
+      border-color: #d7ead2;
+      color: #469c3f;
+      background: #f2fbef;
+      border-radius: 999px;
+      padding: 0 10px;
     }
   }
 }
 
 .article-cover {
-  margin: 0 -32px 32px;
-  max-height: 400px;
+  margin: 0 0 24px;
+  max-height: 520px;
   overflow: hidden;
   display: flex;
   justify-content: center;
-  background: #f8f9fa;
+  background: linear-gradient(180deg, #f2f6f4 0%, #f7fbf9 100%);
+  border-radius: 14px;
+  border: 1px solid #e8efe7;
   
   img {
-    max-width: 100%;
-    max-height: 400px;
-    object-fit: contain;
+    width: 100%;
+    max-height: 520px;
+    object-fit: cover;
   }
 }
 
 .article-content {
+  color: #253244;
+
   :deep(.md-editor-preview-wrapper) {
     padding: 0;
+  }
+
+  :deep(.md-editor-preview) {
+    line-height: 1.85;
+    color: #253244;
+    font-size: 16px;
+  }
+
+  :deep(h1, h2, h3, h4) {
+    color: #1f2f28;
+    margin-top: 1.4em;
+  }
+
+  :deep(p) {
+    margin: 1em 0;
+    word-break: break-word;
+  }
+
+  :deep(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+  }
+
+  :deep(table) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  :deep(pre) {
+    overflow-x: auto;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 992px) {
+  .article-container {
+    border-radius: 14px;
+  }
+
+  .article-header .meta-info {
+    gap: 10px 14px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 768px) {
   .news-detail-page {
-    padding: 0;
+    padding: 10px 0 14px;
+  }
+
+  .main-container {
+    padding: 0 10px;
   }
   
   .article-container {
-    padding: 20px 16px;
-    border-radius: 0;
+    padding: 16px 14px;
+    border-radius: 12px;
+    min-height: 320px;
   }
   
   .article-header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+
     .news-title {
       font-size: 24px;
+      margin-bottom: 10px;
     }
     
     .meta-info {
@@ -187,7 +256,19 @@ onMounted(async () => {
   }
   
   .article-cover {
-    margin: 0 -16px 20px;
+    margin: 0 0 14px;
+    border-radius: 10px;
+
+    img {
+      max-height: 260px;
+    }
+  }
+
+  .article-content {
+    :deep(.md-editor-preview) {
+      font-size: 15px;
+      line-height: 1.75;
+    }
   }
 }
 </style>

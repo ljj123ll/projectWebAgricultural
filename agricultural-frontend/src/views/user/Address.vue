@@ -62,6 +62,9 @@
           <el-cascader
             v-model="addressForm.region"
             :options="regionOptions"
+            :props="cascaderProps"
+            clearable
+            filterable
             placeholder="请选择省/市/区"
             style="width: 100%"
           />
@@ -94,13 +97,22 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ArrowLeft, Edit, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '@/apis/user'
-import type { UserAddress } from '@/types'
+import { regionData } from 'element-china-area-data'
+import { getAddresses, addAddress, updateAddress, deleteAddress, getRegionTree } from '@/apis/user'
+import type { UserAddress, RegionNode } from '@/types'
 
 const addressList = ref<UserAddress[]>([])
+const regionOptions = ref<RegionNode[]>([])
 const showAddDialog = ref(false)
 const isEdit = ref(false)
 const editingId = ref<number | null>(null)
+const cascaderProps = {
+  value: 'value',
+  label: 'label',
+  children: 'children',
+  emitPath: true,
+  checkStrictly: true
+}
 
 const addressForm = reactive({
   receiver: '',
@@ -110,55 +122,33 @@ const addressForm = reactive({
   isDefault: 0 // 0-否 1-是
 })
 
-// 模拟地区数据
-const regionOptions = [
-  {
-    value: '四川省',
-    label: '四川省',
-    children: [
-      {
-        value: '成都市',
-        label: '成都市',
-        children: [
-          {
-            value: '锦江区',
-            label: '锦江区',
-            children: [
-              { value: '春熙路街道', label: '春熙路街道' },
-              { value: '盐市口街道', label: '盐市口街道' }
-            ]
-          },
-          {
-            value: '蒲江县',
-            label: '蒲江县',
-            children: [
-              { value: '寿安镇', label: '寿安镇' },
-              { value: '鹤山街道', label: '鹤山街道' }
-            ]
-          }
-        ]
-      },
-      {
-        value: '绵阳市',
-        label: '绵阳市',
-        children: [
-          {
-            value: '三台县',
-            label: '三台县',
-            children: [
-              { value: '芦溪镇', label: '芦溪镇' },
-              { value: '塔山镇', label: '塔山镇' }
-            ]
-          }
-        ]
-      }
-    ]
-  }
-]
-
 onMounted(() => {
+  loadRegionOptions()
   loadAddresses()
 })
+
+const normalizeRegionNodes = (nodes: any[]): RegionNode[] => {
+  return (nodes || []).map((node) => ({
+    value: String(node?.value ?? node?.label ?? ''),
+    label: String(node?.label ?? node?.value ?? ''),
+    children: normalizeRegionNodes(node?.children || [])
+  }))
+}
+
+const loadRegionOptions = async () => {
+  try {
+    const list = await getRegionTree()
+    const normalized = normalizeRegionNodes((list || []) as any[])
+    if (!normalized.length) {
+      throw new Error('地区数据为空')
+    }
+    regionOptions.value = normalized
+  } catch (error) {
+    console.error('加载地区数据失败', error)
+    // 兜底：接口失败时使用本地地区数据，避免无法选择地区
+    regionOptions.value = normalizeRegionNodes(regionData as any[])
+  }
+}
 
 const loadAddresses = async () => {
   try {
@@ -201,8 +191,8 @@ const handleDelete = (id: number) => {
 }
 
 const saveAddress = async () => {
-  if (!addressForm.receiver || !addressForm.phone || !addressForm.detailAddress || addressForm.region.length === 0) {
-    ElMessage.warning('请填写完整信息')
+  if (!addressForm.receiver || !addressForm.phone || !addressForm.detailAddress || addressForm.region.length < 3) {
+    ElMessage.warning('请完整选择到区/县并填写详细地址')
     return
   }
 

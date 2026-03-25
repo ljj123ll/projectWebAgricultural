@@ -157,7 +157,7 @@ import { getShopInfo, updateShopInfo } from '@/apis/merchant'
 import type { UploadProps } from 'element-plus'
 import { getFullImageUrl } from '@/utils/image'
 
-const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload/qualification'
 
 const shopForm = reactive({
   name: '',
@@ -252,12 +252,6 @@ const saveShop = async () => {
   } catch (error) {
     console.error('Failed to save shop info', error);
   }
-}
-
-const getFullImageUrl = (url: string) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `http://localhost:8080/api${url}`; // Update with actual backend base URL if needed
 }
 
 onMounted(() => {

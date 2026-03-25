@@ -18,6 +18,6 @@ public class ProductCommentVO {
     private Integer score;
     private String content;
     private String imgUrls;
+    private String mediaUrls;
     private LocalDateTime createTime;
 }
-

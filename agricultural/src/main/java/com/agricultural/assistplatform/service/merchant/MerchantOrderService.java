@@ -9,6 +9,9 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.LogisticsInfoMapper;
 import com.agricultural.assistplatform.mapper.OrderItemMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
+import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.UserMessageService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.merchant.MerchantOrderVO;
 import com.agricultural.assistplatform.vo.user.OrderItemVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -28,6 +31,9 @@ public class MerchantOrderService {
     private final OrderMainMapper orderMainMapper;
     private final OrderItemMapper orderItemMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
+    private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final UserMessageService userMessageService;
 
     public com.agricultural.assistplatform.common.PageResult<MerchantOrderVO> list(Integer orderStatus, Integer pageNum, Integer pageSize) {
         Long merchantId = LoginContext.getUserId();
@@ -35,7 +41,13 @@ public class MerchantOrderService {
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
         LambdaQueryWrapper<OrderMain> q = new LambdaQueryWrapper<OrderMain>().eq(OrderMain::getMerchantId, merchantId);
-        if (orderStatus != null) q.eq(OrderMain::getOrderStatus, orderStatus);
+        if (orderStatus != null) {
+            if (orderStatus == 4) {
+                q.in(OrderMain::getOrderStatus, 4, 8);
+            } else {
+                q.eq(OrderMain::getOrderStatus, orderStatus);
+            }
+        }
         q.orderByDesc(OrderMain::getCreateTime);
         Page<OrderMain> page = orderMainMapper.selectPage(new Page<>(pageNum, pageSize), q);
         List<MerchantOrderVO> list = page.getRecords().stream().map(this::toVO).collect(Collectors.toList());
@@ -47,6 +59,18 @@ public class MerchantOrderService {
         if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
                 .eq(OrderMain::getId, id).eq(OrderMain::getMerchantId, merchantId));
+        if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
+        return toVO(main);
+    }
+
+    public MerchantOrderVO getByOrderNo(String orderNo) {
+        Long merchantId = LoginContext.getUserId();
+        if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        if (orderNo == null || orderNo.isBlank()) throw new BusinessException(ResultCode.BAD_REQUEST, "订单号不能为空");
+        OrderMain main = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
+                .eq(OrderMain::getOrderNo, orderNo)
+                .eq(OrderMain::getMerchantId, merchantId)
+                .last("LIMIT 1"));
         if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
         return toVO(main);
     }
@@ -78,6 +102,15 @@ public class MerchantOrderService {
             newLog.setLogisticsStatus(1);
             logisticsInfoMapper.insert(newLog);
         }
+        merchantRealtimeEventService.publishRefresh(merchantId, "ORDER_SHIPPED", main.getOrderNo());
+        userRealtimeEventService.publishRefresh(main.getUserId(), "ORDER_SHIPPED", main.getOrderNo());
+        userMessageService.createMerchantMessage(
+                main.getUserId(),
+                "订单已发货",
+                "您的订单 " + main.getOrderNo() + " 已由商家发货，请留意物流信息。",
+                "order",
+                main.getOrderNo()
+        );
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -102,6 +135,7 @@ public class MerchantOrderService {
         vo.setReceiver(main.getReceiver());
         vo.setReceiverPhone(main.getReceiverPhone());
         vo.setReceiverAddress(main.getReceiverAddress());
+        vo.setRemark(main.getRemark());
         vo.setCreateTime(main.getCreateTime());
         LogisticsInfo log = logisticsInfoMapper.selectOne(new LambdaQueryWrapper<LogisticsInfo>().eq(LogisticsInfo::getOrderNo, main.getOrderNo()));
         if (log != null) {

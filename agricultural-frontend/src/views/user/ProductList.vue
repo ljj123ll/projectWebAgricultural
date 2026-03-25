@@ -7,7 +7,7 @@
           <el-col :xs="24" :sm="8" :md="6">
             <el-input
               v-model="searchKeyword"
-              placeholder="搜索商品名称、商家..."
+              placeholder="搜索商品名称、产地、店铺名、商家名"
               size="large"
               clearable
               @keyup.enter="handleSearch"

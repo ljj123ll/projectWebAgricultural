@@ -4,23 +4,22 @@ import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.dto.user.CommentSubmitDTO;
+import com.agricultural.assistplatform.dto.user.CommentUpdateDTO;
 import com.agricultural.assistplatform.entity.Comment;
 import com.agricultural.assistplatform.entity.OrderMain;
 import com.agricultural.assistplatform.entity.UserInfo;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.CommentMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
-import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.UserInfoMapper;
+import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.vo.user.ProductCommentVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +33,8 @@ public class UserCommentService {
 
     private final CommentMapper commentMapper;
     private final OrderMainMapper orderMainMapper;
-    private final ProductInfoMapper productInfoMapper;
     private final UserInfoMapper userInfoMapper;
+    private final UserMessageService userMessageService;
 
     @Transactional(rollbackFor = Exception.class)
     public void submit(CommentSubmitDTO dto) {
@@ -55,9 +54,47 @@ public class UserCommentService {
         c.setScore(dto.getScore());
         c.setContent(dto.getContent());
         c.setImgUrls(dto.getImgUrls());
-        c.setAuditStatus(1);
+        c.setMediaUrls(normalizeMediaUrls(dto.getMediaUrls(), dto.getImgUrls()));
+        c.setAuditStatus(0);
         commentMapper.insert(c);
-        updateProductScore(dto.getProductId());
+        userMessageService.createSystemMessage(
+                userId,
+                "评论提交成功",
+                "您的评论已提交，等待管理员审核后即可查看评论。",
+                "comment",
+                String.valueOf(c.getId())
+        );
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void update(Long id, CommentUpdateDTO dto) {
+        Long userId = LoginContext.getUserId();
+        if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
+        if (id == null) throw new BusinessException(ResultCode.BAD_REQUEST, "评论ID不能为空");
+
+        Comment comment = commentMapper.selectOne(new LambdaQueryWrapper<Comment>()
+                .eq(Comment::getId, id)
+                .eq(Comment::getUserId, userId)
+                .last("LIMIT 1"));
+        if (comment == null) throw new BusinessException(ResultCode.NOT_FOUND, "评论不存在");
+        if (!Integer.valueOf(2).equals(comment.getAuditStatus())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "仅审核未通过评论可修改");
+        }
+
+        comment.setScore(dto.getScore());
+        comment.setContent(dto.getContent());
+        comment.setImgUrls(dto.getImgUrls());
+        comment.setMediaUrls(normalizeMediaUrls(dto.getMediaUrls(), dto.getImgUrls()));
+        comment.setAuditStatus(0);
+        commentMapper.updateById(comment);
+
+        userMessageService.createSystemMessage(
+                userId,
+                "评论修改成功",
+                "您的评论已重新提交，等待管理员审核后即可查看评论。",
+                "comment",
+                String.valueOf(comment.getId())
+        );
     }
 
     public PageResult<Comment> list(Integer pageNum, Integer pageSize) {
@@ -108,6 +145,7 @@ public class UserCommentService {
             vo.setScore(comment.getScore());
             vo.setContent(comment.getContent());
             vo.setImgUrls(comment.getImgUrls());
+            vo.setMediaUrls(comment.getMediaUrls());
             vo.setCreateTime(comment.getCreateTime());
 
             UserInfo user = userMap.get(comment.getUserId());
@@ -122,13 +160,10 @@ public class UserCommentService {
         return PageResult.of(page.getTotal(), list);
     }
 
-    private void updateProductScore(Long productId) {
-        List<Comment> list = commentMapper.selectList(new LambdaQueryWrapper<Comment>()
-                .eq(Comment::getProductId, productId).eq(Comment::getAuditStatus, 1));
-        if (list.isEmpty()) return;
-        double avg = list.stream().mapToInt(Comment::getScore).average().orElse(5);
-        productInfoMapper.update(null, new LambdaUpdateWrapper<com.agricultural.assistplatform.entity.ProductInfo>()
-                .eq(com.agricultural.assistplatform.entity.ProductInfo::getId, productId)
-                .set(com.agricultural.assistplatform.entity.ProductInfo::getScore, BigDecimal.valueOf(avg)));
+    private String normalizeMediaUrls(String mediaUrls, String imgUrls) {
+        if (mediaUrls != null && !mediaUrls.isBlank()) {
+            return mediaUrls;
+        }
+        return imgUrls;
     }
 }

@@ -41,9 +41,34 @@
           <template #title>订单管理</template>
         </el-menu-item>
 
+        <el-menu-item index="/admin/after-sales">
+          <el-icon><Service /></el-icon>
+          <template #title>售后裁决</template>
+        </el-menu-item>
+
         <el-menu-item index="/admin/payments">
           <el-icon><Wallet /></el-icon>
           <template #title>资金管控</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin/risk-monitor">
+          <el-icon><Warning /></el-icon>
+          <template #title>风控监控</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin/transfers">
+          <el-icon><Wallet /></el-icon>
+          <template #title>打款台账</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin/merchant-accounts">
+          <el-icon><Wallet /></el-icon>
+          <template #title>收款账户审核</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin/withdrawals">
+          <el-icon><Wallet /></el-icon>
+          <template #title>提现审核</template>
         </el-menu-item>
 
         <el-menu-item index="/admin/comments">
@@ -66,6 +91,7 @@
             <el-icon><Setting /></el-icon>
             <span>系统运维</span>
           </template>
+          <el-menu-item index="/admin/roles">角色权限</el-menu-item>
           <el-menu-item index="/admin/logs">系统日志</el-menu-item>
           <el-menu-item index="/admin/backup">数据备份</el-menu-item>
         </el-sub-menu>

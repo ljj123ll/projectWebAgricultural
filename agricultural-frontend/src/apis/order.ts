@@ -22,6 +22,8 @@ export function payOrder(id: number, success: boolean = true) {
 }
 export const receiveOrder = (id: number) => request.put(`/user/orders/${id}/receive`);
 export const getLogistics = (id: number) => request.get<any, LogisticsInfo>(`/user/orders/${id}/logistics`);
+export const getLogisticsByOrderNo = (orderNo: string) =>
+  request.get<any, LogisticsInfo>(`/common/logistics/${orderNo}`);
 
 export const getMerchantOrders = (params: any) => request.get<any, PageResult<Order>>('/merchant/orders', { params });
 export const getMerchantOrderDetail = (id: number) => request.get<any, Order>(`/merchant/orders/${id}`);

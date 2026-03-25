@@ -1,9 +1,11 @@
 package com.agricultural.assistplatform.job;
 
 import com.agricultural.assistplatform.entity.AfterSale;
+import com.agricultural.assistplatform.entity.MerchantAccount;
 import com.agricultural.assistplatform.entity.OrderMain;
 import com.agricultural.assistplatform.entity.ReconciliationDetail;
 import com.agricultural.assistplatform.mapper.AfterSaleMapper;
+import com.agricultural.assistplatform.mapper.MerchantAccountMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.mapper.ReconciliationDetailMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -28,6 +30,7 @@ public class AutoTransferJob {
     private final OrderMainMapper orderMainMapper;
     private final AfterSaleMapper afterSaleMapper;
     private final ReconciliationDetailMapper reconciliationDetailMapper;
+    private final MerchantAccountMapper merchantAccountMapper;
 
     /**
      * 每天凌晨1点执行
@@ -64,14 +67,20 @@ public class AutoTransferJob {
                     continue;
                 }
 
-                // 检查是否已打款
-                if (isAlreadyTransferred(order.getOrderNo())) {
+                ReconciliationDetail existing = findLatestTransferRecord(order.getOrderNo());
+
+                // 已成功打款或已进入人工兜底，跳过
+                if (isAlreadyTransferred(existing)) {
                     log.info("订单 {} 已打款，跳过", order.getOrderNo());
+                    continue;
+                }
+                if (isManualFallback(existing)) {
+                    log.info("订单 {} 已进入人工打款兜底，跳过自动打款", order.getOrderNo());
                     continue;
                 }
 
                 // 执行打款
-                transferToMerchant(order);
+                transferToMerchant(order, existing);
                 successCount++;
             } catch (Exception e) {
                 log.error("订单 {} 自动打款失败: {}", order.getOrderNo(), e.getMessage());
@@ -87,7 +96,7 @@ public class AutoTransferJob {
     private boolean hasUnresolvedAfterSale(String orderNo) {
         LambdaQueryWrapper<AfterSale> query = new LambdaQueryWrapper<AfterSale>()
                 .eq(AfterSale::getOrderNo, orderNo)
-                .in(AfterSale::getAfterSaleStatus, 1, 2, 4) // 待处理、协商中、管理员介入
+                .in(AfterSale::getAfterSaleStatus, 1, 2, 4, 6) // 待商家处理、待商家签收退款、管理员介入、待用户退货
                 .eq(AfterSale::getDeleteFlag, 0);
         return afterSaleMapper.selectCount(query) > 0;
     }
@@ -95,36 +104,80 @@ public class AutoTransferJob {
     /**
      * 检查订单是否已打款
      */
-    private boolean isAlreadyTransferred(String orderNo) {
-        LambdaQueryWrapper<ReconciliationDetail> query = new LambdaQueryWrapper<ReconciliationDetail>()
+    private ReconciliationDetail findLatestTransferRecord(String orderNo) {
+        return reconciliationDetailMapper.selectOne(new LambdaQueryWrapper<ReconciliationDetail>()
                 .eq(ReconciliationDetail::getOrderNo, orderNo)
-                .eq(ReconciliationDetail::getTransferStatus, 1) // 已打款
-                .eq(ReconciliationDetail::getDeleteFlag, 0);
-        return reconciliationDetailMapper.selectCount(query) > 0;
+                .orderByDesc(ReconciliationDetail::getId)
+                .last("LIMIT 1"));
     }
 
     /**
      * 执行打款到商家
      */
-    private void transferToMerchant(OrderMain order) {
+    private void transferToMerchant(OrderMain order, ReconciliationDetail existing) {
         // 计算实际营收（扣除平台服务费，假设5%）
         java.math.BigDecimal serviceFee = order.getTotalAmount()
                 .multiply(java.math.BigDecimal.valueOf(0.05));
         java.math.BigDecimal actualIncome = order.getTotalAmount().subtract(serviceFee);
+        int previousRetries = existing != null && existing.getRetryCount() != null ? existing.getRetryCount() : 0;
+        int nextRetry = previousRetries + 1;
 
-        ReconciliationDetail detail = new ReconciliationDetail();
+        ReconciliationDetail detail = existing == null ? new ReconciliationDetail() : existing;
         detail.setMerchantId(order.getMerchantId());
         detail.setOrderNo(order.getOrderNo());
         detail.setOrderAmount(order.getTotalAmount());
         detail.setActualIncome(actualIncome);
         detail.setServiceFee(serviceFee);
         detail.setPaymentTime(LocalDateTime.now());
-        detail.setTransferStatus(1); // 已打款
-        detail.setTransferTime(LocalDateTime.now());
-        detail.setTransferNo("AUTO_" + System.currentTimeMillis());
 
-        reconciliationDetailMapper.insert(detail);
+        try {
+            assertMerchantAccountReady(order.getMerchantId());
+            detail.setTransferStatus(1); // 已打款
+            detail.setTransferTime(LocalDateTime.now());
+            detail.setTransferNo("AUTO_" + System.currentTimeMillis());
+            detail.setRetryCount(previousRetries);
+            saveTransfer(detail);
+            log.info("订单 {} 自动打款成功，金额: {}", order.getOrderNo(), actualIncome);
+        } catch (Exception ex) {
+            detail.setRetryCount(nextRetry);
+            if (nextRetry >= 3) {
+                detail.setTransferStatus(3); // 人工兜底
+                log.warn("订单 {} 自动打款失败达到3次，已转人工处理：{}", order.getOrderNo(), ex.getMessage());
+            } else {
+                detail.setTransferStatus(2); // 打款失败待重试
+                log.warn("订单 {} 自动打款失败，第{}次重试：{}", order.getOrderNo(), nextRetry, ex.getMessage());
+            }
+            detail.setTransferTime(null);
+            detail.setTransferNo(null);
+            saveTransfer(detail);
+        }
+    }
 
-        log.info("订单 {} 自动打款成功，金额: {}", order.getOrderNo(), actualIncome);
+    private void saveTransfer(ReconciliationDetail detail) {
+        if (detail.getId() == null) {
+            reconciliationDetailMapper.insert(detail);
+        } else {
+            reconciliationDetailMapper.updateById(detail);
+        }
+    }
+
+    private void assertMerchantAccountReady(Long merchantId) {
+        MerchantAccount account = merchantAccountMapper.selectOne(new LambdaQueryWrapper<MerchantAccount>()
+                .eq(MerchantAccount::getMerchantId, merchantId)
+                .eq(MerchantAccount::getVerifyStatus, 2)
+                .eq(MerchantAccount::getAuditStatus, 1)
+                .orderByDesc(MerchantAccount::getUpdateTime)
+                .last("LIMIT 1"));
+        if (account == null) {
+            throw new IllegalStateException("商家收款账户未完成验证或审核");
+        }
+    }
+
+    private boolean isAlreadyTransferred(ReconciliationDetail detail) {
+        return detail != null && detail.getTransferStatus() != null && detail.getTransferStatus() == 1;
+    }
+
+    private boolean isManualFallback(ReconciliationDetail detail) {
+        return detail != null && detail.getTransferStatus() != null && detail.getTransferStatus() == 3;
     }
 }

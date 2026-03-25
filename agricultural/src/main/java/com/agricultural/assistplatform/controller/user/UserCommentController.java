@@ -1,6 +1,7 @@
 package com.agricultural.assistplatform.controller.user;
 
 import com.agricultural.assistplatform.common.Result;
+import com.agricultural.assistplatform.dto.user.CommentUpdateDTO;
 import com.agricultural.assistplatform.dto.user.CommentSubmitDTO;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.entity.Comment;
@@ -24,6 +25,13 @@ public class UserCommentController {
     @PostMapping("/comments")
     public Result<Void> submit(@Valid @RequestBody CommentSubmitDTO dto) {
         userCommentService.submit(dto);
+        return Result.ok();
+    }
+
+    @Operation(summary = "修改评价（仅审核不通过可修改）")
+    @PutMapping("/comments/{id}")
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody CommentUpdateDTO dto) {
+        userCommentService.update(id, dto);
         return Result.ok();
     }
 

@@ -240,17 +240,16 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, Plus, CircleCheck, QuestionFilled, Grid } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules, UploadProps } from 'element-plus';
-import { createProduct, updateProduct, generateProductQrcode } from '@/apis/merchant';
+import { createProduct, getProductDetail, updateProduct, generateProductQrcode } from '@/apis/merchant';
 import { getFullImageUrl } from '@/utils/image';
 import { regionData, codeToText } from 'element-china-area-data';
 import { PRODUCT_CATEGORY_OPTIONS } from '@/constants/category';
 
-const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
-const router = useRouter();
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload/product'
 const route = useRoute();
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
@@ -281,7 +280,7 @@ const handleProductImgSuccess = (response: any, file: any, fileList: any[]) => {
   }
 }
 
-const handleProductImgRemove = (file: any, fileList: any[]) => {
+const handleProductImgRemove = (_file: any, fileList: any[]) => {
   productImgList.value = fileList;
   updateProductImgStr();
 }
@@ -303,7 +302,7 @@ const handleProductDetailImgSuccess = (response: any, file: any, fileList: any[]
   }
 }
 
-const handleProductDetailImgRemove = (file: any, fileList: any[]) => {
+const handleProductDetailImgRemove = (_file: any, fileList: any[]) => {
   productDetailImgList.value = fileList;
   updateProductDetailImgStr();
 }
@@ -328,7 +327,7 @@ const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
 // 表单数据
 const productForm = reactive({
   productName: '',
-  categoryId: '',
+  categoryId: '' as number | '',
   price: 0,
   stock: 0,
   stockWarning: 10,
@@ -378,45 +377,70 @@ const downloadQrCode = () => {
   ElMessage.success('二维码已下载');
 };
 
-onMounted(() => {
-  if (isEdit.value) {
-    const state = history.state;
-    if (state && state.productData) {
-      try {
-        const data = JSON.parse(state.productData);
-        // 合并数据
-        Object.assign(productForm, data);
-        
-        // 初始化图片列表
-        if (productForm.productImg) {
-          productImgList.value = productForm.productImg.split(',').map((url, index) => ({
-            name: `img_${index}`,
-            url: getFullImageUrl(url),
-            uid: index
-          }));
-        }
-        if (productForm.productDetailImg) {
-          productDetailImgList.value = productForm.productDetailImg.split(',').map((url, index) => ({
-            name: `detail_img_${index}`,
-            url: getFullImageUrl(url),
-            uid: index
-          }));
-        }
+const toUploadList = (raw: string, prefix: string) => {
+  if (!raw) return [];
+  return raw.split(',').map((url, index) => ({
+    name: `${prefix}_${index}`,
+    url: getFullImageUrl(url.trim()),
+    uid: `${prefix}_${index}`
+  }));
+};
 
-        // 尝试回显省市区 (这里比较复杂，因为只存了中文名，反向查code比较难，暂时忽略回显的Cascader绑定，或者仅显示文本)
-        // 如果后端能返回 regionCode 最好，否则只能不回显 Cascader，只显示文本
-         ElMessage.info('提示：编辑模式下，产地省市区请重新选择');
-      } catch (e) {
-        console.error('解析商品数据失败', e);
-      }
-    }
+const applyFormData = (data: any) => {
+  if (!data) return;
+  Object.assign(productForm, {
+    productName: data.productName ?? '',
+    categoryId: data.categoryId ?? '',
+    price: Number(data.price ?? 0),
+    stock: Number(data.stock ?? 0),
+    stockWarning: Number(data.stockWarning ?? 10),
+    productImg: data.productImg ?? '',
+    productDetailImg: data.productDetailImg ?? '',
+    productDesc: data.productDesc ?? '',
+    originPlace: data.originPlace ?? '',
+    originPlaceDetail: data.originPlaceDetail ?? '',
+    plantingCycle: data.plantingCycle ?? '',
+    fertilizerType: data.fertilizerType ?? '',
+    storageMethod: data.storageMethod ?? '',
+    transportMethod: data.transportMethod || '普通物流'
+  });
+  productImgList.value = toUploadList(productForm.productImg, 'img');
+  productDetailImgList.value = toUploadList(productForm.productDetailImg, 'detail_img');
+};
 
-    // 编辑模式下，尝试直接生成/刷新溯源码预览
-    const id = Number(route.params.id);
-    if (!Number.isNaN(id) && id > 0) {
-      void refreshQrCode(id);
+const loadEditProduct = async (id: number) => {
+  const detail = await getProductDetail(id);
+  if (detail) {
+    applyFormData(detail);
+  }
+};
+
+onMounted(async () => {
+  if (!isEdit.value) return;
+  const id = Number(route.params.id);
+  if (Number.isNaN(id) || id <= 0) return;
+
+  let hasLocalSnapshot = false;
+  const state = history.state;
+  if (state && state.productData) {
+    try {
+      const snapshot = JSON.parse(state.productData);
+      applyFormData(snapshot);
+      hasLocalSnapshot = true;
+    } catch (e) {
+      console.error('解析商品快照失败', e);
     }
   }
+
+  try {
+    await loadEditProduct(id);
+  } catch (e) {
+    console.error('加载商品详情失败', e);
+    if (!hasLocalSnapshot) {
+      ElMessage.error('加载商品详情失败，请返回列表重试');
+    }
+  }
+  void refreshQrCode(id);
 });
 
 const saveProduct = async () => {

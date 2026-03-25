@@ -5,6 +5,7 @@ import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -36,6 +37,12 @@ public class GlobalExceptionHandler {
                 .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .reduce("", (a, b) -> a + b);
         return Result.fail(ResultCode.BAD_REQUEST, msg.isEmpty() ? "参数错误" : msg);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Result<?> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        String paramName = e.getName();
+        return Result.fail(ResultCode.BAD_REQUEST, "参数类型错误: " + paramName);
     }
 
     @ExceptionHandler(Exception.class)

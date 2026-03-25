@@ -142,7 +142,7 @@ import { getFullImageUrl } from '@/utils/image'
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 
-const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload'
+const uploadAction = (import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload/news'
 
 const categoryId = ref<number | undefined>(undefined)
 const auditStatus = ref<number | undefined>(undefined)

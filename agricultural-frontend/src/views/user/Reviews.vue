@@ -8,7 +8,12 @@
         <div class="review-header">
           <img :src="getCoverImage(review.productImg)" :alt="review.productName" class="product-img" />
           <div class="product-info">
-            <h4>{{ review.productName }}</h4>
+            <h4>
+              {{ review.productName }}
+              <el-tag size="small" :type="getAuditType(review.auditStatus)" class="audit-tag">
+                {{ getAuditText(review.auditStatus) }}
+              </el-tag>
+            </h4>
             <el-rate :model-value="review.score" disabled />
             <p class="order-no">订单号：{{ review.orderNo }}</p>
           </div>
@@ -16,16 +21,28 @@
         </div>
         <div class="review-content">
           <p>{{ review.content }}</p>
+          <p v-if="review.auditStatus === 0" class="pending-tip">等待管理员审核后即可公开展示评论。</p>
+          <p v-if="review.auditStatus === 2" class="reject-tip">该评论审核未通过，可重新提交新的评价内容。</p>
         </div>
-        <div v-if="parseImageList(review.imgUrls).length" class="review-images">
+        <div v-if="parseImageList(review).length" class="review-images">
           <el-image
-            v-for="(img, idx) in parseImageList(review.imgUrls)"
+            v-for="(img, idx) in parseImageList(review)"
             :key="`${review.id}-${idx}`"
             :src="img"
-            :preview-src-list="parseImageList(review.imgUrls)"
+            :preview-src-list="parseImageList(review)"
             fit="cover"
             class="review-image"
             preview-teleported
+          />
+        </div>
+        <div v-if="parseVideoList(review).length" class="review-videos">
+          <video
+            v-for="(video, idx) in parseVideoList(review)"
+            :key="`${review.id}-video-${idx}`"
+            :src="video"
+            class="review-video"
+            controls
+            preload="metadata"
           />
         </div>
         <div class="review-actions">
@@ -113,7 +130,8 @@ const formatDate = (date?: string) => {
   return date.substring(0, 16).replace('T', ' ');
 };
 
-const parseImageList = (raw?: string) => {
+const parseMediaList = (review: ReviewCard) => {
+  const raw = review.mediaUrls || review.imgUrls;
   if (!raw) return [];
   return raw
     .split(',')
@@ -121,6 +139,19 @@ const parseImageList = (raw?: string) => {
     .filter(Boolean)
     .map(url => getFullImageUrl(url));
 };
+
+const isVideoUrl = (url: string) => {
+  const target = (url || '').toLowerCase();
+  return target.endsWith('.mp4')
+    || target.endsWith('.webm')
+    || target.endsWith('.mov')
+    || target.endsWith('.avi')
+    || target.endsWith('.mkv')
+    || target.includes('video');
+};
+
+const parseImageList = (review: ReviewCard) => parseMediaList(review).filter(url => !isVideoUrl(url));
+const parseVideoList = (review: ReviewCard) => parseMediaList(review).filter(url => isVideoUrl(url));
 
 const getCoverImage = (raw?: string) => {
   if (!raw) return '';
@@ -130,6 +161,18 @@ const getCoverImage = (raw?: string) => {
 
 const goToProduct = (productId: number) => {
   router.push(`/product/${productId}`);
+};
+
+const getAuditText = (status?: number) => {
+  if (status === 1) return '已通过';
+  if (status === 2) return '未通过';
+  return '待审核';
+};
+
+const getAuditType = (status?: number) => {
+  if (status === 1) return 'success';
+  if (status === 2) return 'danger';
+  return 'warning';
 };
 
 onMounted(() => {
@@ -181,6 +224,13 @@ onMounted(() => {
         h4 {
           margin: 0 0 8px;
           font-size: 15px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .audit-tag {
+          font-weight: 500;
         }
 
         .order-no {
@@ -202,6 +252,18 @@ onMounted(() => {
         color: #606266;
         line-height: 1.6;
       }
+
+      .pending-tip {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #e6a23c;
+      }
+
+      .reject-tip {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #f56c6c;
+      }
     }
 
     .review-images {
@@ -215,6 +277,22 @@ onMounted(() => {
         height: 84px;
         border-radius: 8px;
         overflow: hidden;
+      }
+    }
+
+    .review-videos {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      .review-video {
+        width: 168px;
+        height: 108px;
+        border-radius: 8px;
+        border: 1px solid #e4e7ed;
+        background: #000;
+        object-fit: cover;
       }
     }
 

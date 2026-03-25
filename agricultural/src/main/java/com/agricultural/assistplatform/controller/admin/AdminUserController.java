@@ -22,10 +22,11 @@ public class AdminUserController {
     @Operation(summary = "用户列表")
     @GetMapping("/users")
     public Result<PageResult<UserInfo>> list(
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(adminUserService.list(status, pageNum, pageSize));
+        return Result.ok(adminUserService.list(keyword, status, pageNum, pageSize));
     }
 
     @Operation(summary = "新增用户")

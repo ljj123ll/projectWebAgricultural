@@ -186,6 +186,13 @@
           实付款：
           <span class="money">¥{{ formatAmount(currentOrder.totalAmount) }}</span>
         </div>
+
+        <OrderChatPanel
+          v-if="currentOrder.orderNo"
+          :order-no="currentOrder.orderNo"
+          role="admin"
+          title="订单实时沟通（管理员介入）"
+        />
       </div>
     </el-dialog>
   </div>
@@ -198,6 +205,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { listOrders, getOrder, cancelOrder } from '@/apis/admin';
 import type { Order, OrderItem } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
+import OrderChatPanel from '@/components/OrderChatPanel.vue';
 
 const searchKeyword = ref('');
 const activeTab = ref('all');
@@ -217,7 +225,9 @@ const getStatusType = (status: number) => {
     3: 'primary',
     4: 'success',
     5: 'info',
-    6: 'danger'
+    6: 'danger',
+    7: 'warning',
+    8: 'success'
   };
   return map[status] || 'info';
 };
@@ -229,7 +239,9 @@ const getStatusText = (status: number) => {
     3: '待收货',
     4: '已完成',
     5: '已取消',
-    6: '支付异常'
+    6: '支付异常',
+    7: '售后中',
+    8: '已完成售后'
   };
   return map[status] || '未知状态';
 };

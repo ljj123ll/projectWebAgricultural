@@ -1,5 +1,17 @@
 import request from '@/utils/request';
-import type { LoginResult, UserInfo, PageResult, UserAddress, Comment, AfterSale, AfterSaleMessage, News, NewsCategory } from '@/types';
+import type {
+  LoginResult,
+  UserInfo,
+  PageResult,
+  UserAddress,
+  Comment,
+  AfterSale,
+  AfterSaleMessage,
+  UserMessage,
+  News,
+  NewsCategory,
+  RegionNode
+} from '@/types';
 
 // 用户认证接口
 export const loginPassword = (data: any) => request.post<any, LoginResult>('/user/login/password', data);
@@ -19,18 +31,32 @@ export const addAddress = (data: any) => request.post('/user/addresses', data);
 export const updateAddress = (id: number, data: any) => request.put(`/user/addresses/${id}`, data);
 export const deleteAddress = (id: number) => request.delete(`/user/addresses/${id}`);
 export const setDefaultAddress = (id: number) => request.put(`/user/addresses/${id}/default`);
+export const getRegionTree = () => request.get<any, RegionNode[]>('/common/regions');
 
 export const listComments = (params: any) => request.get<any, PageResult<Comment>>('/user/comments', { params });
 export const submitComment = (data: any) => request.post('/user/comments', data);
+export const updateComment = (id: number, data: any) => request.put(`/user/comments/${id}`, data);
 
-export const applyAfterSale = (data: any) => request.post('/user/after-sale', data);
+export const applyAfterSale = (data: any) =>
+  request.post<any, { afterSaleNo?: string; id?: number }>('/user/after-sale', data);
 export const getAfterSaleDetail = (no: string) => request.get<any, AfterSale>(`/user/after-sale/${no}`);
 export const listAfterSale = (params: any) => request.get<any, PageResult<AfterSale>>('/user/after-sale', { params });
 export const escalateAfterSale = (id: number) => request.put(`/user/after-sale/${id}/escalate`);
+export const submitAfterSaleReturnLogistics = (id: number, data: { logisticsNo: string; logisticsCompany?: string }) =>
+  request.put(`/user/after-sale/${id}/return-logistics`, data);
 export const listAfterSaleMessages = (no: string, params: any) =>
   request.get<any, PageResult<AfterSaleMessage>>(`/user/after-sale/${no}/messages`, { params });
 export const sendAfterSaleMessage = (no: string, data: any) =>
   request.post(`/user/after-sale/${no}/messages`, data);
+
+export const listUserMessages = (params: any) =>
+  request.get<any, PageResult<UserMessage>>('/user/messages', { params });
+export const getUserMessageUnreadCount = () =>
+  request.get<any, number>('/user/messages/unread-count');
+export const markUserMessageRead = (id: number) =>
+  request.put(`/user/messages/${id}/read`);
+export const markAllUserMessagesRead = () =>
+  request.put('/user/messages/read-all');
 
 export const listNews = (params: any) => request.get<any, PageResult<News>>('/user/news', { params });
 export const getNewsDetail = (id: number) => request.get<any, News>(`/user/news/${id}`);

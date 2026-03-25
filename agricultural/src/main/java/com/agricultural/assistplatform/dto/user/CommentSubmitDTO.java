@@ -17,4 +17,5 @@ public class CommentSubmitDTO {
     private Integer score;
     private String content;
     private String imgUrls;
+    private String mediaUrls;
 }

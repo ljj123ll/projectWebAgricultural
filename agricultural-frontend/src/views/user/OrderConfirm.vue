@@ -111,7 +111,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Location, Goods, EditPen, Check, ArrowLeft } from '@element-plus/icons-vue';
 import { useCartStore } from '@/stores/modules/cart';
 import { createOrder } from '@/apis/order';
@@ -215,37 +215,14 @@ const loadAddresses = async () => {
       if (defaultAddr) {
         selectedAddressId.value = defaultAddr.id;
       } else if (res.length > 0) {
-        if (res && res.length > 0) {
-          selectedAddressId.value = res[0].id;
+        const firstAddr = res[0];
+        if (firstAddr) {
+          selectedAddressId.value = firstAddr.id;
         }
       }
     } else {
-       // Mock fallback if API fails or returns empty in dev
-       addressList.value = [
-         {
-           id: 1,
-           receiver: '张三',
-           phone: '13800138000',
-           province: '四川省',
-           city: '成都市',
-           county: '武侯区',
-           town: '桂溪街道',
-           detailAddress: '天府大道北段1700号',
-           isDefault: 1
-         },
-         {
-           id: 2,
-           receiver: '李四',
-           phone: '13900139000',
-           province: '四川省',
-           city: '绵阳市',
-           county: '涪城区',
-           town: '城郊街道',
-           detailAddress: '长虹大道中段123号',
-           isDefault: 0
-         }
-       ];
-       selectedAddressId.value = 1;
+       addressList.value = [];
+       selectedAddressId.value = undefined;
     }
   } catch (error) {
     console.error('加载地址失败', error);

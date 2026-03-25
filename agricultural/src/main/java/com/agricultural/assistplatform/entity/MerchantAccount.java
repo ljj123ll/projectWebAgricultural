@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,6 +20,11 @@ public class MerchantAccount {
     private String accountName;
     private Integer verifyStatus;
     private Integer auditStatus;
+    private BigDecimal verifyAmount;
+    private LocalDateTime verifyExpireTime;
+    private LocalDateTime verifiedTime;
+    private LocalDateTime auditSubmitTime;
+    private String rejectReason;
     @TableLogic
     private Integer deleteFlag;
     private LocalDateTime createTime;

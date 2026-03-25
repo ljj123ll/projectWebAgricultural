@@ -12,6 +12,8 @@ import java.util.List;
 public class CreateOrderDTO {
     @NotNull(message = "收货地址ID不能为空")
     private Long addressId;
+    /** 订单备注 */
+    private String remark;
     /** 购物车ID列表（二选一）；若为空则用 productItems */
     private List<Long> cartIds;
     /** 直接下单：商品ID与数量 */

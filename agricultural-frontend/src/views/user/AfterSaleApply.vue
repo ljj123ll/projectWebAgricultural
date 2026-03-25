@@ -34,9 +34,13 @@
 
       <el-form-item label="上传凭证">
         <el-upload
-          action="#"
+          :action="uploadAction"
           list-type="picture-card"
-          :auto-upload="false"
+          :file-list="fileList"
+          multiple
+          :limit="6"
+          :on-success="handleUploadSuccess"
+          :on-remove="handleRemove"
         >
           <el-icon><Plus /></el-icon>
         </el-upload>
@@ -51,20 +55,47 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { applyAfterSale } from '@/apis/user';
 
 const router = useRouter();
 const route = useRoute();
+const uploadAction = `${import.meta.env.VITE_API_BASE_URL || '/api'}/common/upload`;
+const fileList = ref<any[]>([]);
 
 const form = reactive({
   orderNo: route.params.orderNo,
   type: 'refund',
   reason: '',
-  description: ''
+  description: '',
+  proofImgUrls: ''
 });
+
+const syncProofImages = () => {
+  form.proofImgUrls = fileList.value
+    .map(file => {
+      if (file?.response?.code === 200) return file.response.data;
+      return file?.url || '';
+    })
+    .filter(Boolean)
+    .join(',');
+};
+
+const handleUploadSuccess = (response: any, _file: any, files: any[]) => {
+  if (response?.code !== 200) {
+    ElMessage.error(response?.msg || '凭证上传失败');
+    return;
+  }
+  fileList.value = files;
+  syncProofImages();
+};
+
+const handleRemove = (_file: any, files: any[]) => {
+  fileList.value = files;
+  syncProofImages();
+};
 
 const submit = async () => {
   if (!form.reason) {
@@ -73,11 +104,12 @@ const submit = async () => {
   }
   const afterSaleType = form.type === 'refund' ? 1 : (form.type === 'return' ? 2 : 3);
   try {
+    const reasonText = form.description?.trim() ? `${form.reason}-${form.description.trim()}` : form.reason;
     const res = await applyAfterSale({
       orderNo: String(form.orderNo),
       afterSaleType,
-      applyReason: form.reason,
-      proofImgUrls: '' // 当前页面未接入图片上传；可按需要后续完善
+      applyReason: reasonText.slice(0, 50),
+      proofImgUrls: form.proofImgUrls
     });
     ElMessage.success('售后申请已提交');
     // 后端返回 afterSaleNo，用于进入售后详情页

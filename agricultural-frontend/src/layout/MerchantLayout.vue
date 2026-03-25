@@ -35,13 +35,13 @@
         <el-menu-item index="/merchant/orders">
           <el-icon><Document /></el-icon>
           <template #title>订单管理</template>
-          <el-badge v-if="pendingOrderCount > 0" :value="pendingOrderCount > 99 ? '99+' : pendingOrderCount" class="menu-badge" />
+          <span v-if="pendingOrderCount > 0" class="menu-dot">{{ formatBadgeValue(pendingOrderCount) }}</span>
         </el-menu-item>
 
         <el-menu-item index="/merchant/after-sales">
           <el-icon><Service /></el-icon>
           <template #title>售后处理</template>
-          <el-badge v-if="pendingAfterSaleCount > 0" :value="pendingAfterSaleCount > 99 ? '99+' : pendingAfterSaleCount" class="menu-badge" />
+          <span v-if="pendingAfterSaleCount > 0" class="menu-dot">{{ formatBadgeValue(pendingAfterSaleCount) }}</span>
         </el-menu-item>
 
         <el-menu-item index="/merchant/statistics">
@@ -52,7 +52,7 @@
         <el-menu-item index="/merchant/messages">
           <el-icon><Bell /></el-icon>
           <template #title>消息中心</template>
-          <el-badge v-if="totalUnreadCount > 0" :value="totalUnreadCount > 99 ? '99+' : totalUnreadCount" class="menu-badge" />
+          <span v-if="messageUnreadCount > 0" class="menu-dot">{{ formatBadgeValue(messageUnreadCount) }}</span>
         </el-menu-item>
 
         <el-menu-item index="/merchant/account">
@@ -73,7 +73,7 @@
           <breadcrumb />
         </div>
         <div class="header-right">
-          <el-badge :value="totalUnreadCount" :hidden="totalUnreadCount === 0">
+          <el-badge :value="messageUnreadCount" :hidden="messageUnreadCount === 0">
             <el-button circle @click="router.push('/merchant/messages')">
               <el-icon><Bell /></el-icon>
             </el-button>
@@ -105,11 +105,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { listOrders, listAfterSale } from '@/apis/merchant';
+import { getMerchantAuditStatus, listOrders, listAfterSale } from '@/apis/merchant';
+import { getAfterSaleUnreadCount } from '@/apis/after-sale-message';
+import { AFTER_SALE_STATUS } from '@/utils/afterSale';
 
 const route = useRoute();
 const router = useRouter();
@@ -118,30 +120,119 @@ const userStore = useUserStore();
 const isCollapsed = ref(false);
 const pendingOrderCount = ref(0);
 const pendingAfterSaleCount = ref(0);
-
-// 总未读数
-const totalUnreadCount = computed(() => {
-  return pendingOrderCount.value + pendingAfterSaleCount.value;
-});
+const messageUnreadCount = ref(0);
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let realtimeSource: EventSource | null = null;
+const READ_STORAGE_PREFIX = 'merchant_message_read_map';
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
+};
+
+const formatBadgeValue = (count: number) => {
+  return count > 99 ? '99+' : String(count);
 };
 
 // 加载待处理数量
 const loadPendingCounts = async () => {
   try {
     // 获取待发货订单数
-    const orderRes = await listOrders({ pageNum: 1, pageSize: 1, orderStatus: 2 });
+    const orderRes = await listOrders({ pageNum: 1, pageSize: 50, orderStatus: 2 });
     pendingOrderCount.value = orderRes?.total || 0;
     
-    // 获取待处理售后数
-    // 后端售后状态：1-待商家处理
-    const afterSaleRes = await listAfterSale({ pageNum: 1, pageSize: 1, afterSaleStatus: 1 });
-    pendingAfterSaleCount.value = afterSaleRes?.total || 0;
+    // 获取售后待办数量（仅统计当前需要商家操作的状态）
+    const [pendingAfterSaleRes, processingAfterSaleRes, waitUserReturnRes, adminRes] = await Promise.all([
+      listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.PENDING_MERCHANT }),
+      listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND }),
+      listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.WAIT_USER_RETURN }),
+      listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.ADMIN })
+    ]);
+    pendingAfterSaleCount.value =
+      (pendingAfterSaleRes?.total || 0) +
+      (processingAfterSaleRes?.total || 0);
+
+    // 消息中心未读：订单沟通按本地已读记录，售后沟通按后端未读接口
+    const merchantId = userStore.userInfo?.id || 'anonymous';
+    const readMapKey = `${READ_STORAGE_PREFIX}_${merchantId}`;
+    const readMap = JSON.parse(localStorage.getItem(readMapKey) || '{}') as Record<string, boolean>;
+    const orderIds = (orderRes?.list || []).map((order: any) => `order-${order.id}`);
+    const unreadOrderCount = orderIds.filter(id => !readMap[id]).length;
+    const afterSaleList = [
+      ...(pendingAfterSaleRes?.list || []),
+      ...(processingAfterSaleRes?.list || []),
+      ...(waitUserReturnRes?.list || []),
+      ...(adminRes?.list || [])
+    ];
+    const afterSaleNos = [...new Set(afterSaleList.map((item: any) => String(item?.afterSaleNo || '')).filter(Boolean))].slice(0, 30);
+    const unreadAfterSaleFlags: number[] = await Promise.all(afterSaleNos.map(async (no) => {
+      try {
+        const count = await getAfterSaleUnreadCount(no, 2);
+        return Number(count || 0) > 0 ? 1 : 0;
+      } catch {
+        return 0;
+      }
+    }));
+    const unreadAfterSaleCount = unreadAfterSaleFlags.reduce<number>((sum, value) => sum + Number(value || 0), 0);
+    messageUnreadCount.value = unreadOrderCount + unreadAfterSaleCount;
   } catch (error) {
     console.error('Failed to load pending counts', error);
   }
+};
+
+const syncAuditStatus = async () => {
+  try {
+    const data = await getMerchantAuditStatus();
+    if (Number(data?.status) === 2) {
+      ElMessage.error('店铺已被禁用，请联系管理员处理');
+      userStore.logout();
+      router.replace('/merchant/login');
+      return;
+    }
+    if (Number(data?.auditStatus) === 2) {
+      const reason = data?.rejectReason ? `，原因：${data.rejectReason}` : '';
+      ElMessage.warning(`商家资质审核未通过${reason}`);
+    }
+  } catch (error) {
+    console.error('Failed to sync merchant audit status', error);
+  }
+};
+
+const handleRefreshBadge = () => {
+  void loadPendingCounts();
+};
+
+const handleReadRefresh = () => {
+  void loadPendingCounts();
+};
+
+const closeRealtime = () => {
+  if (realtimeSource) {
+    realtimeSource.close();
+    realtimeSource = null;
+  }
+};
+
+const initRealtime = () => {
+  closeRealtime();
+  if (!userStore.token || userStore.role !== 'merchant') return;
+  const basePath = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+  const token = encodeURIComponent(userStore.token);
+  const streamUrl = `${basePath}/merchant/realtime/stream?token=${token}`;
+
+  realtimeSource = new EventSource(streamUrl);
+
+  realtimeSource.addEventListener('refresh', () => {
+    void loadPendingCounts();
+    window.dispatchEvent(new Event('merchant-pending-refresh'));
+  });
+
+  realtimeSource.addEventListener('connected', () => {
+    void loadPendingCounts();
+  });
+
+  realtimeSource.onerror = () => {
+    // EventSource 会自动重连，这里不做额外提示，避免打扰用户
+  };
 };
 
 const handleCommand = (command: string) => {
@@ -164,9 +255,23 @@ const handleCommand = (command: string) => {
 };
 
 onMounted(() => {
-  loadPendingCounts();
-  // 每30秒刷新一次待处理数量
-  setInterval(loadPendingCounts, 30000);
+  void syncAuditStatus();
+  void loadPendingCounts();
+  initRealtime();
+  window.addEventListener('merchant-pending-refresh', handleRefreshBadge);
+  window.addEventListener('merchant-message-read-refresh', handleReadRefresh);
+  // SSE 断连时的兜底刷新
+  refreshTimer = setInterval(loadPendingCounts, 30000);
+});
+
+onUnmounted(() => {
+  closeRealtime();
+  window.removeEventListener('merchant-pending-refresh', handleRefreshBadge);
+  window.removeEventListener('merchant-message-read-refresh', handleReadRefresh);
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 });
 </script>
 
@@ -208,11 +313,28 @@ onMounted(() => {
   .merchant-menu {
     border-right: none;
 
-    .menu-badge {
+    :deep(.el-menu-item) {
+      position: relative;
+    }
+
+    .menu-dot {
       position: absolute;
-      right: 20px;
+      right: 12px;
       top: 50%;
       transform: translateY(-50%);
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: #f56c6c;
+      color: #fff;
+      font-size: 12px;
+      line-height: 20px;
+      text-align: center;
+      font-weight: 600;
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      box-sizing: border-box;
+      pointer-events: none;
     }
   }
 }

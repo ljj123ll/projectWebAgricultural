@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.service.merchant;
 
+import com.agricultural.assistplatform.common.AfterSaleFlow;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.entity.AfterSale;
@@ -17,6 +18,7 @@ import com.agricultural.assistplatform.vo.merchant.MerchantStatsVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -47,7 +49,7 @@ public class MerchantStatsService {
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime yesterdayStart = yesterday.atStartOfDay();
 
-        // 待办数据：订单（待发货）、售后（待商家处理）、库存预警
+        // 待办数据：订单（待发货）、售后（待商家处理/待商家签收退款）、库存预警
         Long pendingOrdersLong = orderMainMapper.selectCount(new LambdaQueryWrapper<OrderMain>()
                 .eq(OrderMain::getMerchantId, merchantId)
                 .eq(OrderMain::getOrderStatus, 2));
@@ -55,7 +57,9 @@ public class MerchantStatsService {
 
         Long pendingAfterSalesLong = afterSaleMapper.selectCount(new LambdaQueryWrapper<AfterSale>()
                 .eq(AfterSale::getMerchantId, merchantId)
-                .eq(AfterSale::getAfterSaleStatus, 1));
+                .in(AfterSale::getAfterSaleStatus,
+                        AfterSaleFlow.STATUS_PENDING_MERCHANT,
+                        AfterSaleFlow.STATUS_WAIT_MERCHANT_REFUND));
         int pendingAfterSales = pendingAfterSalesLong != null ? pendingAfterSalesLong.intValue() : 0;
 
         Long lowStockLong = productInfoMapper.selectCount(new LambdaQueryWrapper<ProductInfo>()
@@ -409,6 +413,8 @@ public class MerchantStatsService {
             case 4 -> "已完成";
             case 5 -> "已取消";
             case 6 -> "支付异常";
+            case 7 -> "售后中";
+            case 8 -> "已完成售后";
             default -> "未知";
         };
     }
@@ -421,6 +427,8 @@ public class MerchantStatsService {
             case 4 -> "#e6a23c"; // 已完成
             case 5 -> "#909399"; // 已取消
             case 6 -> "#f56c6c"; // 异常
+            case 7 -> "#e6a23c"; // 售后中
+            case 8 -> "#909399"; // 已完成售后
             default -> "#909399";
         };
     }
@@ -441,29 +449,96 @@ public class MerchantStatsService {
                 .multiply(BigDecimal.valueOf(100.0));
     }
 
-    public com.agricultural.assistplatform.common.PageResult<com.agricultural.assistplatform.entity.ReconciliationDetail> reconciliation(Integer pageNum, Integer pageSize) {
+    public com.agricultural.assistplatform.common.PageResult<com.agricultural.assistplatform.entity.ReconciliationDetail> reconciliation(
+            Integer pageNum,
+            Integer pageSize,
+            Integer transferStatus,
+            String keyword,
+            String startDate,
+            String endDate) {
         Long merchantId = LoginContext.getUserId();
         if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
+
+        LocalDate start = parseDate(startDate, "开始日期");
+        LocalDate end = parseDate(endDate, "结束日期");
+        if (start != null && end != null && end.isBefore(start)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "结束日期不能早于开始日期");
+        }
+
+        LambdaQueryWrapper<com.agricultural.assistplatform.entity.ReconciliationDetail> query = new LambdaQueryWrapper<com.agricultural.assistplatform.entity.ReconciliationDetail>()
+                .eq(com.agricultural.assistplatform.entity.ReconciliationDetail::getMerchantId, merchantId);
+        if (transferStatus != null) {
+            query.eq(com.agricultural.assistplatform.entity.ReconciliationDetail::getTransferStatus, transferStatus);
+        }
+        if (StringUtils.hasText(keyword)) {
+            query.like(com.agricultural.assistplatform.entity.ReconciliationDetail::getOrderNo, keyword.trim());
+        }
+        if (start != null) {
+            query.ge(com.agricultural.assistplatform.entity.ReconciliationDetail::getCreateTime, start.atStartOfDay());
+        }
+        if (end != null) {
+            query.lt(com.agricultural.assistplatform.entity.ReconciliationDetail::getCreateTime, end.plusDays(1).atStartOfDay());
+        }
+        query.orderByDesc(com.agricultural.assistplatform.entity.ReconciliationDetail::getCreateTime);
+
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.agricultural.assistplatform.entity.ReconciliationDetail> page =
                 reconciliationDetailMapper.selectPage(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize),
-                        new LambdaQueryWrapper<com.agricultural.assistplatform.entity.ReconciliationDetail>()
-                                .eq(com.agricultural.assistplatform.entity.ReconciliationDetail::getMerchantId, merchantId)
-                                .orderByDesc(com.agricultural.assistplatform.entity.ReconciliationDetail::getCreateTime));
+                        query);
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), page.getRecords());
     }
 
-    public com.agricultural.assistplatform.common.PageResult<com.agricultural.assistplatform.entity.SubsidyDetail> subsidy(Integer pageNum, Integer pageSize) {
+    public com.agricultural.assistplatform.common.PageResult<com.agricultural.assistplatform.entity.SubsidyDetail> subsidy(
+            Integer pageNum,
+            Integer pageSize,
+            Integer auditStatus,
+            Integer grantStatus,
+            String keyword,
+            String startDate,
+            String endDate) {
         Long merchantId = LoginContext.getUserId();
         if (merchantId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
+
+        LocalDate start = parseDate(startDate, "开始日期");
+        LocalDate end = parseDate(endDate, "结束日期");
+        if (start != null && end != null && end.isBefore(start)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "结束日期不能早于开始日期");
+        }
+
+        LambdaQueryWrapper<com.agricultural.assistplatform.entity.SubsidyDetail> query = new LambdaQueryWrapper<com.agricultural.assistplatform.entity.SubsidyDetail>()
+                .eq(com.agricultural.assistplatform.entity.SubsidyDetail::getMerchantId, merchantId);
+        if (auditStatus != null) {
+            query.eq(com.agricultural.assistplatform.entity.SubsidyDetail::getAuditStatus, auditStatus);
+        }
+        if (grantStatus != null) {
+            query.eq(com.agricultural.assistplatform.entity.SubsidyDetail::getGrantStatus, grantStatus);
+        }
+        if (StringUtils.hasText(keyword)) {
+            query.like(com.agricultural.assistplatform.entity.SubsidyDetail::getOrderNo, keyword.trim());
+        }
+        if (start != null) {
+            query.ge(com.agricultural.assistplatform.entity.SubsidyDetail::getCreateTime, start.atStartOfDay());
+        }
+        if (end != null) {
+            query.lt(com.agricultural.assistplatform.entity.SubsidyDetail::getCreateTime, end.plusDays(1).atStartOfDay());
+        }
+        query.orderByDesc(com.agricultural.assistplatform.entity.SubsidyDetail::getCreateTime);
+
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.agricultural.assistplatform.entity.SubsidyDetail> page =
                 subsidyDetailMapper.selectPage(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize),
-                        new LambdaQueryWrapper<com.agricultural.assistplatform.entity.SubsidyDetail>()
-                                .eq(com.agricultural.assistplatform.entity.SubsidyDetail::getMerchantId, merchantId)
-                                .orderByDesc(com.agricultural.assistplatform.entity.SubsidyDetail::getCreateTime));
+                        query);
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), page.getRecords());
+    }
+
+    private LocalDate parseDate(String raw, String label) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (Exception ex) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, label + "格式错误，应为yyyy-MM-dd");
+        }
     }
 }

@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS comment (
     score TINYINT NOT NULL,
     content TEXT,
     img_urls VARCHAR(500),
+    media_urls TEXT,
     audit_status TINYINT DEFAULT 1,
     delete_flag TINYINT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -309,12 +310,44 @@ CREATE TABLE IF NOT EXISTS merchant_account (
     account_name VARCHAR(50) NOT NULL,
     verify_status TINYINT DEFAULT 0,
     audit_status TINYINT DEFAULT 0,
+    verify_amount DECIMAL(6,2),
+    verify_expire_time DATETIME,
+    verified_time DATETIME,
+    audit_submit_time DATETIME,
+    reject_reason VARCHAR(255),
     delete_flag TINYINT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_merchant_account (merchant_id, account_type),
     INDEX idx_verify_status (verify_status)
 ) COMMENT = '商家收款账户表';
+
+CREATE TABLE IF NOT EXISTS merchant_withdraw (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    withdraw_no VARCHAR(40) NOT NULL,
+    merchant_id BIGINT NOT NULL,
+    account_id BIGINT NOT NULL,
+    account_type TINYINT NOT NULL COMMENT '1-银行卡 2-支付宝 3-微信收款',
+    account_no VARCHAR(64) NOT NULL,
+    account_name VARCHAR(64) NOT NULL,
+    apply_amount DECIMAL(12,2) NOT NULL,
+    fee_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    actual_amount DECIMAL(12,2) NOT NULL,
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0-待审核 1-待打款 2-已驳回 3-打款成功 4-打款失败待重试 5-打款失败人工处理 6-已取消',
+    audit_admin_id BIGINT,
+    audit_remark VARCHAR(255),
+    audit_time DATETIME,
+    transfer_no VARCHAR(64),
+    transfer_time DATETIME,
+    retry_count TINYINT DEFAULT 0,
+    fail_reason VARCHAR(255),
+    delete_flag TINYINT DEFAULT 0,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_withdraw_no (withdraw_no),
+    INDEX idx_merchant_status (merchant_id, status),
+    INDEX idx_status_retry (status, retry_count)
+) COMMENT = '商家提现申请表';
 
 CREATE TABLE IF NOT EXISTS product_category (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

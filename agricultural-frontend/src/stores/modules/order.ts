@@ -7,7 +7,9 @@ export const OrderStatus = {
   PENDING_SHIP: 2,
   PENDING_RECEIVE: 3,
   COMPLETED: 4,
-  CANCELLED: 5
+  CANCELLED: 5,
+  AFTER_SALE_PROCESSING: 7,
+  AFTER_SALE_DONE: 8
 } as const;
 
 export const useOrderStore = defineStore('order', () => {
@@ -23,7 +25,9 @@ export const useOrderStore = defineStore('order', () => {
     [OrderStatus.PENDING_SHIP]: '待发货',
     [OrderStatus.PENDING_RECEIVE]: '待收货',
     [OrderStatus.COMPLETED]: '已完成',
-    [OrderStatus.CANCELLED]: '已取消'
+    [OrderStatus.CANCELLED]: '已取消',
+    [OrderStatus.AFTER_SALE_PROCESSING]: '售后中',
+    [OrderStatus.AFTER_SALE_DONE]: '已完成售后'
   };
 
   // 订单状态标签类型映射
@@ -32,7 +36,9 @@ export const useOrderStore = defineStore('order', () => {
     [OrderStatus.PENDING_SHIP]: 'info',
     [OrderStatus.PENDING_RECEIVE]: 'success',
     [OrderStatus.COMPLETED]: 'info',
-    [OrderStatus.CANCELLED]: 'danger'
+    [OrderStatus.CANCELLED]: 'danger',
+    [OrderStatus.AFTER_SALE_PROCESSING]: 'warning',
+    [OrderStatus.AFTER_SALE_DONE]: 'info'
   };
 
   // 设置当前订单

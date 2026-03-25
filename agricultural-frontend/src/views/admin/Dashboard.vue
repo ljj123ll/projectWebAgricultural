@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getDashboard } from '@/apis/admin';
+import { getDashboard, getMerchantRank } from '@/apis/admin';
 
 const loading = ref(false);
 const timeRange = ref('all');
@@ -142,20 +142,22 @@ const formatDate = (date: string) => {
 const loadDashboard = async () => {
   loading.value = true;
   try {
-    const res = await getDashboard(timeRange.value);
-    if (res) {
-      stats.value = {
-        totalUserCount: res.totalUserCount || 0,
-        totalMerchantCount: res.totalMerchantCount || 0,
-        totalOrderCount: res.totalOrderCount || 0,
-        totalRevenue: res.totalRevenue || 0,
-        todayRevenue: res.todayRevenue || 0,
-        pendingAuditCount: res.pendingAuditCount || 0
-      };
-      rankList.value = res.merchantRank || [];
-      recentOrders.value = res.recentOrders || [];
-      notices.value = res.notices || [];
-    }
+    const [dashboardRes, rankRes] = await Promise.all([
+      getDashboard(timeRange.value),
+      getMerchantRank(10)
+    ]);
+    const res = dashboardRes || {};
+    stats.value = {
+      totalUserCount: res.totalUserCount || 0,
+      totalMerchantCount: res.totalMerchantCount || 0,
+      totalOrderCount: res.totalOrderCount || 0,
+      totalRevenue: res.totalRevenue || 0,
+      todayRevenue: res.todayRevenue || 0,
+      pendingAuditCount: res.pendingAuditCount || 0
+    };
+    rankList.value = (rankRes && rankRes.length ? rankRes : (res.merchantRank || []));
+    recentOrders.value = res.recentOrders || [];
+    notices.value = res.notices || [];
   } catch (error) {
     console.error('Failed to load dashboard', error);
     ElMessage.error('加载数据失败');

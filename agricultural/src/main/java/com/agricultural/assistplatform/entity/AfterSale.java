@@ -9,7 +9,8 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 售后状态 1-待商家处理 2-协商中 3-已解决 4-管理员介入 5-已驳回
+ * 售后状态
+ * 1-待商家处理 2-待商家确认退款(用户已寄回) 3-已完成售后 4-管理员介入 5-已驳回 6-待用户退货
  */
 @Data
 @TableName("after_sale")
@@ -24,6 +25,10 @@ public class AfterSale {
     private String applyReason;
     private String proofImgUrls;
     private Integer afterSaleStatus;
+    private Integer originOrderStatus;
+    private String returnLogisticsCompany;
+    private String returnLogisticsNo;
+    private LocalDateTime returnShipTime;
     private String handleResult;
     private Long adminId;
     @TableLogic

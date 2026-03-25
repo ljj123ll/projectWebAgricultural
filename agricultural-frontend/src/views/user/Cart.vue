@@ -59,7 +59,7 @@
                 :min="1" 
                 :max="item.stock" 
                 size="small"
-                @change="(val) => handleNumChange(item, val)"
+                @change="(val: number | undefined) => handleNumChange(item, val)"
               />
             </div>
             <div class="col col-total">

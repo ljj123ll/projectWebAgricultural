@@ -152,15 +152,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { loginPassword, loginSms, sendSms } from '@/apis/user';
-import { Shop, Message, Lock, Iphone, User, ArrowLeft } from '@element-plus/icons-vue';
+import { Message, Lock, Iphone, User, ArrowLeft } from '@element-plus/icons-vue';
 
 const router = useRouter();
-const route = useRoute();
 const userStore = useUserStore();
 
 const formRef = ref<FormInstance>();

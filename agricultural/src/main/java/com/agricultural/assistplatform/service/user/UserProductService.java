@@ -6,11 +6,13 @@ import com.agricultural.assistplatform.entity.ProductCategory;
 import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.entity.ProductTrace;
 import com.agricultural.assistplatform.entity.ShopInfo;
+import com.agricultural.assistplatform.entity.MerchantInfo;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductTraceMapper;
 import com.agricultural.assistplatform.mapper.ShopInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductCategoryMapper;
+import com.agricultural.assistplatform.mapper.MerchantInfoMapper;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -18,7 +20,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,9 +33,10 @@ public class UserProductService {
     private final ProductTraceMapper productTraceMapper;
     private final ShopInfoMapper shopInfoMapper;
     private final ProductCategoryMapper productCategoryMapper;
+    private final MerchantInfoMapper merchantInfoMapper;
 
     /**
-     * 商品搜索：keyword、sortBy(sales/price_asc/price_desc/score/stock)、categoryId、originPlace、isUnsalable、分页
+     * 商品搜索：keyword（商品名/产地/店铺名/商家名）、sortBy、categoryId、originPlace、isUnsalable、分页
      */
     public PageResult<ProductSimpleVO> search(String keyword, String sortBy, Long categoryId, String originPlace, Integer isUnsalable,
                                              Integer pageNum, Integer pageSize) {
@@ -40,7 +45,30 @@ public class UserProductService {
         LambdaQueryWrapper<ProductInfo> q = new LambdaQueryWrapper<ProductInfo>()
                 .eq(ProductInfo::getStatus, 1);
         if (keyword != null && !keyword.isBlank()) {
-            q.and(w -> w.like(ProductInfo::getProductName, keyword).or().like(ProductInfo::getOriginPlace, keyword));
+            String kw = keyword.trim();
+            Set<Long> matchedShopMerchantIds = shopInfoMapper.selectList(
+                            new LambdaQueryWrapper<ShopInfo>().like(ShopInfo::getShopName, kw))
+                    .stream()
+                    .map(ShopInfo::getMerchantId)
+                    .filter(id -> id != null && id > 0)
+                    .collect(Collectors.toSet());
+            Set<Long> matchedMerchantNameIds = merchantInfoMapper.selectList(
+                            new LambdaQueryWrapper<MerchantInfo>().like(MerchantInfo::getMerchantName, kw))
+                    .stream()
+                    .map(MerchantInfo::getId)
+                    .filter(id -> id != null && id > 0)
+                    .collect(Collectors.toSet());
+            Set<Long> matchedMerchantIds = new HashSet<>();
+            matchedMerchantIds.addAll(matchedShopMerchantIds);
+            matchedMerchantIds.addAll(matchedMerchantNameIds);
+            if (matchedMerchantIds.isEmpty()) {
+                q.and(w -> w.like(ProductInfo::getProductName, kw)
+                        .or().like(ProductInfo::getOriginPlace, kw));
+            } else {
+                q.and(w -> w.like(ProductInfo::getProductName, kw)
+                        .or().like(ProductInfo::getOriginPlace, kw)
+                        .or().in(ProductInfo::getMerchantId, matchedMerchantIds));
+            }
         }
         if (categoryId != null) q.eq(ProductInfo::getCategoryId, categoryId);
         if (originPlace != null && !originPlace.isBlank()) q.likeRight(ProductInfo::getOriginPlace, originPlace);
@@ -136,6 +164,11 @@ public class UserProductService {
                 new LambdaQueryWrapper<ShopInfo>().eq(ShopInfo::getMerchantId, p.getMerchantId()));
             if (shop != null) {
                 v.setMerchantName(shop.getShopName());
+            } else {
+                MerchantInfo merchant = merchantInfoMapper.selectById(p.getMerchantId());
+                if (merchant != null) {
+                    v.setMerchantName(merchant.getMerchantName());
+                }
             }
         }
         

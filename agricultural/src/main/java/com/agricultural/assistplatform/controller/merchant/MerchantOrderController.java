@@ -34,6 +34,12 @@ public class MerchantOrderController {
         return Result.ok(merchantOrderService.get(id));
     }
 
+    @Operation(summary = "订单详情（按订单号）")
+    @GetMapping("/orders/no/{orderNo}")
+    public Result<MerchantOrderVO> getByOrderNo(@PathVariable String orderNo) {
+        return Result.ok(merchantOrderService.getByOrderNo(orderNo));
+    }
+
     @Operation(summary = "发货")
     @PutMapping("/orders/{id}/ship")
     public Result<Void> ship(@PathVariable Long id, @RequestBody Map<String, String> body) {

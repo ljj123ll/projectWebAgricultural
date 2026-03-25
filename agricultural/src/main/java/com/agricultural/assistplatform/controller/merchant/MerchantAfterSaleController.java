@@ -34,4 +34,11 @@ public class MerchantAfterSaleController {
         merchantAfterSaleService.handle(id, body);
         return Result.ok();
     }
+
+    @Operation(summary = "确认收到退货并退款")
+    @PutMapping("/after-sale/{id}/confirm-return")
+    public Result<Void> confirmReturn(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        merchantAfterSaleService.confirmReturn(id, body);
+        return Result.ok();
+    }
 }

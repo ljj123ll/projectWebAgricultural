@@ -1,0 +1,748 @@
+[
+  {
+    "value": "北京市",
+    "label": "北京市",
+    "children": [
+      {
+        "value": "北京市",
+        "label": "北京市",
+        "children": [
+          {
+            "value": "朝阳区",
+            "label": "朝阳区",
+            "children": [
+              { "value": "望京街道", "label": "望京街道" },
+              { "value": "三里屯街道", "label": "三里屯街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "天津市",
+    "label": "天津市",
+    "children": [
+      {
+        "value": "天津市",
+        "label": "天津市",
+        "children": [
+          {
+            "value": "滨海新区",
+            "label": "滨海新区",
+            "children": [
+              { "value": "塘沽街道", "label": "塘沽街道" },
+              { "value": "新港街道", "label": "新港街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "河北省",
+    "label": "河北省",
+    "children": [
+      {
+        "value": "石家庄市",
+        "label": "石家庄市",
+        "children": [
+          {
+            "value": "长安区",
+            "label": "长安区",
+            "children": [
+              { "value": "建安街道", "label": "建安街道" },
+              { "value": "河东街道", "label": "河东街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "山西省",
+    "label": "山西省",
+    "children": [
+      {
+        "value": "太原市",
+        "label": "太原市",
+        "children": [
+          {
+            "value": "小店区",
+            "label": "小店区",
+            "children": [
+              { "value": "平阳路街道", "label": "平阳路街道" },
+              { "value": "坞城街道", "label": "坞城街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "内蒙古自治区",
+    "label": "内蒙古自治区",
+    "children": [
+      {
+        "value": "呼和浩特市",
+        "label": "呼和浩特市",
+        "children": [
+          {
+            "value": "新城区",
+            "label": "新城区",
+            "children": [
+              { "value": "海拉尔街道", "label": "海拉尔街道" },
+              { "value": "东街街道", "label": "东街街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "辽宁省",
+    "label": "辽宁省",
+    "children": [
+      {
+        "value": "沈阳市",
+        "label": "沈阳市",
+        "children": [
+          {
+            "value": "和平区",
+            "label": "和平区",
+            "children": [
+              { "value": "太原街街道", "label": "太原街街道" },
+              { "value": "南市场街道", "label": "南市场街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "吉林省",
+    "label": "吉林省",
+    "children": [
+      {
+        "value": "长春市",
+        "label": "长春市",
+        "children": [
+          {
+            "value": "南关区",
+            "label": "南关区",
+            "children": [
+              { "value": "自强街道", "label": "自强街道" },
+              { "value": "民康街道", "label": "民康街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "黑龙江省",
+    "label": "黑龙江省",
+    "children": [
+      {
+        "value": "哈尔滨市",
+        "label": "哈尔滨市",
+        "children": [
+          {
+            "value": "南岗区",
+            "label": "南岗区",
+            "children": [
+              { "value": "荣市街道", "label": "荣市街道" },
+              { "value": "曲线街道", "label": "曲线街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "上海市",
+    "label": "上海市",
+    "children": [
+      {
+        "value": "上海市",
+        "label": "上海市",
+        "children": [
+          {
+            "value": "浦东新区",
+            "label": "浦东新区",
+            "children": [
+              { "value": "陆家嘴街道", "label": "陆家嘴街道" },
+              { "value": "张江镇", "label": "张江镇" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "江苏省",
+    "label": "江苏省",
+    "children": [
+      {
+        "value": "南京市",
+        "label": "南京市",
+        "children": [
+          {
+            "value": "玄武区",
+            "label": "玄武区",
+            "children": [
+              { "value": "梅园新村街道", "label": "梅园新村街道" },
+              { "value": "新街口街道", "label": "新街口街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "浙江省",
+    "label": "浙江省",
+    "children": [
+      {
+        "value": "杭州市",
+        "label": "杭州市",
+        "children": [
+          {
+            "value": "西湖区",
+            "label": "西湖区",
+            "children": [
+              { "value": "翠苑街道", "label": "翠苑街道" },
+              { "value": "古荡街道", "label": "古荡街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "安徽省",
+    "label": "安徽省",
+    "children": [
+      {
+        "value": "合肥市",
+        "label": "合肥市",
+        "children": [
+          {
+            "value": "蜀山区",
+            "label": "蜀山区",
+            "children": [
+              { "value": "南七街道", "label": "南七街道" },
+              { "value": "笔架山街道", "label": "笔架山街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "福建省",
+    "label": "福建省",
+    "children": [
+      {
+        "value": "福州市",
+        "label": "福州市",
+        "children": [
+          {
+            "value": "鼓楼区",
+            "label": "鼓楼区",
+            "children": [
+              { "value": "南街街道", "label": "南街街道" },
+              { "value": "东街街道", "label": "东街街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "江西省",
+    "label": "江西省",
+    "children": [
+      {
+        "value": "南昌市",
+        "label": "南昌市",
+        "children": [
+          {
+            "value": "东湖区",
+            "label": "东湖区",
+            "children": [
+              { "value": "百花洲街道", "label": "百花洲街道" },
+              { "value": "豫章街道", "label": "豫章街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "山东省",
+    "label": "山东省",
+    "children": [
+      {
+        "value": "济南市",
+        "label": "济南市",
+        "children": [
+          {
+            "value": "历下区",
+            "label": "历下区",
+            "children": [
+              { "value": "泉城路街道", "label": "泉城路街道" },
+              { "value": "解放路街道", "label": "解放路街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "河南省",
+    "label": "河南省",
+    "children": [
+      {
+        "value": "郑州市",
+        "label": "郑州市",
+        "children": [
+          {
+            "value": "金水区",
+            "label": "金水区",
+            "children": [
+              { "value": "花园路街道", "label": "花园路街道" },
+              { "value": "未来路街道", "label": "未来路街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "湖北省",
+    "label": "湖北省",
+    "children": [
+      {
+        "value": "武汉市",
+        "label": "武汉市",
+        "children": [
+          {
+            "value": "武昌区",
+            "label": "武昌区",
+            "children": [
+              { "value": "水果湖街道", "label": "水果湖街道" },
+              { "value": "中南路街道", "label": "中南路街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "湖南省",
+    "label": "湖南省",
+    "children": [
+      {
+        "value": "长沙市",
+        "label": "长沙市",
+        "children": [
+          {
+            "value": "岳麓区",
+            "label": "岳麓区",
+            "children": [
+              { "value": "望月湖街道", "label": "望月湖街道" },
+              { "value": "银盆岭街道", "label": "银盆岭街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "广东省",
+    "label": "广东省",
+    "children": [
+      {
+        "value": "广州市",
+        "label": "广州市",
+        "children": [
+          {
+            "value": "天河区",
+            "label": "天河区",
+            "children": [
+              { "value": "石牌街道", "label": "石牌街道" },
+              { "value": "猎德街道", "label": "猎德街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "广西壮族自治区",
+    "label": "广西壮族自治区",
+    "children": [
+      {
+        "value": "南宁市",
+        "label": "南宁市",
+        "children": [
+          {
+            "value": "青秀区",
+            "label": "青秀区",
+            "children": [
+              { "value": "新竹街道", "label": "新竹街道" },
+              { "value": "中山街道", "label": "中山街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "海南省",
+    "label": "海南省",
+    "children": [
+      {
+        "value": "海口市",
+        "label": "海口市",
+        "children": [
+          {
+            "value": "龙华区",
+            "label": "龙华区",
+            "children": [
+              { "value": "金贸街道", "label": "金贸街道" },
+              { "value": "中山街道", "label": "中山街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "重庆市",
+    "label": "重庆市",
+    "children": [
+      {
+        "value": "重庆市",
+        "label": "重庆市",
+        "children": [
+          {
+            "value": "渝中区",
+            "label": "渝中区",
+            "children": [
+              { "value": "解放碑街道", "label": "解放碑街道" },
+              { "value": "朝天门街道", "label": "朝天门街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "四川省",
+    "label": "四川省",
+    "children": [
+      {
+        "value": "成都市",
+        "label": "成都市",
+        "children": [
+          {
+            "value": "锦江区",
+            "label": "锦江区",
+            "children": [
+              { "value": "春熙路街道", "label": "春熙路街道" },
+              { "value": "盐市口街道", "label": "盐市口街道" }
+            ]
+          },
+          {
+            "value": "武侯区",
+            "label": "武侯区",
+            "children": [
+              { "value": "玉林街道", "label": "玉林街道" },
+              { "value": "华兴街道", "label": "华兴街道" }
+            ]
+          },
+          {
+            "value": "蒲江县",
+            "label": "蒲江县",
+            "children": [
+              { "value": "寿安镇", "label": "寿安镇" },
+              { "value": "鹤山街道", "label": "鹤山街道" }
+            ]
+          }
+        ]
+      },
+      {
+        "value": "绵阳市",
+        "label": "绵阳市",
+        "children": [
+          {
+            "value": "涪城区",
+            "label": "涪城区",
+            "children": [
+              { "value": "工区街道", "label": "工区街道" },
+              { "value": "城郊街道", "label": "城郊街道" }
+            ]
+          },
+          {
+            "value": "三台县",
+            "label": "三台县",
+            "children": [
+              { "value": "芦溪镇", "label": "芦溪镇" },
+              { "value": "塔山镇", "label": "塔山镇" }
+            ]
+          }
+        ]
+      },
+      {
+        "value": "德阳市",
+        "label": "德阳市",
+        "children": [
+          {
+            "value": "旌阳区",
+            "label": "旌阳区",
+            "children": [
+              { "value": "旌东街道", "label": "旌东街道" },
+              { "value": "孝感街道", "label": "孝感街道" }
+            ]
+          }
+        ]
+      },
+      {
+        "value": "南充市",
+        "label": "南充市",
+        "children": [
+          {
+            "value": "顺庆区",
+            "label": "顺庆区",
+            "children": [
+              { "value": "舞凤街道", "label": "舞凤街道" },
+              { "value": "北城街道", "label": "北城街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "贵州省",
+    "label": "贵州省",
+    "children": [
+      {
+        "value": "贵阳市",
+        "label": "贵阳市",
+        "children": [
+          {
+            "value": "南明区",
+            "label": "南明区",
+            "children": [
+              { "value": "中华南路街道", "label": "中华南路街道" },
+              { "value": "油榨街道", "label": "油榨街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "云南省",
+    "label": "云南省",
+    "children": [
+      {
+        "value": "昆明市",
+        "label": "昆明市",
+        "children": [
+          {
+            "value": "五华区",
+            "label": "五华区",
+            "children": [
+              { "value": "华山街道", "label": "华山街道" },
+              { "value": "莲华街道", "label": "莲华街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "西藏自治区",
+    "label": "西藏自治区",
+    "children": [
+      {
+        "value": "拉萨市",
+        "label": "拉萨市",
+        "children": [
+          {
+            "value": "城关区",
+            "label": "城关区",
+            "children": [
+              { "value": "吉崩岗街道", "label": "吉崩岗街道" },
+              { "value": "八廓街道", "label": "八廓街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "陕西省",
+    "label": "陕西省",
+    "children": [
+      {
+        "value": "西安市",
+        "label": "西安市",
+        "children": [
+          {
+            "value": "雁塔区",
+            "label": "雁塔区",
+            "children": [
+              { "value": "小寨路街道", "label": "小寨路街道" },
+              { "value": "长延堡街道", "label": "长延堡街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "甘肃省",
+    "label": "甘肃省",
+    "children": [
+      {
+        "value": "兰州市",
+        "label": "兰州市",
+        "children": [
+          {
+            "value": "城关区",
+            "label": "城关区",
+            "children": [
+              { "value": "张掖路街道", "label": "张掖路街道" },
+              { "value": "酒泉路街道", "label": "酒泉路街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "青海省",
+    "label": "青海省",
+    "children": [
+      {
+        "value": "西宁市",
+        "label": "西宁市",
+        "children": [
+          {
+            "value": "城中区",
+            "label": "城中区",
+            "children": [
+              { "value": "饮马街街道", "label": "饮马街街道" },
+              { "value": "仓门街街道", "label": "仓门街街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "宁夏回族自治区",
+    "label": "宁夏回族自治区",
+    "children": [
+      {
+        "value": "银川市",
+        "label": "银川市",
+        "children": [
+          {
+            "value": "兴庆区",
+            "label": "兴庆区",
+            "children": [
+              { "value": "玉皇阁北街街道", "label": "玉皇阁北街街道" },
+              { "value": "凤凰北街街道", "label": "凤凰北街街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "新疆维吾尔自治区",
+    "label": "新疆维吾尔自治区",
+    "children": [
+      {
+        "value": "乌鲁木齐市",
+        "label": "乌鲁木齐市",
+        "children": [
+          {
+            "value": "天山区",
+            "label": "天山区",
+            "children": [
+              { "value": "和平路街道", "label": "和平路街道" },
+              { "value": "解放南路街道", "label": "解放南路街道" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "香港特别行政区",
+    "label": "香港特别行政区",
+    "children": [
+      {
+        "value": "香港特别行政区",
+        "label": "香港特别行政区",
+        "children": [
+          {
+            "value": "中西区",
+            "label": "中西区",
+            "children": [
+              { "value": "中环", "label": "中环" },
+              { "value": "上环", "label": "上环" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "澳门特别行政区",
+    "label": "澳门特别行政区",
+    "children": [
+      {
+        "value": "澳门特别行政区",
+        "label": "澳门特别行政区",
+        "children": [
+          {
+            "value": "花地玛堂区",
+            "label": "花地玛堂区",
+            "children": [
+              { "value": "筷子基", "label": "筷子基" },
+              { "value": "台山", "label": "台山" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": "台湾省",
+    "label": "台湾省",
+    "children": [
+      {
+        "value": "台北市",
+        "label": "台北市",
+        "children": [
+          {
+            "value": "中正区",
+            "label": "中正区",
+            "children": [
+              { "value": "城中里", "label": "城中里" },
+              { "value": "黎明里", "label": "黎明里" }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

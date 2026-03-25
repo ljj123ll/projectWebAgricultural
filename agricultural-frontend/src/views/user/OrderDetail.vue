@@ -42,6 +42,8 @@
       </div>
     </div>
 
+    <OrderChatPanel v-if="order?.orderNo" :order-no="order.orderNo" role="user" class="chat-panel" />
+
     <div v-if="order && order.orderStatus === 4" class="review-action">
       <el-button type="primary" size="large" @click="openReviewDialog">评价商品</el-button>
     </div>
@@ -49,7 +51,7 @@
     <el-dialog v-model="reviewDialogVisible" title="评价商品" width="90%">
       <el-form :model="reviewForm" label-position="top">
         <el-form-item label="选择商品">
-          <el-select v-model="reviewForm.productId" placeholder="请选择商品" style="width: 100%">
+          <el-select v-model="reviewForm.productId" placeholder="请选择商品" style="width: 100%" @change="handleProductChange">
             <el-option
               v-for="item in order?.items || order?.orderItems"
               :key="item.productId"
@@ -76,6 +78,7 @@
             :action="uploadAction"
             list-type="picture-card"
             :file-list="fileList"
+            accept="image/*,video/*"
             multiple
             :limit="6"
             :on-success="handleUploadSuccess"
@@ -100,9 +103,10 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Plus, ArrowLeft, CircleCheckFilled } from '@element-plus/icons-vue';
 import { getOrderDetail } from '@/apis/order';
-import { submitComment } from '@/apis/user';
-import type { Order } from '@/types';
+import { listComments, submitComment, updateComment } from '@/apis/user';
+import type { Comment, Order } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
+import OrderChatPanel from '@/components/OrderChatPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -121,13 +125,83 @@ const getCoverImage = (raw?: string) => {
 };
 
 const reviewDialogVisible = ref(false);
+const editingCommentId = ref<number | null>(null);
+const commentMapByProduct = ref<Record<number, Comment>>({});
 const reviewForm = reactive({
   productId: 0,
   score: 5,
   content: '',
-  imgUrls: ''
+  imgUrls: '',
+  mediaUrls: ''
 });
 const fileList = ref<any[]>([]);
+
+const parseMediaList = (raw?: string) => {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+};
+
+const normalizeImageValue = (raw?: string) => {
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    try {
+      const parsed = new URL(raw);
+      let path = parsed.pathname || '';
+      if (path.startsWith('/api/')) {
+        path = path.slice(4);
+      }
+      return path || raw;
+    } catch {
+      return raw;
+    }
+  }
+  if (raw.startsWith('/api/')) return raw.slice(4);
+  return raw;
+};
+
+const buildUploadFileList = (raw?: string) => {
+  return parseMediaList(raw).map((url, index) => ({
+    uid: `${Date.now()}-${index}`,
+    name: `media-${index + 1}`,
+    status: 'success',
+    url: getFullImageUrl(url)
+  }));
+};
+
+const isVideoUrl = (url: string) => {
+  const target = (url || '').toLowerCase();
+  return target.endsWith('.mp4')
+    || target.endsWith('.webm')
+    || target.endsWith('.mov')
+    || target.endsWith('.avi')
+    || target.endsWith('.mkv')
+    || target.includes('video');
+};
+
+const toServerUrl = (raw?: string) => normalizeImageValue(raw || '');
+
+const loadOrderComments = async () => {
+  if (!order.value?.orderNo) return;
+  try {
+    const res = await listComments({ pageNum: 1, pageSize: 1000 });
+    const list = ((res?.list || []) as Comment[]).filter(item => item.orderNo === order.value?.orderNo);
+    const map: Record<number, Comment> = {};
+    list.forEach((item) => {
+      const productId = Number(item.productId || 0);
+      if (!productId) return;
+      if (!map[productId] || Number(item.id || 0) > Number(map[productId].id || 0)) {
+        map[productId] = item;
+      }
+    });
+    commentMapByProduct.value = map;
+  } catch (error) {
+    console.warn('加载订单评价记录失败', error);
+    commentMapByProduct.value = {};
+  }
+};
 
 const statusText = computed(() => {
   if (!order.value) return '';
@@ -138,7 +212,9 @@ const statusText = computed(() => {
     3: '待收货',
     4: '已完成',
     5: '已取消',
-    6: '支付异常'
+    6: '支付异常',
+    7: '售后中',
+    8: '已完成售后'
   };
   return map[order.value.orderStatus] || '未知状态';
 });
@@ -151,7 +227,9 @@ const statusColor = computed(() => {
     3: '#409eff',
     4: '#67c23a', // Success
     5: '#909399', // Info
-    6: '#f56c6c'  // Danger
+    6: '#f56c6c',  // Danger
+    7: '#e6a23c',
+    8: '#67c23a'
   };
   return map[order.value.orderStatus] || '#909399';
 });
@@ -163,19 +241,64 @@ const formatDate = (date: string) => {
 
 const openReviewDialog = () => {
   const items = order.value?.items || order.value?.orderItems;
-  if (items && items.length > 0) {
-    reviewForm.productId = items[0]?.productId || 0;
+  if (!items || items.length === 0) return;
+
+  const queryProductId = Number(route.query.productId || 0);
+  if (queryProductId > 0 && items.some(item => Number(item.productId) === queryProductId)) {
+    reviewForm.productId = queryProductId;
+  } else {
+    const firstRejected = items.find(item => {
+      const comment = commentMapByProduct.value[Number(item.productId)];
+      return Number(comment?.auditStatus) === 2;
+    });
+    reviewForm.productId = Number(firstRejected?.productId || items[0]?.productId || 0);
   }
+  applyCommentToFormByProduct(reviewForm.productId);
   reviewDialogVisible.value = true;
 };
 
+const applyCommentToFormByProduct = (productId: number) => {
+  const comment = commentMapByProduct.value[Number(productId)];
+  if (comment && Number(comment.auditStatus) === 2) {
+    editingCommentId.value = Number(comment.id);
+    reviewForm.score = Number(comment.score || 5);
+    reviewForm.content = comment.content || '';
+    reviewForm.imgUrls = comment.imgUrls || '';
+    const mediaRaw = comment.mediaUrls || comment.imgUrls || '';
+    reviewForm.mediaUrls = mediaRaw;
+    fileList.value = buildUploadFileList(mediaRaw);
+    return;
+  }
+  editingCommentId.value = null;
+  reviewForm.score = 5;
+  reviewForm.content = '';
+  reviewForm.imgUrls = '';
+  reviewForm.mediaUrls = '';
+  fileList.value = [];
+};
+
+const handleProductChange = (productId: number) => {
+  applyCommentToFormByProduct(productId);
+};
+
 const syncUploadedImages = () => {
-  reviewForm.imgUrls = fileList.value
+  const mediaUrls = fileList.value
     .map(file => {
-      if (file?.response?.code === 200) return file.response.data;
-      return file?.url || '';
+      if (file?.response?.code === 200) {
+        const data = file.response.data;
+        if (typeof data === 'string') return data;
+        if (typeof data?.url === 'string') return data.url;
+      }
+      return toServerUrl(file?.url || '');
     })
     .filter(Boolean)
+    .join(',');
+
+  reviewForm.mediaUrls = mediaUrls;
+  reviewForm.imgUrls = mediaUrls
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item && !isVideoUrl(item))
     .join(',');
 };
 
@@ -194,7 +317,7 @@ const handleFileRemove = (_file: any, files: any[]) => {
 };
 
 const handleExceed = () => {
-  ElMessage.warning('最多上传6张图片');
+  ElMessage.warning('最多上传6个图片/视频文件');
 };
 
 const submitReview = async () => {
@@ -209,19 +332,48 @@ const submitReview = async () => {
   
   try {
     syncUploadedImages();
-    await submitComment({
-      orderNo: order.value?.orderNo,
-      productId: reviewForm.productId,
-      score: reviewForm.score,
-      content: reviewForm.content,
-      imgUrls: reviewForm.imgUrls
-    });
-    
-    ElMessage.success('评价提交成功');
+    if (editingCommentId.value) {
+      await updateComment(editingCommentId.value, {
+        score: reviewForm.score,
+        content: reviewForm.content,
+        imgUrls: reviewForm.imgUrls,
+        mediaUrls: reviewForm.mediaUrls
+      });
+      ElMessage.success('评论已修改并重新提交审核');
+    } else {
+      const existing = commentMapByProduct.value[Number(reviewForm.productId)];
+      if (existing) {
+        const auditStatus = Number(existing.auditStatus ?? 0);
+        if (auditStatus === 0) {
+          ElMessage.warning('该商品评论正在审核中，请耐心等待');
+          return;
+        }
+        if (auditStatus === 1) {
+          ElMessage.warning('该商品评论已审核通过，无需重复评价');
+          return;
+        }
+        if (auditStatus === 2) {
+          ElMessage.warning('该商品评论审核未通过，请点击“修改评论”后重新提交');
+          return;
+        }
+      }
+      await submitComment({
+        orderNo: order.value?.orderNo,
+        productId: reviewForm.productId,
+        score: reviewForm.score,
+        content: reviewForm.content,
+        imgUrls: reviewForm.imgUrls,
+        mediaUrls: reviewForm.mediaUrls
+      });
+      ElMessage.success('评价已提交，等待管理员审核后即可查看评论');
+    }
     reviewDialogVisible.value = false;
     reviewForm.content = '';
     reviewForm.imgUrls = '';
+    reviewForm.mediaUrls = '';
     fileList.value = [];
+    editingCommentId.value = null;
+    await loadOrderComments();
     router.replace(`/product/${reviewForm.productId}?tab=reviews`);
   } catch (error) {
     console.error('评价失败', error);
@@ -240,6 +392,7 @@ onMounted(async () => {
     const res = await getOrderDetail(orderId);
     if (res) {
       order.value = res;
+      await loadOrderComments();
     }
   } catch (error) {
     console.error('获取订单详情失败', error);
@@ -247,8 +400,7 @@ onMounted(async () => {
   }
   
   if (route.query.review === '1') {
-    // 等待数据加载
-    setTimeout(() => openReviewDialog(), 500);
+    openReviewDialog();
   }
 });
 </script>
@@ -359,6 +511,10 @@ onMounted(async () => {
       color: #f56c6c;
     }
   }
+}
+
+.chat-panel {
+  margin-top: 20px;
 }
 
 .review-action {

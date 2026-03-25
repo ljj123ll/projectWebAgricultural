@@ -71,15 +71,47 @@
               <el-button @click="applyAfterSale(order)">申请售后</el-button>
             </template>
 
+            <!-- 售后中 -->
+            <template v-if="order.orderStatus === 7">
+              <el-button type="warning" plain @click="viewAfterSale(order)">查看售后</el-button>
+              <el-button @click="contactMerchant(order)">联系商家</el-button>
+            </template>
+
             <!-- 已完成 -->
             <template v-if="order.orderStatus === 4">
-              <el-button v-if="isOrderReviewed(order)" type="success" plain @click="goToReviewed(order)">
+              <el-button
+                v-if="getOrderReviewState(order) === 'approved'"
+                type="success"
+                plain
+                @click="goToReviewed(order)"
+              >
                 已评价
+              </el-button>
+              <template v-else-if="getOrderReviewState(order) === 'rejected'">
+                <el-button type="danger" plain @click="goToRejected(order)">
+                  未通过
+                </el-button>
+                <el-button type="primary" @click="goToEditRejectedReview(order)">
+                  修改评论
+                </el-button>
+              </template>
+              <el-button
+                v-else-if="getOrderReviewState(order) === 'pending'"
+                type="warning"
+                plain
+                @click="goToReviewed(order)"
+              >
+                审核中
               </el-button>
               <el-button v-else type="primary" @click="goToReview(order.id)">
                 评价商品
               </el-button>
               <el-button @click="applyAfterSale(order)">申请售后</el-button>
+            </template>
+
+            <!-- 已完成售后 -->
+            <template v-if="order.orderStatus === 8">
+              <el-button type="success" plain @click="viewAfterSale(order)">售后详情</el-button>
             </template>
 
             <!-- 已取消 -->
@@ -121,28 +153,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/modules/order';
+import { useUserStore } from '@/stores/modules/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { Comment, Order } from '@/types';
-import { getOrders, cancelOrder, receiveOrder, getLogistics } from '@/apis/order';
-import { listComments } from '@/apis/user';
+import { getOrders, cancelOrder, receiveOrder, getLogistics, getLogisticsByOrderNo } from '@/apis/order';
+import { listComments, listAfterSale as listUserAfterSale } from '@/apis/user';
 import { getFullImageUrl } from '@/utils/image';
 
 const router = useRouter();
 const orderStore = useOrderStore();
+const userStore = useUserStore();
 
 const currentTab = ref(0);
 const loading = ref(false);
 const hiddenOrderIds = ref<number[]>([]);
-const reviewedKeySet = ref<Set<string>>(new Set());
+const commentStateMap = ref<Record<string, { id: number; auditStatus: number }>>({});
+const afterSaleNoMap = ref<Record<string, string>>({});
+let realtimeSource: EventSource | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const tabs = ref([
   { label: '全部', value: 0 },
   { label: '待付款', value: 1 },
   { label: '待发货', value: 2 },
   { label: '待收货', value: 3 },
+  { label: '售后中', value: 7 },
   { label: '已完成', value: 4 },
   { label: '已取消', value: 5 }
 ]);
@@ -158,19 +196,129 @@ const normalizeOrder = (order: any): Order => {
   };
 };
 
+const getStatusPriority = (status?: number) => {
+  const map: Record<number, number> = {
+    8: 70, // 已完成售后
+    4: 60, // 已完成
+    7: 55, // 售后中
+    3: 50, // 待收货
+    2: 40, // 待发货
+    1: 30, // 待付款
+    5: 20, // 已取消
+    6: 10  // 支付异常
+  };
+  return map[Number(status)] || 0;
+};
+
+const getTimeValue = (value?: string) => {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const mergeDuplicateOrders = (list: Order[]) => {
+  const map = new Map<string, Order>();
+  list.forEach((order) => {
+    const key = order.orderNo || String(order.id);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, order);
+      return;
+    }
+
+    const currentPriority = getStatusPriority(order.orderStatus);
+    const existingPriority = getStatusPriority(existing.orderStatus);
+    const currentTime = Math.max(getTimeValue(order.updateTime), getTimeValue(order.createTime));
+    const existingTime = Math.max(getTimeValue(existing.updateTime), getTimeValue(existing.createTime));
+
+    const shouldReplace =
+      currentPriority > existingPriority ||
+      (currentPriority === existingPriority && (currentTime > existingTime || order.id > existing.id));
+
+    if (shouldReplace) {
+      map.set(key, order);
+      return;
+    }
+
+    if ((!existing.orderItems || existing.orderItems.length === 0) && order.orderItems?.length) {
+      existing.orderItems = order.orderItems;
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    return getTimeValue(b.createTime) - getTimeValue(a.createTime);
+  });
+};
+
 const loadOrders = async () => {
   loading.value = true;
   try {
     const res = await getOrders({ pageNum: 1, pageSize: 100 });
-    orders.value = (res?.list || []).map(normalizeOrder);
+    const normalized = (res?.list || []).map(normalizeOrder);
+    orders.value = mergeDuplicateOrders(normalized);
     await loadReviewedComments();
+    await loadAfterSaleRecords();
   } finally {
     loading.value = false;
   }
 };
 
+const closeRealtime = () => {
+  if (realtimeSource) {
+    realtimeSource.close();
+    realtimeSource = null;
+  }
+};
+
+const parseRefreshPayload = (event: MessageEvent): { reason?: string } => {
+  try {
+    const data = JSON.parse(event.data || '{}');
+    if (data && typeof data === 'object') return data;
+  } catch (error) {
+    console.warn('解析用户实时消息失败', error);
+  }
+  return {};
+};
+
+const initRealtime = () => {
+  closeRealtime();
+  if (!userStore.token || userStore.role !== 'user') return;
+  const basePath = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+  const token = encodeURIComponent(userStore.token);
+  realtimeSource = new EventSource(`${basePath}/user/realtime/stream?token=${token}`);
+
+  realtimeSource.addEventListener('refresh', (event) => {
+    const payload = parseRefreshPayload(event as MessageEvent);
+    if (payload.reason === 'ORDER_SHIPPED') {
+      currentTab.value = 3;
+    }
+    void loadOrders();
+  });
+
+  realtimeSource.addEventListener('connected', () => {
+    void loadOrders();
+  });
+
+  realtimeSource.onerror = () => {
+    // EventSource 会自动重连，这里不额外提示，避免打扰用户
+  };
+};
+
 onMounted(() => {
-  loadOrders();
+  void loadOrders();
+  initRealtime();
+  // SSE 异常断开时的兜底同步
+  refreshTimer = setInterval(() => {
+    void loadOrders();
+  }, 30000);
+});
+
+onUnmounted(() => {
+  closeRealtime();
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 });
 
 const visibleOrders = computed(() => orders.value.filter(order => !hiddenOrderIds.value.includes(order.id)));
@@ -180,15 +328,49 @@ const makeReviewedKey = (orderNo: string, productId: number) => `${orderNo}::${p
 const loadReviewedComments = async () => {
   try {
     const res = await listComments({ pageNum: 1, pageSize: 1000 });
-    const next = new Set<string>();
+    const next: Record<string, { id: number; auditStatus: number }> = {};
     (res?.list || []).forEach((comment: Comment) => {
       if (!comment.orderNo || !comment.productId) return;
-      next.add(makeReviewedKey(comment.orderNo, Number(comment.productId)));
+      const key = makeReviewedKey(comment.orderNo, Number(comment.productId));
+      const current = next[key];
+      const nextId = Number(comment.id || 0);
+      if (!current || nextId > current.id) {
+        next[key] = {
+          id: nextId,
+          auditStatus: Number(comment.auditStatus ?? 0)
+        };
+      }
     });
-    reviewedKeySet.value = next;
+    commentStateMap.value = next;
   } catch (error) {
     console.warn('加载评价记录失败', error);
-    reviewedKeySet.value = new Set();
+    commentStateMap.value = {};
+  }
+};
+
+const loadAfterSaleRecords = async () => {
+  try {
+    const res = await listUserAfterSale({ pageNum: 1, pageSize: 1000 });
+    const next: Record<string, { id: number; afterSaleNo: string }> = {};
+    (res?.list || []).forEach((item: any) => {
+      if (!item?.orderNo || !item?.afterSaleNo) return;
+      const current = next[item.orderNo];
+      const id = Number(item.id || 0);
+      if (!current || id > current.id) {
+        next[item.orderNo] = { id, afterSaleNo: String(item.afterSaleNo) };
+      }
+    });
+    const map: Record<string, string> = {};
+    Object.keys(next).forEach((orderNo) => {
+      const record = next[orderNo];
+      if (record) {
+        map[orderNo] = record.afterSaleNo;
+      }
+    });
+    afterSaleNoMap.value = map;
+  } catch (error) {
+    console.warn('加载售后记录失败', error);
+    afterSaleNoMap.value = {};
   }
 };
 
@@ -205,18 +387,69 @@ const filteredOrders = computed(() => {
   if (currentTab.value === 0) {
     return visibleOrders.value;
   }
+  if (currentTab.value === 4) {
+    return visibleOrders.value.filter(order => order.orderStatus === 4 || order.orderStatus === 8);
+  }
   return visibleOrders.value.filter(order => order.orderStatus === currentTab.value);
 });
 
 const getTabCount = (tabValue: number) => {
   if (tabValue === 0) return visibleOrders.value.length;
+  if (tabValue === 4) return visibleOrders.value.filter(order => order.orderStatus === 4 || order.orderStatus === 8).length;
   return visibleOrders.value.filter(order => order.orderStatus === tabValue).length;
 };
 
-const isOrderReviewed = (order: Order) => {
+const getOrderReviewState = (order: Order): 'approved' | 'rejected' | 'pending' | 'unreviewed' => {
   const items = order.orderItems || [];
-  if (items.length === 0) return false;
-  return items.every(item => reviewedKeySet.value.has(makeReviewedKey(order.orderNo, item.productId)));
+  if (items.length === 0) return 'unreviewed';
+
+  let hasRejected = false;
+  let hasPending = false;
+  let hasMissing = false;
+  let allApproved = true;
+
+  items.forEach((item) => {
+    const key = makeReviewedKey(order.orderNo, item.productId);
+    const meta = commentStateMap.value[key];
+    if (!meta) {
+      hasMissing = true;
+      allApproved = false;
+      return;
+    }
+    if (meta.auditStatus === 2) {
+      hasRejected = true;
+      allApproved = false;
+      return;
+    }
+    if (meta.auditStatus === 0) {
+      hasPending = true;
+      allApproved = false;
+      return;
+    }
+    if (meta.auditStatus !== 1) {
+      allApproved = false;
+    }
+  });
+
+  if (hasRejected) return 'rejected';
+  if (allApproved) return 'approved';
+  if (!hasMissing && hasPending) return 'pending';
+  return 'unreviewed';
+};
+
+const getFirstRejectedMeta = (order: Order): { commentId: number; productId: number } | null => {
+  const items = order.orderItems || [];
+  for (const item of items) {
+    const key = makeReviewedKey(order.orderNo, item.productId);
+    const meta = commentStateMap.value[key];
+    if (meta && meta.auditStatus === 2) {
+      return {
+        commentId: meta.id,
+        productId: item.productId
+      };
+    }
+  }
+  return null;
 };
 
 const getStatusText = (status: number) => {
@@ -269,11 +502,25 @@ const confirmReceive = (order: Order) => {
 };
 
 const viewLogistics = async (order: Order) => {
-  const logistics = await getLogistics(order.id);
+  let logistics: any = null;
+  try {
+    logistics = await getLogistics(order.id);
+  } catch (error) {
+    console.warn('按订单ID查询物流失败，尝试按订单号查询', error);
+  }
+  if ((!logistics?.logisticsNo || !logistics?.logisticsCompany) && order.orderNo) {
+    try {
+      const fallback = await getLogisticsByOrderNo(order.orderNo);
+      if (fallback) logistics = fallback;
+    } catch (error) {
+      console.warn('按订单号查询物流失败', error);
+    }
+  }
   const company = logistics?.logisticsCompany || '暂无';
   const no = logistics?.logisticsNo || '暂无';
+  const abnormal = logistics?.abnormalReason ? `\n异常说明：${logistics.abnormalReason}` : '';
   ElMessageBox.alert(
-    `物流公司：${company}\n物流单号：${no}`,
+    `物流公司：${company}\n物流单号：${no}${abnormal}`,
     '物流信息',
     {
       confirmButtonText: '确定'
@@ -283,6 +530,15 @@ const viewLogistics = async (order: Order) => {
 
 const applyAfterSale = (order: Order) => {
   router.push(`/after-sale/${order.orderNo}`);
+};
+
+const viewAfterSale = (order: Order) => {
+  const no = afterSaleNoMap.value[order.orderNo];
+  if (!no) {
+    ElMessage.warning('未找到对应售后单，请稍后重试');
+    return;
+  }
+  router.push(`/after-sale-detail/${no}`);
 };
 
 const goToReview = (orderId: number) => {
@@ -296,6 +552,29 @@ const goToReviewed = (order: Order) => {
     query: {
       orderNo: order.orderNo,
       ...(first ? { productId: String(first.productId) } : {})
+    }
+  });
+};
+
+const goToRejected = (order: Order) => {
+  const rejected = getFirstRejectedMeta(order);
+  router.push({
+    path: '/reviews',
+    query: {
+      orderNo: order.orderNo,
+      ...(rejected ? { productId: String(rejected.productId) } : {})
+    }
+  });
+};
+
+const goToEditRejectedReview = (order: Order) => {
+  const rejected = getFirstRejectedMeta(order);
+  router.push({
+    path: `/order-detail/${order.id}`,
+    query: {
+      review: '1',
+      editRejected: '1',
+      ...(rejected ? { editCommentId: String(rejected.commentId), productId: String(rejected.productId) } : {})
     }
   });
 };

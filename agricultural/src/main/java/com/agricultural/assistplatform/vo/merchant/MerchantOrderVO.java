@@ -16,6 +16,7 @@ public class MerchantOrderVO {
     private String receiver;
     private String receiverPhone;
     private String receiverAddress;
+    private String remark;
     private LocalDateTime createTime;
     private String logisticsCompany;
     private String logisticsNo;

@@ -2,17 +2,21 @@
   <div class="users-page">
     <div class="page-header">
       <h2>用户管理</h2>
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索用户手机号/姓名"
-        style="width: 250px"
-        clearable
-        @clear="loadUsers"
-      >
-        <template #append>
-          <el-button :icon="Search" @click="loadUsers" />
-        </template>
-      </el-input>
+      <div class="header-actions">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索用户手机号/姓名"
+          style="width: 250px"
+          clearable
+          @clear="loadUsers"
+          @keyup.enter="loadUsers"
+        >
+          <template #append>
+            <el-button :icon="Search" @click="loadUsers" />
+          </template>
+        </el-input>
+        <el-button type="primary" @click="openCreateDialog">新增用户</el-button>
+      </div>
     </div>
 
     <el-card>
@@ -28,7 +32,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button 
               link 
@@ -37,6 +41,7 @@
             >
               {{ row.status === 1 ? '禁用' : '启用' }}
             </el-button>
+            <el-button link type="danger" @click="removeUser(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -51,20 +56,54 @@
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="showCreateDialog" title="新增用户" width="460px" destroy-on-close>
+      <el-form label-width="92px">
+        <el-form-item label="手机号">
+          <el-input v-model="createForm.phone" maxlength="11" placeholder="请输入11位手机号" />
+        </el-form-item>
+        <el-form-item label="昵称">
+          <el-input v-model="createForm.nickname" maxlength="20" placeholder="可选，不填自动生成" />
+        </el-form-item>
+        <el-form-item label="登录密码">
+          <el-input
+            v-model="createForm.password"
+            type="password"
+            show-password
+            maxlength="30"
+            placeholder="至少6位，可用于密码登录"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-alert title="短信登录仍可用；设置密码后可使用“密码登录”。" type="info" :closable="false" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button type="primary" :loading="createSubmitting" @click="submitCreateUser">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { listUsers, updateUserStatus } from '@/apis/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { createUser, deleteUser, listUsers, updateUserStatus } from '@/apis/admin'
 
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
+const showCreateDialog = ref(false)
+const createSubmitting = ref(false)
+const createForm = reactive({
+  phone: '',
+  nickname: '',
+  password: ''
+})
 
 const userList = ref<any[]>([])
 
@@ -74,7 +113,6 @@ const loadUsers = async () => {
     const res = await listUsers({
       pageNum: currentPage.value,
       pageSize: pageSize.value,
-      // 假设后端支持搜索参数，如果不支持则由后端决定
       keyword: searchKeyword.value || undefined
     });
     if (res) {
@@ -92,6 +130,42 @@ onMounted(() => {
   loadUsers();
 })
 
+const openCreateDialog = () => {
+  createForm.phone = ''
+  createForm.nickname = ''
+  createForm.password = ''
+  showCreateDialog.value = true
+}
+
+const submitCreateUser = async () => {
+  const phone = createForm.phone.trim()
+  const nickname = createForm.nickname.trim()
+  const password = createForm.password.trim()
+  if (!/^1\d{10}$/.test(phone)) {
+    ElMessage.warning('请输入有效的11位手机号')
+    return
+  }
+  if (password && password.length < 6) {
+    ElMessage.warning('密码长度至少6位')
+    return
+  }
+  createSubmitting.value = true
+  try {
+    await createUser({
+      phone,
+      nickname: nickname || undefined,
+      password: password || undefined,
+      status: 1
+    })
+    ElMessage.success('用户创建成功')
+    showCreateDialog.value = false
+    currentPage.value = 1
+    await loadUsers()
+  } finally {
+    createSubmitting.value = false
+  }
+}
+
 const toggleStatus = async (row: any) => {
   try {
     const newStatus = row.status === 1 ? 0 : 1;
@@ -101,6 +175,23 @@ const toggleStatus = async (row: any) => {
   } catch (error) {
     console.error(error);
   }
+}
+
+const removeUser = (row: any) => {
+  ElMessageBox.confirm(`确认删除用户「${row.nickname || row.phone || row.id}」吗？`, '删除确认', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消'
+  })
+    .then(async () => {
+      await deleteUser(row.id)
+      ElMessage.success('删除成功')
+      if (userList.value.length === 1 && currentPage.value > 1) {
+        currentPage.value -= 1
+      }
+      await loadUsers()
+    })
+    .catch(() => {})
 }
 </script>
 
@@ -119,6 +210,12 @@ const toggleStatus = async (row: any) => {
     margin: 0;
     font-size: 20px;
   }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .pagination {

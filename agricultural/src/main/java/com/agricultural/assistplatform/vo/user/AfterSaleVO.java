@@ -13,6 +13,10 @@ public class AfterSaleVO {
     private String applyReason;
     private String proofImgUrls;
     private Integer afterSaleStatus;
+    private Integer originOrderStatus;
+    private String returnLogisticsCompany;
+    private String returnLogisticsNo;
+    private LocalDateTime returnShipTime;
     private String handleResult;
     private LocalDateTime createTime;
 }

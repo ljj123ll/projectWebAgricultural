@@ -8,9 +8,11 @@
     <h1 class="page-title">售后详情</h1>
 
     <div class="status-section">
-      <el-icon size="48" color="#67c23a"><CircleCheckFilled /></el-icon>
+      <el-icon size="48" :color="statusColor"><CircleCheckFilled /></el-icon>
       <h2>{{ statusTitle }}</h2>
       <p>{{ statusDesc }}</p>
+      <el-tag class="status-tag" :type="statusTagType">{{ currentStatusText }}</el-tag>
+      <p class="responsible-tip">{{ responsibleLabel }}</p>
     </div>
 
     <div class="info-section">
@@ -18,7 +20,8 @@
       <p>售后单号：{{ afterSaleNo }}</p>
       <p>售后类型：{{ afterSaleTypeText }}</p>
       <p>申请原因：{{ afterSale?.applyReason || '-' }}</p>
-      <p>申请时间：{{ afterSale?.createTime || '-' }}</p>
+      <p>申请时间：{{ formatDate(afterSale?.createTime) }}</p>
+      <p v-if="afterSale?.handleResult">处理说明：{{ afterSale?.handleResult }}</p>
     </div>
 
     <div class="progress-section">
@@ -26,86 +29,169 @@
       <el-timeline>
         <el-timeline-item type="primary">
           <h4>提交申请</h4>
-          <p>{{ afterSale?.createTime || '-' }}</p>
+          <p>{{ formatDate(afterSale?.createTime) }}</p>
         </el-timeline-item>
-        <el-timeline-item v-if="afterSale?.afterSaleStatus === 1" type="warning">
-          <h4>商家处理中</h4>
-          <p>等待商家处理</p>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.PENDING_MERCHANT" type="warning">
+          <h4>等待商家处理</h4>
+          <p>商家将在审核后给出处理方案</p>
         </el-timeline-item>
-        <el-timeline-item v-if="afterSale?.afterSaleStatus === 2" type="warning">
-          <h4>协商中</h4>
-          <p>等待双方协商</p>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.WAIT_USER_RETURN" type="warning">
+          <h4>商家已同意，请寄回商品</h4>
+          <p>请填写退货快递单号，商家签收后完成退款</p>
         </el-timeline-item>
-        <el-timeline-item v-if="afterSale?.afterSaleStatus === 3" type="success">
-          <h4>处理完成</h4>
-          <p>商家已处理完成</p>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND" type="warning">
+          <h4>商家待签收退款</h4>
+          <p>您已提交退货物流，等待商家确认收货并退款</p>
         </el-timeline-item>
-        <el-timeline-item v-if="afterSale?.afterSaleStatus === 4">
-          <h4>管理员介入</h4>
-          <p>平台正在处理</p>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.ADMIN" type="warning">
+          <h4>管理员介入中</h4>
+          <p>平台正在协调处理，请耐心等待</p>
         </el-timeline-item>
-        <el-timeline-item v-if="afterSale?.afterSaleStatus === 5" type="danger">
-          <h4>处理结果</h4>
-          <p>售后已驳回</p>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.RESOLVED" type="success">
+          <h4>售后已完成</h4>
+          <p>退款处理完成</p>
+        </el-timeline-item>
+        <el-timeline-item v-if="afterSale?.afterSaleStatus === AFTER_SALE_STATUS.REJECTED" type="danger">
+          <h4>售后未通过</h4>
+          <p>申请被驳回，可在沟通区与商家继续协商</p>
         </el-timeline-item>
       </el-timeline>
     </div>
 
+    <div v-if="showReturnShippingForm" class="return-section">
+      <h3>上传退货快递单号</h3>
+      <el-form :model="returnForm" label-position="top">
+        <el-form-item label="物流公司">
+          <el-input v-model="returnForm.logisticsCompany" placeholder="例如：顺丰速运（可选）" />
+        </el-form-item>
+        <el-form-item label="物流单号">
+          <el-input v-model="returnForm.logisticsNo" placeholder="请输入退货快递单号" />
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" :loading="submittingReturn" @click="submitReturnLogistics">
+        提交退货信息
+      </el-button>
+    </div>
+
+    <div v-else-if="afterSale?.returnLogisticsNo" class="return-section readonly">
+      <h3>退货物流信息</h3>
+      <p>物流公司：{{ afterSale.returnLogisticsCompany || '-' }}</p>
+      <p>物流单号：{{ afterSale.returnLogisticsNo }}</p>
+      <p>退货时间：{{ formatDate(afterSale.returnShipTime) }}</p>
+    </div>
+
     <div class="message-section">
       <div class="message-header">
-        <h3>售后沟通</h3>
-        <el-button
-          v-if="afterSale?.afterSaleStatus === 1 || afterSale?.afterSaleStatus === 2"
-          type="danger"
-          plain
-          size="small"
-          @click="applyAdminIntervention"
-        >
-          申请管理员介入
-        </el-button>
-      </div>
-      <div class="message-list">
-        <div v-for="msg in messages" :key="msg.id" class="message-item" :class="{ self: msg.sender === 'user' }">
-          <div class="message-content">
-            <p>{{ msg.content }}</p>
-            <span class="time">{{ msg.time }}</span>
-          </div>
+        <h3>售后实时沟通</h3>
+        <div class="header-actions">
+          <el-tag v-if="afterSaleUnreadCount > 0" type="danger">未读 {{ afterSaleUnreadCount }}</el-tag>
+          <el-button
+            v-if="canEscalate"
+            type="danger"
+            plain
+            size="small"
+            @click="applyAdminIntervention"
+          >
+            申请管理员介入
+          </el-button>
         </div>
       </div>
-      <div class="message-input">
-        <el-input
-          v-model="messageText"
-          type="textarea"
-          :rows="3"
-          maxlength="200"
-          show-word-limit
-          placeholder="请输入要与商家沟通的内容"
-        />
-        <el-button type="primary" @click="sendMessage">发送</el-button>
-      </div>
+      <el-tabs v-model="messageTab" @tab-change="handleMessageTabChange">
+        <el-tab-pane label="订单实时沟通" name="order">
+          <OrderChatPanel
+            v-if="afterSale?.orderNo"
+            :order-no="afterSale.orderNo"
+            role="user"
+            title="售后实时沟通（用户/商家/管理员）"
+          />
+          <el-empty v-else description="暂无可沟通订单信息" :image-size="72" />
+        </el-tab-pane>
+        <el-tab-pane :label="afterSaleTabLabel" name="afterSale">
+          <div class="after-sale-msg-panel">
+            <el-scrollbar height="340px" v-loading="afterSaleMsgLoading">
+              <div v-if="!afterSaleMessages.length" class="empty-msg">
+                <el-empty description="暂无售后消息" :image-size="64" />
+              </div>
+              <div v-for="msg in afterSaleMessages" :key="msg.id" class="msg-item">
+                <div class="msg-meta">
+                  <span class="sender">{{ senderText(msg.senderType) }}</span>
+                  <span class="time">{{ formatDate(msg.createTime) }}</span>
+                </div>
+                <div class="msg-content">{{ msg.content || '-' }}</div>
+              </div>
+            </el-scrollbar>
+            <div class="msg-editor">
+              <el-input
+                v-model="afterSaleMsgForm.content"
+                type="textarea"
+                :rows="3"
+                maxlength="300"
+                show-word-limit
+                placeholder="请输入售后沟通内容"
+              />
+              <div class="msg-actions">
+                <el-button @click="loadAfterSaleMessages">刷新</el-button>
+                <el-button
+                  type="primary"
+                  :loading="afterSaleSendPending"
+                  :disabled="!afterSaleNo"
+                  @click="submitAfterSaleMessage"
+                >
+                  发送消息
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { listAfterSaleMessages, sendAfterSaleMessage, escalateAfterSale, getAfterSaleDetail } from '@/apis/user';
+import {
+  escalateAfterSale,
+  getAfterSaleDetail,
+  listAfterSaleMessages,
+  sendAfterSaleMessage,
+  submitAfterSaleReturnLogistics
+} from '@/apis/user';
+import { getAfterSaleUnreadCount, markAfterSaleMessagesRead } from '@/apis/after-sale-message';
 import type { AfterSale, AfterSaleMessage } from '@/types';
+import {
+  AFTER_SALE_STATUS,
+  canUserEscalate,
+  getAfterSaleResponsibleLabel,
+  getAfterSaleStatusTagType,
+  getAfterSaleStatusText
+} from '@/utils/afterSale';
+import OrderChatPanel from '@/components/OrderChatPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
 
 const afterSaleNo = ref(route.params.afterSaleNo as string);
 const afterSale = ref<AfterSale | null>(null);
-const messageText = ref('');
-const messages = ref<Array<{ id: number; sender: 'user' | 'merchant' | 'admin'; content: string; time: string }>>([]);
+const submittingReturn = ref(false);
+const messageTab = ref<'order' | 'afterSale'>('afterSale');
+const afterSaleMessages = ref<AfterSaleMessage[]>([]);
+const afterSaleMsgLoading = ref(false);
+const afterSaleSendPending = ref(false);
+const afterSaleUnreadCount = ref(0);
+const afterSaleMsgForm = reactive({
+  content: ''
+});
+const returnForm = reactive({
+  logisticsCompany: '',
+  logisticsNo: ''
+});
 
-const senderToString = (senderType: number) => {
-  if (senderType === 1) return 'user';
-  if (senderType === 2) return 'merchant';
-  return 'admin';
+const formatDate = (value?: string) => {
+  if (!value) return '-';
+  return String(value).replace('T', ' ').slice(0, 19);
 };
 
 const loadDetail = async () => {
@@ -114,26 +200,106 @@ const loadDetail = async () => {
   afterSale.value = res || null;
 };
 
-const loadMessages = async () => {
-  if (!afterSaleNo.value) return;
-  const res = await listAfterSaleMessages(afterSaleNo.value, { pageNum: 1, pageSize: 50 });
-  const list = (res && res.list) ? res.list : [];
-  messages.value = list.map((msg: AfterSaleMessage) => ({
-    id: msg.id,
-    sender: senderToString(msg.senderType || 0) as 'user' | 'merchant' | 'admin',
-    content: msg.content,
-    time: (msg.createTime as any) || ''
-  }));
+const senderText = (senderType?: number) => {
+  if (senderType === 1) return '用户';
+  if (senderType === 2) return '商家';
+  if (senderType === 3) return '管理员';
+  return '未知';
 };
 
-const sendMessage = async () => {
-  if (!messageText.value.trim()) {
-    ElMessage.warning('请输入沟通内容');
+const afterSaleTabLabel = computed(() => {
+  return afterSaleUnreadCount.value > 0
+    ? `售后接口消息 (${afterSaleUnreadCount.value})`
+    : '售后接口消息';
+});
+
+const loadAfterSaleMessages = async () => {
+  if (!afterSaleNo.value) return;
+  afterSaleMsgLoading.value = true;
+  try {
+    const res = await listAfterSaleMessages(afterSaleNo.value, { pageNum: 1, pageSize: 100 });
+    const source = res?.list || [];
+    afterSaleMessages.value = [...source].sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  } finally {
+    afterSaleMsgLoading.value = false;
+  }
+};
+
+const loadAfterSaleUnreadCount = async () => {
+  if (!afterSaleNo.value) return;
+  try {
+    const count = await getAfterSaleUnreadCount(afterSaleNo.value, 1);
+    afterSaleUnreadCount.value = Number(count || 0);
+  } catch (error) {
+    console.warn('读取售后消息未读数失败', error);
+    afterSaleUnreadCount.value = 0;
+  }
+};
+
+const markAfterSaleRead = async () => {
+  if (!afterSaleNo.value) return;
+  try {
+    await markAfterSaleMessagesRead(afterSaleNo.value, 1);
+    afterSaleUnreadCount.value = 0;
+  } catch (error) {
+    console.warn('标记售后消息已读失败', error);
+  }
+};
+
+const enterAfterSaleMessageTab = async () => {
+  await Promise.all([loadAfterSaleMessages(), markAfterSaleRead()]);
+};
+
+const submitAfterSaleMessage = async () => {
+  if (!afterSaleNo.value) return;
+  const content = afterSaleMsgForm.content.trim();
+  if (!content) {
+    ElMessage.warning('请输入消息内容');
     return;
   }
-  await sendAfterSaleMessage(afterSaleNo.value, { content: messageText.value.trim() });
-  messageText.value = '';
-  await loadMessages();
+  afterSaleSendPending.value = true;
+  try {
+    await sendAfterSaleMessage(afterSaleNo.value, { content });
+    afterSaleMsgForm.content = '';
+    await Promise.all([loadAfterSaleMessages(), loadAfterSaleUnreadCount()]);
+    ElMessage.success('消息已发送');
+  } finally {
+    afterSaleSendPending.value = false;
+  }
+};
+
+const handleMessageTabChange = (tab: string | number) => {
+  if (String(tab) === 'afterSale') {
+    void enterAfterSaleMessageTab();
+  }
+};
+
+const canEscalate = computed(() => {
+  return canUserEscalate(afterSale.value?.afterSaleStatus);
+});
+
+const showReturnShippingForm = computed(() => {
+  return afterSale.value?.afterSaleType === 2
+    && afterSale.value?.afterSaleStatus === AFTER_SALE_STATUS.WAIT_USER_RETURN;
+});
+
+const submitReturnLogistics = async () => {
+  if (!afterSale.value?.id) return;
+  if (!returnForm.logisticsNo.trim()) {
+    ElMessage.warning('请填写退货物流单号');
+    return;
+  }
+  submittingReturn.value = true;
+  try {
+    await submitAfterSaleReturnLogistics(afterSale.value.id, {
+      logisticsNo: returnForm.logisticsNo.trim(),
+      logisticsCompany: returnForm.logisticsCompany.trim() || undefined
+    });
+    ElMessage.success('退货物流已提交，等待商家签收退款');
+    await loadDetail();
+  } finally {
+    submittingReturn.value = false;
+  }
 };
 
 const applyAdminIntervention = async () => {
@@ -141,7 +307,6 @@ const applyAdminIntervention = async () => {
   await escalateAfterSale(afterSale.value.id);
   ElMessage.success('已申请管理员介入，请耐心等待处理');
   await loadDetail();
-  await loadMessages();
 };
 
 const afterSaleTypeText = computed(() => {
@@ -154,28 +319,44 @@ const afterSaleTypeText = computed(() => {
 
 const statusTitle = computed(() => {
   const s = afterSale.value?.afterSaleStatus;
-  if (s === 1) return '商家处理中';
-  if (s === 2) return '协商中';
-  if (s === 3) return '处理完成';
-  if (s === 4) return '管理员介入';
-  if (s === 5) return '已驳回';
+  if (s === AFTER_SALE_STATUS.PENDING_MERCHANT) return '商家处理中';
+  if (s === AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND) return '待商家签收退款';
+  if (s === AFTER_SALE_STATUS.RESOLVED) return '售后已完成';
+  if (s === AFTER_SALE_STATUS.ADMIN) return '管理员介入中';
+  if (s === AFTER_SALE_STATUS.REJECTED) return '售后未通过';
+  if (s === AFTER_SALE_STATUS.WAIT_USER_RETURN) return '待您退货';
   return '加载中...';
 });
 
 const statusDesc = computed(() => {
   const s = afterSale.value?.afterSaleStatus;
-  if (s === 1) return '等待商家处理';
-  if (s === 2) return '等待双方协商';
-  if (s === 3) return '商家已处理完成';
-  if (s === 4) return '平台正在处理';
-  if (s === 5) return '售后已驳回';
+  if (s === AFTER_SALE_STATUS.PENDING_MERCHANT) return '商家正在处理您的申请';
+  if (s === AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND) return '已提交退货信息，等待商家确认收货并退款';
+  if (s === AFTER_SALE_STATUS.RESOLVED) return '售后流程已完成';
+  if (s === AFTER_SALE_STATUS.ADMIN) return '平台正在介入协调';
+  if (s === AFTER_SALE_STATUS.REJECTED) return '申请未通过，可查看处理说明';
+  if (s === AFTER_SALE_STATUS.WAIT_USER_RETURN) return '商家已同意，请上传退货快递单号';
   return '请稍后';
 });
+
+const statusColor = computed(() => {
+  const s = afterSale.value?.afterSaleStatus;
+  if (s === AFTER_SALE_STATUS.REJECTED) return '#f56c6c';
+  if (s === AFTER_SALE_STATUS.RESOLVED) return '#67c23a';
+  return '#e6a23c';
+});
+
+const currentStatusText = computed(() => getAfterSaleStatusText(afterSale.value?.afterSaleStatus));
+const statusTagType = computed(() => getAfterSaleStatusTagType(afterSale.value?.afterSaleStatus));
+const responsibleLabel = computed(() => getAfterSaleResponsibleLabel(afterSale.value?.afterSaleStatus));
 
 onMounted(async () => {
   try {
     await loadDetail();
-    await loadMessages();
+    await loadAfterSaleUnreadCount();
+    if (messageTab.value === 'afterSale') {
+      await enterAfterSaleMessageTab();
+    }
   } catch (e) {
     console.error(e);
   }
@@ -215,6 +396,16 @@ onMounted(async () => {
     margin: 0;
     color: #909399;
   }
+
+  .status-tag {
+    margin-top: 14px;
+  }
+
+  .responsible-tip {
+    margin-top: 10px;
+    color: #5f6b7a;
+    font-size: 14px;
+  }
 }
 
 .info-section {
@@ -238,6 +429,24 @@ onMounted(async () => {
   }
 }
 
+.return-section {
+  margin-top: 20px;
+  background: #f8fbff;
+  border: 1px solid #e4efff;
+  border-radius: 10px;
+  padding: 16px;
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+  }
+
+  &.readonly p {
+    margin: 0 0 6px;
+    color: #5f6b7a;
+  }
+}
+
 .message-section {
   margin-top: 24px;
 
@@ -251,52 +460,55 @@ onMounted(async () => {
       margin: 0;
       font-size: 16px;
     }
-  }
 
-  .message-list {
-    background: #f5f7fa;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    max-height: 240px;
-    overflow-y: auto;
-
-    .message-item {
+    .header-actions {
       display: flex;
-      margin-bottom: 8px;
-
-      &.self {
-        justify-content: flex-end;
-
-        .message-content {
-          background: #67c23a;
-          color: #fff;
-        }
-      }
-
-      .message-content {
-        max-width: 70%;
-        background: #fff;
-        border-radius: 8px;
-        padding: 8px 12px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-
-        p {
-          margin: 0 0 6px;
-        }
-
-        .time {
-          font-size: 12px;
-          color: #909399;
-        }
-      }
+      align-items: center;
+      gap: 8px;
     }
   }
 
-  .message-input {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  .after-sale-msg-panel {
+    .empty-msg {
+      padding-top: 70px;
+    }
+
+    .msg-item {
+      padding: 10px 12px;
+      border: 1px solid #eef2f8;
+      border-radius: 8px;
+      margin-bottom: 10px;
+
+      .msg-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #94a3b8;
+
+        .sender {
+          color: #2563eb;
+          font-weight: 600;
+        }
+      }
+
+      .msg-content {
+        color: #334155;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+    }
+
+    .msg-editor {
+      margin-top: 12px;
+
+      .msg-actions {
+        margin-top: 10px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+    }
   }
 }
 
