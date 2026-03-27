@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.SysPermission;
 import com.agricultural.assistplatform.entity.SysRole;
@@ -16,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("role:manage")
 public class AdminRoleController {
 
     private final AdminRoleService adminRoleService;

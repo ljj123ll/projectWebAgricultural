@@ -142,8 +142,22 @@
               <div class="card-header">商家推荐</div>
             </template>
             <div class="recommend-list">
-              <!-- 这里可以放推荐商品，暂时留空 -->
-              <el-empty description="暂无推荐" :image-size="60" />
+              <template v-if="merchantRecommendList.length">
+                <div
+                  v-for="item in merchantRecommendList"
+                  :key="item.id"
+                  class="recommend-item"
+                  @click="goToRecommend(item.id)"
+                >
+                  <img :src="getCoverImage(item.productImg)" :alt="item.productName" class="recommend-image" />
+                  <div class="recommend-info">
+                    <h4>{{ item.productName }}</h4>
+                    <p>销量 {{ item.salesVolume || 0 }}</p>
+                    <span>¥{{ Number(item.price || 0).toFixed(2) }}</span>
+                  </div>
+                </div>
+              </template>
+              <el-empty v-else description="暂无推荐" :image-size="60" />
             </div>
           </el-card>
         </el-col>
@@ -323,7 +337,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { CircleCheck, ArrowLeft } from '@element-plus/icons-vue';
-import { getProductComments, getProductDetail, getMerchantShop, listCategories } from '@/apis/product';
+import { getMerchantProductsPublic, getProductComments, getProductDetail, getMerchantShop, listCategories } from '@/apis/product';
 import { addToCart, getCart } from '@/apis/order'; // Import API
 import { useUserStore } from '@/stores/modules/user';
 import { useCartStore } from '@/stores/modules/cart';
@@ -337,7 +351,7 @@ const userStore = useUserStore();
 const cartStore = useCartStore();
 
 const loading = ref(false);
-const productId = Number(route.params.id);
+const currentProductId = computed(() => Number(route.params.id || 0));
 const product = ref<Product>({} as Product);
 const merchant = ref<ShopInfo | null>(null);
 const quantity = ref(1);
@@ -348,6 +362,7 @@ const reviewLoading = ref(false);
 const reviewTotal = ref(0);
 const reviewList = ref<ProductComment[]>([]);
 const categoryNameMap = ref<Record<number, string>>({});
+const merchantRecommendList = ref<Product[]>([]);
 
 const activeImageIndex = ref(0);
 
@@ -358,6 +373,12 @@ const parseImages = (value?: string) => {
     .map(item => item.trim())
     .filter(Boolean)
     .map(url => getFullImageUrl(url));
+};
+
+const getCoverImage = (raw?: string) => {
+  if (!raw) return '';
+  const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
+  return getFullImageUrl(first);
 };
 
 const isVideoUrl = (url: string) => {
@@ -408,8 +429,8 @@ const nextImage = () => {
 };
 
 onMounted(async () => {
-  if (productId) {
-    await Promise.all([loadCategories(), loadProductData(), loadProductReviews()]);
+  if (currentProductId.value) {
+    await Promise.all([loadCategories(), loadProductData(currentProductId.value), loadProductReviews(currentProductId.value)]);
   }
   applyTabFromQuery();
 });
@@ -418,10 +439,25 @@ watch(() => route.query.tab, () => {
   applyTabFromQuery();
 });
 
-const loadProductData = async () => {
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    if (!newId || newId === oldId) return;
+    quantity.value = 1;
+    activeTab.value = 'detail';
+    await Promise.all([
+      loadProductData(Number(newId)),
+      loadProductReviews(Number(newId))
+    ]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    applyTabFromQuery();
+  }
+);
+
+const loadProductData = async (targetProductId: number) => {
   loading.value = true;
   try {
-    const res = await getProductDetail(productId);
+    const res = await getProductDetail(targetProductId);
     if (res) {
       product.value = res;
       activeImageIndex.value = 0;
@@ -429,6 +465,7 @@ const loadProductData = async () => {
       // 加载商家信息
       if (res.merchantId) {
         loadMerchantInfo(res.merchantId);
+        loadMerchantRecommend(res.merchantId, targetProductId);
       }
     }
   } catch (error) {
@@ -463,10 +500,24 @@ const loadMerchantInfo = async (merchantId: number) => {
   }
 };
 
-const loadProductReviews = async () => {
+const loadMerchantRecommend = async (merchantId: number, excludeProductId: number) => {
+  try {
+    const res = await getMerchantProductsPublic(merchantId, { pageNum: 1, pageSize: 8 });
+    const source = res?.list || [];
+    merchantRecommendList.value = source
+      .filter(item => Number(item.id) !== Number(excludeProductId))
+      .sort((a, b) => Number(b.salesVolume || 0) - Number(a.salesVolume || 0))
+      .slice(0, 4);
+  } catch (error) {
+    console.warn('加载商家推荐失败', error);
+    merchantRecommendList.value = [];
+  }
+};
+
+const loadProductReviews = async (targetProductId: number) => {
   reviewLoading.value = true;
   try {
-    const res = await getProductComments(productId, { pageNum: 1, pageSize: 50 });
+    const res = await getProductComments(targetProductId, { pageNum: 1, pageSize: 50 });
     reviewList.value = res?.list || [];
     reviewTotal.value = Number(res?.total || 0);
   } catch (error) {
@@ -579,6 +630,10 @@ const goToMerchant = () => {
   const id = merchant.value?.merchantId || product.value.merchantId;
   if (!id) return;
   router.push(`/shop/${id}`);
+};
+
+const goToRecommend = (id: number) => {
+  router.push(`/product/${id}`);
 };
 </script>
 
@@ -788,6 +843,70 @@ const goToMerchant = () => {
 
 .detail-container {
   margin-top: 20px;
+}
+
+.merchant-card {
+  .recommend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .recommend-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #edf1f7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #d8e6c3;
+      box-shadow: 0 8px 18px rgba(67, 104, 53, 0.08);
+      transform: translateY(-1px);
+    }
+  }
+
+  .recommend-image {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f5f7fa;
+    flex-shrink: 0;
+  }
+
+  .recommend-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    h4 {
+      margin: 0;
+      font-size: 13px;
+      color: #243447;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    p {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #8a94a6;
+    }
+
+    span {
+      margin-top: 6px;
+      color: #f56c6c;
+      font-weight: 700;
+      font-size: 14px;
+    }
+  }
 }
 
 .detail-content {

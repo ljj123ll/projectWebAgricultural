@@ -25,6 +25,7 @@ public class AdminWithdrawService {
     private final MerchantWithdrawMapper merchantWithdrawMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
     private final MerchantWithdrawTransferService merchantWithdrawTransferService;
+    private final AdminAuditTrailService adminAuditTrailService;
 
     public PageResult<MerchantWithdraw> list(
             Long merchantId,
@@ -75,6 +76,12 @@ public class AdminWithdrawService {
             withdraw.setFailReason(reason);
         }
         merchantWithdrawMapper.updateById(withdraw);
+        adminAuditTrailService.record(
+                "withdraw",
+                id,
+                approve,
+                approve ? withdraw.getAuditRemark() : withdraw.getFailReason()
+        );
         merchantRealtimeEventService.publishRefresh(withdraw.getMerchantId(), "WITHDRAW_AUDITED", withdraw.getWithdrawNo());
     }
 
@@ -101,4 +108,3 @@ public class AdminWithdrawService {
         }
     }
 }
-

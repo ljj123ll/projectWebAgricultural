@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.MerchantAccount;
 import com.agricultural.assistplatform.service.merchant.MerchantAccountService;
@@ -16,6 +17,7 @@ import java.util.Map;
 @Tag(name = "商家端-收款账户")
 @RestController
 @RequestMapping("/merchant")
+@RequireLoginType("merchant")
 @RequiredArgsConstructor
 public class MerchantAccountController {
 

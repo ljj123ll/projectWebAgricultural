@@ -2,9 +2,11 @@ package com.agricultural.assistplatform.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -18,16 +20,18 @@ public class SmsService {
 
     private static final String KEY_PREFIX = "sms:code:";
     private static final int EXPIRE_MINUTES = 5;
-    /** 开发环境固定验证码，便于测试 */
-    private static final String DEV_CODE = "123456";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final StringRedisTemplate redisTemplate;
+
+    @Value("${app.sms.fixed-code:123456}")
+    private String fixedCode;
 
     /**
      * 发送验证码
      */
     public void sendCode(String phone) {
-        String code = DEV_CODE;
+        String code = resolveCode();
         redisTemplate.opsForValue().set(KEY_PREFIX + phone, code, EXPIRE_MINUTES, TimeUnit.MINUTES);
         log.info("发送验证码到 {}: {}", phone, code);
     }
@@ -101,5 +105,12 @@ public class SmsService {
         // smsClient.send(request);
         
         log.info("发送短信到 {}: {}", phone, content);
+    }
+
+    private String resolveCode() {
+        if (fixedCode != null && fixedCode.matches("\\d{6}")) {
+            return fixedCode;
+        }
+        return String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 }

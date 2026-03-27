@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.SysOperationLog;
@@ -20,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("log:view")
 public class AdminOperationLogController {
 
     private final AdminOperationLogService adminOperationLogService;

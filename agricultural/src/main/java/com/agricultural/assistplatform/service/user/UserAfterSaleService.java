@@ -12,6 +12,7 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.AfterSaleMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
 import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.user.AfterSaleVO;
@@ -32,6 +33,7 @@ public class UserAfterSaleService {
     private final AfterSaleMapper afterSaleMapper;
     private final OrderMainMapper orderMainMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
     private final UserRealtimeEventService userRealtimeEventService;
     private final UserMessageService userMessageService;
 
@@ -73,6 +75,7 @@ public class UserAfterSaleService {
 
         merchantRealtimeEventService.publishRefresh(order.getMerchantId(), "AFTER_SALE_CREATED", as.getAfterSaleNo());
         userRealtimeEventService.publishRefresh(userId, "AFTER_SALE_CREATED", as.getAfterSaleNo());
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_CREATED", as.getAfterSaleNo());
         userMessageService.createSystemMessage(
                 userId,
                 "售后申请已提交",
@@ -121,6 +124,7 @@ public class UserAfterSaleService {
 
         merchantRealtimeEventService.publishRefresh(as.getMerchantId(), "AFTER_SALE_ESCALATED", as.getAfterSaleNo());
         userRealtimeEventService.publishRefresh(userId, "AFTER_SALE_ESCALATED", as.getAfterSaleNo());
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_ESCALATED", as.getAfterSaleNo());
         userMessageService.createSystemMessage(
                 userId,
                 "已申请管理员介入",
@@ -169,6 +173,7 @@ public class UserAfterSaleService {
 
         merchantRealtimeEventService.publishRefresh(as.getMerchantId(), "AFTER_SALE_RETURN_SHIPPED", as.getAfterSaleNo());
         userRealtimeEventService.publishRefresh(userId, "AFTER_SALE_RETURN_SHIPPED", as.getAfterSaleNo());
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_RETURN_SHIPPED", as.getAfterSaleNo());
         userMessageService.createSystemMessage(
                 userId,
                 "退货物流已提交",

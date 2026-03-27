@@ -10,6 +10,7 @@ import com.agricultural.assistplatform.mapper.LogisticsInfoMapper;
 import com.agricultural.assistplatform.mapper.OrderItemMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
 import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.merchant.MerchantOrderVO;
@@ -32,6 +33,7 @@ public class MerchantOrderService {
     private final OrderItemMapper orderItemMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
     private final UserRealtimeEventService userRealtimeEventService;
     private final UserMessageService userMessageService;
 
@@ -104,6 +106,7 @@ public class MerchantOrderService {
         }
         merchantRealtimeEventService.publishRefresh(merchantId, "ORDER_SHIPPED", main.getOrderNo());
         userRealtimeEventService.publishRefresh(main.getUserId(), "ORDER_SHIPPED", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_SHIPPED", main.getOrderNo());
         userMessageService.createMerchantMessage(
                 main.getUserId(),
                 "订单已发货",
@@ -124,6 +127,9 @@ public class MerchantOrderService {
         main.setOrderStatus(5);
         main.setCancelReason(reason);
         orderMainMapper.updateById(main);
+        merchantRealtimeEventService.publishRefresh(merchantId, "ORDER_CANCELED", main.getOrderNo());
+        userRealtimeEventService.publishRefresh(main.getUserId(), "ORDER_CANCELED", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_CANCELED", main.getOrderNo());
     }
 
     private MerchantOrderVO toVO(OrderMain main) {

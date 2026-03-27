@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.MerchantInfo;
@@ -16,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("audit:manage")
 public class AdminAuditController {
 
     private final AdminAuditService adminAuditService;

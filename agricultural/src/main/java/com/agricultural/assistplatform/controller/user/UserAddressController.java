@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.user.UserAddressService;
 import com.agricultural.assistplatform.vo.user.UserAddressVO;
@@ -14,6 +15,7 @@ import java.util.Map;
 @Tag(name = "用户端-收货地址")
 @RestController
 @RequestMapping("/user")
+@RequireLoginType("user")
 @RequiredArgsConstructor
 public class UserAddressController {
 

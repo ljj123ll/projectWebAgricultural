@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.admin.AdminDashboardService;
 import com.agricultural.assistplatform.vo.admin.DashboardVO;
@@ -15,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("dashboard:view")
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;

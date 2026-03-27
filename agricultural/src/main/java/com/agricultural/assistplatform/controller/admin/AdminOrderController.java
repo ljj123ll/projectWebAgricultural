@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.admin.AdminOrderService;
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("order:manage")
 public class AdminOrderController {
 
     private final AdminOrderService adminOrderService;

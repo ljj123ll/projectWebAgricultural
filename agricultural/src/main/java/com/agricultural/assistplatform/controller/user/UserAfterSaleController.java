@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.user.AfterSaleApplyDTO;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "用户端-售后")
 @RestController
 @RequestMapping("/user")
+@RequireLoginType("user")
 @RequiredArgsConstructor
 public class UserAfterSaleController {
 

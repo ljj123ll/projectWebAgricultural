@@ -3,16 +3,17 @@
     <div class="footer-container">
        <div class="footer-top">
            <h3>助农电商平台</h3>
-           <p>连接田间地头与千家万户，助力乡村振兴。</p>
+           <p>提供农产品展示、滞销帮扶、订单履约与售后沟通的一体化服务。</p>
        </div>
        <div class="footer-links">
            <router-link to="/">首页</router-link>
-           <router-link to="/home">商品浏览</router-link>
+           <router-link to="/products">商品浏览</router-link>
+           <router-link to="/unsold">滞销帮扶</router-link>
            <router-link to="/news">助农新闻</router-link>
-           <router-link to="/user/profile">个人中心</router-link>
+           <router-link to="/merchant/register">商家入驻</router-link>
        </div>
        <div class="footer-copyright">
-           Copyright © 2026 助农电商平台. All Rights Reserved.
+           Copyright © 2026 助农电商平台 | 农产品直供、帮扶销售与售后协同服务
        </div>
     </div>
   </footer>

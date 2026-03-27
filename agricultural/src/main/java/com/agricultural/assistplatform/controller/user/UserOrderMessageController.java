@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "用户端-订单沟通")
 @RestController
 @RequestMapping("/user")
+@RequireLoginType("user")
 @RequiredArgsConstructor
 public class UserOrderMessageController {
 
@@ -31,4 +33,3 @@ public class UserOrderMessageController {
         return Result.ok(orderCommunicationService.list(orderNo, LoginContext.getUserId(), "user", pageNum, pageSize));
     }
 }
-

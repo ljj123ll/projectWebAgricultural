@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.merchant.MerchantRegisterDTO;
 import com.agricultural.assistplatform.service.merchant.MerchantAuthService;
@@ -44,6 +45,7 @@ public class MerchantAuthController {
 
     @Operation(summary = "审核状态")
     @GetMapping("/audit/status")
+    @RequireLoginType("merchant")
     public Result<Map<String, Object>> auditStatus() {
         return Result.ok(merchantAuthService.auditStatus());
     }

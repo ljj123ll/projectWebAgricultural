@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("order:manage")
 public class AdminOrderMessageController {
 
     private final OrderCommunicationService orderCommunicationService;
@@ -31,4 +33,3 @@ public class AdminOrderMessageController {
         return Result.ok(orderCommunicationService.list(orderNo, LoginContext.getUserId(), "admin", pageNum, pageSize));
     }
 }
-

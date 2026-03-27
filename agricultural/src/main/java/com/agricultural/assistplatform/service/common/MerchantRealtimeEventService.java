@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.service.common;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -15,8 +16,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MerchantRealtimeEventService {
 
+    private final RealtimeWebSocketService realtimeWebSocketService;
     private final Map<Long, Set<SseEmitter>> merchantEmitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(Long merchantId) {
@@ -32,6 +35,7 @@ public class MerchantRealtimeEventService {
     }
 
     public void publishRefresh(Long merchantId, String reason, String refNo) {
+        realtimeWebSocketService.publishMerchantRefresh(merchantId, reason, refNo);
         if (merchantId == null) return;
         Set<SseEmitter> emitters = merchantEmitters.get(merchantId);
         if (emitters == null || emitters.isEmpty()) return;

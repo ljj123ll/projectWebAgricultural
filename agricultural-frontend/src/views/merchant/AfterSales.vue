@@ -37,6 +37,20 @@
             <span class="label">当前阶段：</span>
             <span>{{ getResponsibleLabel(item.afterSaleStatus) }}</span>
           </div>
+          <div class="info-row" v-if="parseImages(item.proofImgUrls).length">
+            <span class="label">申请凭证：</span>
+            <div class="proof-list">
+              <el-image
+                v-for="img in parseImages(item.proofImgUrls)"
+                :key="img"
+                :src="toImage(img)"
+                fit="cover"
+                class="proof-img"
+                :preview-src-list="parseImages(item.proofImgUrls).map(toImage)"
+                preview-teleported
+              />
+            </div>
+          </div>
           <div class="info-row" v-if="item.returnLogisticsNo">
             <span class="label">退货物流：</span>
             <span>{{ item.returnLogisticsCompany || '-' }} / {{ item.returnLogisticsNo }}</span>
@@ -84,6 +98,20 @@
           <p><strong>关联订单：</strong>{{ currentItem.orderNo }}</p>
           <p><strong>售后类型：</strong>{{ getTypeText(currentItem.afterSaleType) }}</p>
           <p><strong>申请原因：</strong>{{ currentItem.applyReason }}</p>
+          <div v-if="parseImages(currentItem.proofImgUrls).length" class="proof-block">
+            <p><strong>申请凭证：</strong></p>
+            <div class="proof-list dialog-proof-list">
+              <el-image
+                v-for="img in parseImages(currentItem.proofImgUrls)"
+                :key="img"
+                :src="toImage(img)"
+                fit="cover"
+                class="proof-img"
+                :preview-src-list="parseImages(currentItem.proofImgUrls).map(toImage)"
+                preview-teleported
+              />
+            </div>
+          </div>
         </div>
 
         <el-divider />
@@ -170,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { AfterSaleMessage } from '@/types';
 import {
@@ -188,6 +216,8 @@ import {
   getAfterSaleStatusTagType,
   getAfterSaleStatusText
 } from '@/utils/afterSale';
+import { MERCHANT_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
+import { getFullImageUrl } from '@/utils/image';
 
 type TabKey = 'all' | 'pending' | 'processing' | 'completed' | 'rejected';
 
@@ -256,6 +286,16 @@ const formatDate = (value?: string) => {
   if (!value) return '-';
   return String(value).replace('T', ' ').slice(0, 19);
 };
+
+const parseImages = (raw?: string) => {
+  if (!raw) return [];
+  return String(raw)
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+};
+
+const toImage = (path: string) => getFullImageUrl(path);
 
 const mergeAfterSaleList = (list: any[]) => {
   const map = new Map<number, any>();
@@ -451,8 +491,23 @@ const confirmReturnRefund = async (item: any) => {
   }).catch(() => {});
 };
 
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  const isAfterSaleEvent = String(payload.reason || '').startsWith('AFTER_SALE');
+  if (!isAfterSaleEvent) return;
+  void loadAfterSales();
+  if (showChatDialog.value && chatAfterSaleNo.value && (!payload.refNo || payload.refNo === chatAfterSaleNo.value)) {
+    void enterAfterSaleMessageTab();
+  }
+};
+
 onMounted(() => {
   void loadAfterSales();
+  window.addEventListener(MERCHANT_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(MERCHANT_REALTIME_EVENT, handleRealtimeRefresh);
 });
 </script>
 
@@ -503,7 +558,7 @@ onMounted(() => {
     border-bottom: 1px solid #ebeef5;
   }
 
-  .after-sale-info {
+    .after-sale-info {
     background: #f5f7fa;
     border-radius: 4px;
     padding: 12px;
@@ -524,6 +579,23 @@ onMounted(() => {
         flex-shrink: 0;
       }
     }
+
+    .proof-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .proof-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 6px;
+      border: 1px solid #dbe4f0;
+      background: #fff;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
   }
 
   .card-actions {
@@ -539,6 +611,14 @@ onMounted(() => {
     p {
       margin: 8px 0;
       color: #666;
+    }
+
+    .proof-block {
+      margin-top: 12px;
+    }
+
+    .dialog-proof-list {
+      margin-top: 8px;
     }
   }
 }

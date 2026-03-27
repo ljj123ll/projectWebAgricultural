@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.user.CommentUpdateDTO;
 import com.agricultural.assistplatform.dto.user.CommentSubmitDTO;
@@ -23,6 +24,7 @@ public class UserCommentController {
 
     @Operation(summary = "提交评价")
     @PostMapping("/comments")
+    @RequireLoginType("user")
     public Result<Void> submit(@Valid @RequestBody CommentSubmitDTO dto) {
         userCommentService.submit(dto);
         return Result.ok();
@@ -30,6 +32,7 @@ public class UserCommentController {
 
     @Operation(summary = "修改评价（仅审核不通过可修改）")
     @PutMapping("/comments/{id}")
+    @RequireLoginType("user")
     public Result<Void> update(@PathVariable Long id, @Valid @RequestBody CommentUpdateDTO dto) {
         userCommentService.update(id, dto);
         return Result.ok();
@@ -37,6 +40,7 @@ public class UserCommentController {
 
     @Operation(summary = "评价列表")
     @GetMapping("/comments")
+    @RequireLoginType("user")
     public Result<PageResult<Comment>> list(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {

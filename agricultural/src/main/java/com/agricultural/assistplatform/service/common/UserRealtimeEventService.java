@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.service.common;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -15,8 +16,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserRealtimeEventService {
 
+    private final RealtimeWebSocketService realtimeWebSocketService;
     private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(Long userId) {
@@ -32,6 +35,7 @@ public class UserRealtimeEventService {
     }
 
     public void publishRefresh(Long userId, String reason, String refNo) {
+        realtimeWebSocketService.publishUserRefresh(userId, reason, refNo);
         if (userId == null) return;
         Set<SseEmitter> emitters = userEmitters.get(userId);
         if (emitters == null || emitters.isEmpty()) return;
@@ -48,6 +52,27 @@ public class UserRealtimeEventService {
                 removeEmitter(userId, emitter);
             }
         }
+    }
+
+    public void publishRefreshToAll(String reason, String refNo) {
+        realtimeWebSocketService.publishUserRefreshToAll(reason, refNo);
+        userEmitters.keySet().forEach(userId -> {
+            Set<SseEmitter> emitters = userEmitters.get(userId);
+            if (emitters == null || emitters.isEmpty()) return;
+
+            Map<String, Object> payload = new ConcurrentHashMap<>();
+            payload.put("reason", reason);
+            payload.put("refNo", refNo);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event().name("refresh").data(payload));
+                } catch (IOException e) {
+                    removeEmitter(userId, emitter);
+                }
+            }
+        });
     }
 
     private void sendConnected(SseEmitter emitter, Long userId) {

@@ -112,6 +112,12 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { getMerchantAuditStatus, listOrders, listAfterSale } from '@/apis/merchant';
 import { getAfterSaleUnreadCount } from '@/apis/after-sale-message';
 import { AFTER_SALE_STATUS } from '@/utils/afterSale';
+import {
+  MERCHANT_REALTIME_EVENT,
+  buildRealtimeWsUrl,
+  dispatchRealtimeRefresh,
+  parseRealtimePayload
+} from '@/utils/realtime';
 
 const route = useRoute();
 const router = useRouter();
@@ -122,7 +128,10 @@ const pendingOrderCount = ref(0);
 const pendingAfterSaleCount = ref(0);
 const messageUnreadCount = ref(0);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
-let realtimeSource: EventSource | null = null;
+let socket: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let manualClosed = false;
+const socketConnected = ref(false);
 const READ_STORAGE_PREFIX = 'merchant_message_read_map';
 
 const toggleSidebar = () => {
@@ -205,33 +214,59 @@ const handleReadRefresh = () => {
   void loadPendingCounts();
 };
 
+const clearReconnectTimer = () => {
+  if (!reconnectTimer) return;
+  clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+};
+
 const closeRealtime = () => {
-  if (realtimeSource) {
-    realtimeSource.close();
-    realtimeSource = null;
+  clearReconnectTimer();
+  if (socket) {
+    socket.close();
+    socket = null;
   }
+};
+
+const scheduleReconnect = () => {
+  clearReconnectTimer();
+  socketConnected.value = false;
+  reconnectTimer = setTimeout(() => {
+    if (manualClosed) return;
+    initRealtime();
+  }, 2000);
 };
 
 const initRealtime = () => {
   closeRealtime();
   if (!userStore.token || userStore.role !== 'merchant') return;
-  const basePath = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
-  const token = encodeURIComponent(userStore.token);
-  const streamUrl = `${basePath}/merchant/realtime/stream?token=${token}`;
+  socket = new WebSocket(buildRealtimeWsUrl(userStore.token));
 
-  realtimeSource = new EventSource(streamUrl);
-
-  realtimeSource.addEventListener('refresh', () => {
+  socket.onmessage = (event) => {
+    const payload = parseRealtimePayload(event as MessageEvent);
+    dispatchRealtimeRefresh(MERCHANT_REALTIME_EVENT, payload);
     void loadPendingCounts();
     window.dispatchEvent(new Event('merchant-pending-refresh'));
-  });
+  };
 
-  realtimeSource.addEventListener('connected', () => {
+  socket.onopen = () => {
+    socketConnected.value = true;
+    dispatchRealtimeRefresh(MERCHANT_REALTIME_EVENT, { reason: 'CONNECTED', timestamp: Date.now() });
     void loadPendingCounts();
-  });
+  };
 
-  realtimeSource.onerror = () => {
-    // EventSource 会自动重连，这里不做额外提示，避免打扰用户
+  socket.onclose = () => {
+    socketConnected.value = false;
+    if (!manualClosed) {
+      scheduleReconnect();
+    }
+  };
+
+  socket.onerror = () => {
+    socketConnected.value = false;
+    if (socket?.readyState !== WebSocket.OPEN) {
+      scheduleReconnect();
+    }
   };
 };
 
@@ -255,16 +290,22 @@ const handleCommand = (command: string) => {
 };
 
 onMounted(() => {
+  manualClosed = false;
   void syncAuditStatus();
   void loadPendingCounts();
   initRealtime();
   window.addEventListener('merchant-pending-refresh', handleRefreshBadge);
   window.addEventListener('merchant-message-read-refresh', handleReadRefresh);
-  // SSE 断连时的兜底刷新
-  refreshTimer = setInterval(loadPendingCounts, 30000);
+  // 实时链路断开时才启用轮询兜底，避免正常在线时重复请求
+  refreshTimer = setInterval(() => {
+    if (!socketConnected.value) {
+      void loadPendingCounts();
+    }
+  }, 30000);
 });
 
 onUnmounted(() => {
+  manualClosed = true;
   closeRealtime();
   window.removeEventListener('merchant-pending-refresh', handleRefreshBadge);
   window.removeEventListener('merchant-message-read-refresh', handleReadRefresh);

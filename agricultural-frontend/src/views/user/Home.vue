@@ -219,7 +219,7 @@
             class="news-card"
             @click="$router.push(`/news/${item.id}`)"
           >
-            <img :src="item.coverImg || defaultNewsCover" class="news-cover" />
+            <img :src="getNewsCover(item.coverImg)" class="news-cover" />
             <div class="news-content">
               <h4 class="text-ellipsis">{{ item.title }}</h4>
               <p>{{ formatDate(item.createTime) }}</p>
@@ -236,22 +236,25 @@
         <div class="footer-links">
           <div class="link-group">
             <h4>关于我们</h4>
-            <a href="#">平台简介</a>
-            <a href="#">联系我们</a>
+            <router-link to="/home">产地直供平台</router-link>
+            <router-link to="/unsold">滞销帮扶专区</router-link>
+            <router-link to="/news">平台动态</router-link>
           </div>
           <div class="link-group">
             <h4>帮助中心</h4>
-            <a href="#">购物指南</a>
-            <a href="#">支付方式</a>
+            <router-link to="/products">选购农产品</router-link>
+            <router-link to="/orders">订单与售后</router-link>
+            <router-link to="/messages">站内消息通知</router-link>
           </div>
           <div class="link-group">
             <h4>商家服务</h4>
-            <a href="#">商家入驻</a>
-            <a href="#">商家后台</a>
+            <router-link to="/merchant/register">申请入驻平台</router-link>
+            <router-link to="/merchant/login">商家后台登录</router-link>
+            <router-link to="/merchant/login">订单与售后处理</router-link>
           </div>
         </div>
         <div class="copyright">
-          © 2026 助农电商平台 版权所有 | 川ICP备xxxxxx号
+          © 2026 助农电商平台 | 聚焦农产品助销、滞销帮扶、订单履约与售后协同
         </div>
       </div>
     </footer>
@@ -384,6 +387,10 @@ const getCoverImage = (raw?: string) => {
   if (!raw) return '';
   const first = raw.split(',').map((item) => item.trim()).find(Boolean) || '';
   return getFullImageUrl(first);
+};
+
+const getNewsCover = (raw?: string) => {
+  return raw ? getFullImageUrl(raw) : defaultNewsCover;
 };
 
 const formatDate = (value?: string) => {

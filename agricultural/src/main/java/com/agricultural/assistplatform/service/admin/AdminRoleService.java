@@ -20,6 +20,7 @@ public class AdminRoleService {
     private final SysRoleMapper sysRoleMapper;
     private final SysPermissionMapper sysPermissionMapper;
     private final SysRolePermissionMapper sysRolePermissionMapper;
+    private final AdminPermissionService adminPermissionService;
 
     public List<SysRole> listRoles() {
         return sysRoleMapper.selectList(new LambdaQueryWrapper<SysRole>().orderByAsc(SysRole::getId));
@@ -36,12 +37,14 @@ public class AdminRoleService {
 
     public void updateRolePermissions(Long roleId, List<Long> permIds) {
         sysRolePermissionMapper.delete(new LambdaQueryWrapper<SysRolePermission>().eq(SysRolePermission::getRoleId, roleId));
-        if (permIds == null || permIds.isEmpty()) return;
-        for (Long permId : permIds) {
-            SysRolePermission rp = new SysRolePermission();
-            rp.setRoleId(roleId);
-            rp.setPermId(permId);
-            sysRolePermissionMapper.insert(rp);
+        if (permIds != null && !permIds.isEmpty()) {
+            for (Long permId : permIds) {
+                SysRolePermission rp = new SysRolePermission();
+                rp.setRoleId(roleId);
+                rp.setPermId(permId);
+                sysRolePermissionMapper.insert(rp);
+            }
         }
+        adminPermissionService.clearRoleCache(roleId);
     }
 }

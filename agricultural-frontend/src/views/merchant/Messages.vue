@@ -53,28 +53,22 @@ import { Bell, Box, Warning } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { listAfterSale, listOrders } from '@/apis/merchant';
 import { useUserStore } from '@/stores/modules/user';
-import { AFTER_SALE_STATUS, getAfterSaleStatusText, getAfterSaleResponsibleLabel } from '@/utils/afterSale';
-
-type MessageType = 'order' | 'aftersale';
-
-interface MerchantMessageItem {
-  id: string;
-  title: string;
-  content: string;
-  time: string;
-  type: MessageType;
-  isRead: boolean;
-  link: string;
-}
-
-const READ_STORAGE_PREFIX = 'merchant_message_read_map';
+import { AFTER_SALE_STATUS } from '@/utils/afterSale';
+import {
+  buildAfterSaleMessageMeta,
+  markAllMerchantMessagesRead,
+  markMerchantMessageRead,
+  mergeMerchantMessages,
+  type MerchantMessageItem,
+  type MerchantMessageType
+} from '@/utils/merchantMessageCenter';
 
 const userStore = useUserStore();
-const activeTab = ref<'all' | MessageType>('all');
+const activeTab = ref<'all' | MerchantMessageType>('all');
 const showDetailDialog = ref(false);
 const currentMessage = reactive<Partial<MerchantMessageItem>>({});
 const messageList = ref<MerchantMessageItem[]>([]);
-const readMap = ref<Record<string, boolean>>({});
+const merchantId = computed(() => userStore.userInfo?.id || 'anonymous');
 
 const unreadCount = computed(() => messageList.value.filter(msg => !msg.isRead).length);
 const filteredMessageList = computed(() => {
@@ -82,35 +76,16 @@ const filteredMessageList = computed(() => {
   return messageList.value.filter(msg => msg.type === activeTab.value);
 });
 
-const getReadMapKey = () => {
-  const merchantId = userStore.userInfo?.id || 'anonymous';
-  return `${READ_STORAGE_PREFIX}_${merchantId}`;
-};
-
-const loadReadMap = () => {
-  try {
-    const raw = localStorage.getItem(getReadMapKey());
-    readMap.value = raw ? JSON.parse(raw) : {};
-  } catch (error) {
-    console.warn('load read map failed', error);
-    readMap.value = {};
-  }
-};
-
-const saveReadMap = () => {
-  localStorage.setItem(getReadMapKey(), JSON.stringify(readMap.value));
-};
-
-const getIcon = (type: MessageType) => {
-  const map: Record<MessageType, any> = {
+const getIcon = (type: MerchantMessageType) => {
+  const map: Record<MerchantMessageType, any> = {
     order: Box,
     aftersale: Warning
   };
   return map[type] || Bell;
 };
 
-const getIconColor = (type: MessageType) => {
-  const map: Record<MessageType, string> = {
+const getIconColor = (type: MerchantMessageType) => {
+  const map: Record<MerchantMessageType, string> = {
     order: '#67c23a',
     aftersale: '#e6a23c'
   };
@@ -122,47 +97,9 @@ const formatDate = (date?: string) => {
   return String(date).replace('T', ' ').slice(0, 19);
 };
 
-const syncReadStatus = (messages: MerchantMessageItem[]) => {
-  messages.forEach(msg => {
-    msg.isRead = !!readMap.value[msg.id];
-  });
-  return messages;
-};
-
-const buildAfterSaleMessageMeta = (status?: number) => {
-  if (status === AFTER_SALE_STATUS.PENDING_MERCHANT) {
-    return {
-      title: '售后待处理',
-      prefix: '该售后等待商家处理，请尽快审核。'
-    };
-  }
-  if (status === AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND) {
-    return {
-      title: '退货待签收退款',
-      prefix: '用户已回传退货物流，请确认签收并退款。'
-    };
-  }
-  if (status === AFTER_SALE_STATUS.WAIT_USER_RETURN) {
-    return {
-      title: '等待用户退货',
-      prefix: '商家已同意退货退款，当前等待用户回寄商品。'
-    };
-  }
-  if (status === AFTER_SALE_STATUS.ADMIN) {
-    return {
-      title: '管理员介入处理中',
-      prefix: '该售后已进入平台裁决阶段。'
-    };
-  }
-  return {
-    title: `售后状态：${getAfterSaleStatusText(status)}`,
-    prefix: getAfterSaleResponsibleLabel(status)
-  };
-};
-
 const loadMessages = async () => {
   try {
-    const messages: MerchantMessageItem[] = [];
+    const liveMessages: MerchantMessageItem[] = [];
     const [orderRes, pendingAfterSaleRes, processingAfterSaleRes, waitUserReturnRes, adminRes] = await Promise.all([
       listOrders({ pageNum: 1, pageSize: 50, orderStatus: 2 }),
       listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.PENDING_MERCHANT }),
@@ -172,7 +109,7 @@ const loadMessages = async () => {
     ]);
 
     (orderRes?.list || []).forEach((order: any) => {
-      messages.push({
+      liveMessages.push({
         id: `order-${order.id}`,
         title: '新订单待发货',
         content: `订单号 ${order.orderNo} 待发货，请及时处理`,
@@ -190,7 +127,7 @@ const loadMessages = async () => {
       ...(adminRes?.list || [])
     ].forEach((item: any) => {
       const meta = buildAfterSaleMessageMeta(Number(item?.afterSaleStatus));
-      messages.push({
+      liveMessages.push({
         id: `aftersale-${item.id}`,
         title: meta.title,
         content: `${meta.prefix} 售后单号 ${item.afterSaleNo}，申请原因：${item.applyReason || '无'}`,
@@ -201,8 +138,7 @@ const loadMessages = async () => {
       });
     });
 
-    const sorted = messages.sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime());
-    messageList.value = syncReadStatus(sorted);
+    messageList.value = mergeMerchantMessages(merchantId.value, liveMessages);
   } catch (error) {
     console.error('Failed to load messages', error);
   }
@@ -211,20 +147,14 @@ const loadMessages = async () => {
 const readMessage = (msg: MerchantMessageItem) => {
   Object.assign(currentMessage, msg);
   if (!msg.isRead) {
-    msg.isRead = true;
-    readMap.value[msg.id] = true;
-    saveReadMap();
+    messageList.value = markMerchantMessageRead(merchantId.value, msg.id, messageList.value);
     window.dispatchEvent(new Event('merchant-message-read-refresh'));
   }
   showDetailDialog.value = true;
 };
 
 const markAllRead = () => {
-  messageList.value.forEach(msg => {
-    msg.isRead = true;
-    readMap.value[msg.id] = true;
-  });
-  saveReadMap();
+  messageList.value = markAllMerchantMessagesRead(merchantId.value, messageList.value);
   window.dispatchEvent(new Event('merchant-message-read-refresh'));
   ElMessage.success('已全部标记为已读');
 };
@@ -234,7 +164,6 @@ const handleRefresh = () => {
 };
 
 onMounted(() => {
-  loadReadMap();
   void loadMessages();
   window.addEventListener('merchant-pending-refresh', handleRefresh);
 });

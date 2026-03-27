@@ -12,6 +12,9 @@ import com.agricultural.assistplatform.mapper.ProductCategoryMapper;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductTraceMapper;
 import com.agricultural.assistplatform.mapper.ShopInfoMapper;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.admin.AdminProductAuditVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,6 +36,10 @@ public class AdminAuditService {
     private final ShopInfoMapper shopInfoMapper;
     private final ProductCategoryMapper productCategoryMapper;
     private final ProductTraceMapper productTraceMapper;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
+    private final AdminAuditTrailService adminAuditTrailService;
+    private final PublicDataCacheService publicDataCacheService;
 
     public com.agricultural.assistplatform.common.PageResult<MerchantInfo> merchantAuditList(Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -55,6 +62,7 @@ public class AdminAuditService {
         m.setRejectReason(pass ? null : reason);
         if (pass) m.setStatus(1);
         merchantInfoMapper.updateById(m);
+        adminAuditTrailService.record("merchant", id, pass, pass ? "商家审核通过" : reason);
     }
 
     public com.agricultural.assistplatform.common.PageResult<AdminProductAuditVO> productAuditList(Integer status, Integer pageNum, Integer pageSize) {
@@ -130,5 +138,10 @@ public class AdminAuditService {
         p.setStatus(pass ? 1 : 3);
         p.setRejectReason(pass ? null : reason);
         productInfoMapper.updateById(p);
+        publicDataCacheService.refreshHotProduct(p);
+        publicDataCacheService.evictProductCatalog(id, p.getMerchantId());
+        adminAuditTrailService.record("product", id, pass, pass ? "商品审核通过" : reason);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
     }
 }

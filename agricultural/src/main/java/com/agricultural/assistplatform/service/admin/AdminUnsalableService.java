@@ -3,8 +3,12 @@ package com.agricultural.assistplatform.service.admin;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
+import com.agricultural.assistplatform.service.common.UnsalableProductService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
+import com.agricultural.assistplatform.vo.common.UnsalableProductVO;
+import com.agricultural.assistplatform.vo.common.UnsalableSummaryVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,16 +17,17 @@ import org.springframework.stereotype.Service;
 public class AdminUnsalableService {
 
     private final ProductInfoMapper productInfoMapper;
+    private final UnsalableProductService unsalableProductService;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
+    private final PublicDataCacheService publicDataCacheService;
 
-    public PageResult<ProductInfo> list(Integer pageNum, Integer pageSize) {
-        if (pageNum == null || pageNum < 1) pageNum = 1;
-        if (pageSize == null || pageSize < 1) pageSize = 10;
-        Page<ProductInfo> page = productInfoMapper.selectPage(new Page<>(pageNum, pageSize),
-                new LambdaQueryWrapper<ProductInfo>()
-                        .eq(ProductInfo::getIsUnsalable, 1)
-                        .eq(ProductInfo::getDeleteFlag, 0)
-                        .orderByDesc(ProductInfo::getCreateTime));
-        return PageResult.of(page.getTotal(), page.getRecords());
+    public PageResult<UnsalableProductVO> list(String keyword, String sortBy, String sourceType, Integer pageNum, Integer pageSize) {
+        return unsalableProductService.list(keyword, sortBy, sourceType, pageNum, pageSize);
+    }
+
+    public UnsalableSummaryVO summary(String keyword) {
+        return unsalableProductService.summary(keyword);
     }
 
     public void setUnsalable(Long id, Integer isUnsalable) {
@@ -30,6 +35,11 @@ public class AdminUnsalableService {
         if (p != null) {
             p.setIsUnsalable(isUnsalable);
             productInfoMapper.updateById(p);
+            publicDataCacheService.evictUnsalable();
+            publicDataCacheService.evictHome();
+            publicDataCacheService.evictProductSearch();
+            userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
+            adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
         }
     }
 }

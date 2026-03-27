@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -15,6 +16,7 @@ import java.util.Map;
 @Tag(name = "商家端-售后沟通")
 @RestController
 @RequestMapping("/merchant")
+@RequireLoginType("merchant")
 @RequiredArgsConstructor
 public class MerchantAfterSaleMessageController {
 

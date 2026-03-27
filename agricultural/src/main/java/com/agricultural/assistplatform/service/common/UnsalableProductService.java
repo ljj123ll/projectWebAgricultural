@@ -12,9 +12,11 @@ import com.agricultural.assistplatform.mapper.ShopInfoMapper;
 import com.agricultural.assistplatform.vo.common.UnsalableProductVO;
 import com.agricultural.assistplatform.vo.common.UnsalableSummaryVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -34,28 +36,23 @@ public class UnsalableProductService {
     private final ShopInfoMapper shopInfoMapper;
     private final MerchantInfoMapper merchantInfoMapper;
     private final ProductCategoryMapper productCategoryMapper;
+    private final RedisCacheService redisCacheService;
+
+    private static final Duration UNSALABLE_CACHE_TTL = Duration.ofMinutes(5);
 
     public PageResult<UnsalableProductVO> list(String keyword, String sortBy, String sourceType, Integer pageNum, Integer pageSize) {
-        if (pageNum == null || pageNum < 1) pageNum = 1;
-        if (pageSize == null || pageSize < 1) pageSize = 10;
-
-        List<UnsalableProductVO> source = buildRecords(keyword, sourceType);
-        sortRecords(source, sortBy);
-
-        int fromIndex = Math.min((pageNum - 1) * pageSize, source.size());
-        int toIndex = Math.min(fromIndex + pageSize, source.size());
-        return PageResult.of((long) source.size(), new ArrayList<>(source.subList(fromIndex, toIndex)));
+        String cacheKey = PublicDataCacheService.UNSALABLE_LIST_KEY_PREFIX
+                + normalize(keyword) + ":" + normalize(sortBy) + ":" + normalize(sourceType)
+                + ":" + normalize(pageNum) + ":" + normalize(pageSize);
+        return redisCacheService.getOrLoad(cacheKey, UNSALABLE_CACHE_TTL,
+                new TypeReference<>() {
+                },
+                () -> loadList(keyword, sortBy, sourceType, pageNum, pageSize));
     }
 
     public UnsalableSummaryVO summary(String keyword) {
-        List<UnsalableProductVO> source = buildRecords(keyword, "all");
-        UnsalableSummaryVO summary = new UnsalableSummaryVO();
-        summary.setTotalCount(source.size());
-        summary.setManualCount((int) source.stream().filter(item -> Boolean.TRUE.equals(item.getManualIncluded())).count());
-        summary.setAlgorithmCount((int) source.stream().filter(item -> Boolean.TRUE.equals(item.getAlgorithmIncluded())).count());
-        summary.setMixedCount((int) source.stream().filter(item ->
-                Boolean.TRUE.equals(item.getManualIncluded()) && Boolean.TRUE.equals(item.getAlgorithmIncluded())).count());
-        return summary;
+        String cacheKey = PublicDataCacheService.UNSALABLE_SUMMARY_KEY_PREFIX + normalize(keyword);
+        return redisCacheService.getOrLoad(cacheKey, UNSALABLE_CACHE_TTL, UnsalableSummaryVO.class, () -> loadSummary(keyword));
     }
 
     private List<UnsalableProductVO> buildRecords(String keyword, String sourceType) {
@@ -253,6 +250,37 @@ public class UnsalableProductService {
 
     private int defaultInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private PageResult<UnsalableProductVO> loadList(String keyword, String sortBy, String sourceType, Integer pageNum, Integer pageSize) {
+        if (pageNum == null || pageNum < 1) pageNum = 1;
+        if (pageSize == null || pageSize < 1) pageSize = 10;
+
+        List<UnsalableProductVO> source = buildRecords(keyword, sourceType);
+        sortRecords(source, sortBy);
+
+        int fromIndex = Math.min((pageNum - 1) * pageSize, source.size());
+        int toIndex = Math.min(fromIndex + pageSize, source.size());
+        return PageResult.of((long) source.size(), new ArrayList<>(source.subList(fromIndex, toIndex)));
+    }
+
+    private UnsalableSummaryVO loadSummary(String keyword) {
+        List<UnsalableProductVO> source = buildRecords(keyword, "all");
+        UnsalableSummaryVO summary = new UnsalableSummaryVO();
+        summary.setTotalCount(source.size());
+        summary.setManualCount((int) source.stream().filter(item -> Boolean.TRUE.equals(item.getManualIncluded())).count());
+        summary.setAlgorithmCount((int) source.stream().filter(item -> Boolean.TRUE.equals(item.getAlgorithmIncluded())).count());
+        summary.setMixedCount((int) source.stream().filter(item ->
+                Boolean.TRUE.equals(item.getManualIncluded()) && Boolean.TRUE.equals(item.getAlgorithmIncluded())).count());
+        return summary;
+    }
+
+    private String normalize(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? "blank" : text.replace(":", "_");
     }
 
     private record AlgorithmDecision(boolean included, int score, long ageDays) {

@@ -12,11 +12,14 @@ import type {
   ReconciliationRecord,
   SysRole,
   SysPermission,
-  AfterSaleMessage
+  AfterSaleMessage,
+  UnsalableProduct,
+  UnsalableSummary
 } from '@/types';
 
 export const adminLogin = (data: any) => request.post('/admin/login', data);
 export const adminSendSms = (phone: string) => request.post('/admin/sms/send', { phone });
+export const getCurrentAdminPermissions = () => request.get<any, string[]>('/admin/me/permissions');
 
 // 管理员Dashboard
 export const getDashboard = (timeRange = 'all') => request.get<any, any>('/admin/dashboard', { params: { timeRange } });
@@ -28,7 +31,8 @@ export const updateUserStatus = (id: number, status: number) => request.put(`/ad
 export const deleteUser = (id: number) => request.delete(`/admin/users/${id}`);
 
 // 滞销专区
-export const getUnsalableProducts = (params: any) => request.get<any, PageResult<any>>('/admin/unsalable', { params });
+export const getUnsalableProducts = (params: any) => request.get<any, PageResult<UnsalableProduct>>('/admin/unsalable', { params });
+export const getUnsalableSummary = (params?: any) => request.get<any, UnsalableSummary>('/admin/unsalable/summary', { params });
 export const setUnsalable = (id: number, isUnsalable: number) => request.put(`/admin/unsalable/${id}`, null, { params: { isUnsalable } });
 
 export const listMerchants = (params: any) => request.get<any, PageResult<MerchantInfo>>('/admin/merchants', { params });

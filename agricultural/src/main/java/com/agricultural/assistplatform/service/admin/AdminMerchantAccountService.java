@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminMerchantAccountService {
 
     private final MerchantAccountMapper merchantAccountMapper;
+    private final AdminAuditTrailService adminAuditTrailService;
 
     public PageResult<MerchantAccount> list(Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -44,6 +45,11 @@ public class AdminMerchantAccountService {
             account.setRejectReason(reason == null ? "资料信息不完整，请补充后重新提交" : reason.trim());
         }
         merchantAccountMapper.updateById(account);
+        adminAuditTrailService.record(
+                "merchant_account",
+                id,
+                approve,
+                approve ? "收款账户审核通过" : account.getRejectReason()
+        );
     }
 }
-

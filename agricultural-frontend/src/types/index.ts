@@ -20,6 +20,8 @@ export interface UserInfo {
   nickname: string;
   avatarUrl?: string;
   role?: 'user' | 'merchant' | 'admin'; // 前端区分角色用
+  roleCode?: string;
+  permissionCodes?: string[];
 }
 
 // 登录响应
@@ -216,6 +218,22 @@ export interface UserMessage {
   refNo?: string;
   isRead: number; // 0-未读 1-已读
   createTime?: string;
+}
+
+export interface UnsalableProduct extends Product {
+  manualIncluded?: boolean;
+  algorithmIncluded?: boolean;
+  inclusionSource?: 'manual' | 'algorithm' | 'manual_algorithm' | string;
+  unsalableScore?: number;
+  ageDays?: number;
+  unsalableReason?: string;
+}
+
+export interface UnsalableSummary {
+  totalCount: number;
+  manualCount: number;
+  algorithmCount: number;
+  mixedCount: number;
 }
 
 export interface ProductCategory {

@@ -62,7 +62,14 @@
       <h3>上传退货快递单号</h3>
       <el-form :model="returnForm" label-position="top">
         <el-form-item label="物流公司">
-          <el-input v-model="returnForm.logisticsCompany" placeholder="例如：顺丰速运（可选）" />
+          <el-select v-model="returnForm.logisticsCompany" placeholder="请选择退货快递公司" style="width: 100%">
+            <el-option
+              v-for="item in logisticsCompanies"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="物流单号">
           <el-input v-model="returnForm.logisticsNo" placeholder="请输入退货快递单号" />
@@ -149,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import {
@@ -169,6 +176,7 @@ import {
   getAfterSaleStatusText
 } from '@/utils/afterSale';
 import OrderChatPanel from '@/components/OrderChatPanel.vue';
+import { USER_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
 const router = useRouter();
 const route = useRoute();
@@ -185,9 +193,21 @@ const afterSaleMsgForm = reactive({
   content: ''
 });
 const returnForm = reactive({
-  logisticsCompany: '',
+  logisticsCompany: '顺丰速运',
   logisticsNo: ''
 });
+const logisticsCompanies = [
+  '顺丰速运',
+  '京东物流',
+  '中通快递',
+  '圆通速递',
+  '申通快递',
+  '韵达快递',
+  '极兔速递',
+  '中国邮政',
+  '德邦快递',
+  '其他快递'
+];
 
 const formatDate = (value?: string) => {
   if (!value) return '-';
@@ -350,6 +370,18 @@ const currentStatusText = computed(() => getAfterSaleStatusText(afterSale.value?
 const statusTagType = computed(() => getAfterSaleStatusTagType(afterSale.value?.afterSaleStatus));
 const responsibleLabel = computed(() => getAfterSaleResponsibleLabel(afterSale.value?.afterSaleStatus));
 
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  const isCurrentAfterSale = payload.refNo && payload.refNo === afterSaleNo.value;
+  const isAfterSaleEvent = String(payload.reason || '').startsWith('AFTER_SALE');
+  if (!isCurrentAfterSale && !isAfterSaleEvent) return;
+  void loadDetail();
+  void loadAfterSaleUnreadCount();
+  if (messageTab.value === 'afterSale') {
+    void enterAfterSaleMessageTab();
+  }
+};
+
 onMounted(async () => {
   try {
     await loadDetail();
@@ -360,6 +392,11 @@ onMounted(async () => {
   } catch (e) {
     console.error(e);
   }
+  window.addEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
 });
 </script>
 

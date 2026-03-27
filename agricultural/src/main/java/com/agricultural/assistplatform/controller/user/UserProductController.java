@@ -4,6 +4,8 @@ import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.user.UserProductService;
 import com.agricultural.assistplatform.entity.ProductCategory;
+import com.agricultural.assistplatform.service.common.UnsalableProductService;
+import com.agricultural.assistplatform.vo.common.UnsalableProductVO;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +22,7 @@ import java.util.List;
 public class UserProductController {
 
     private final UserProductService userProductService;
+    private final UnsalableProductService unsalableProductService;
 
     @Operation(summary = "商品搜索")
     @GetMapping("/products/search")
@@ -32,6 +35,17 @@ public class UserProductController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.ok(userProductService.search(keyword, sortBy, categoryId, originPlace, isUnsalable, pageNum, pageSize));
+    }
+
+    @Operation(summary = "滞销帮扶商品列表")
+    @GetMapping("/unsalable/products")
+    public Result<PageResult<UnsalableProductVO>> unsalableProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "all") String sourceType,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.ok(unsalableProductService.list(keyword, sortBy, sourceType, pageNum, pageSize));
     }
 
     @Operation(summary = "商品详情")

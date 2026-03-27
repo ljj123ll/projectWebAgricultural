@@ -8,11 +8,15 @@ import com.agricultural.assistplatform.entity.ProductTrace;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.mapper.ProductTraceMapper;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.util.QrCodeUtil;
 import com.agricultural.assistplatform.vo.merchant.MerchantProductDetailVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,12 @@ public class MerchantProductService {
     private final ProductInfoMapper productInfoMapper;
     private final ProductTraceMapper productTraceMapper;
     private final QrCodeUtil qrCodeUtil;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
+    private final PublicDataCacheService publicDataCacheService;
+
+    @Value("${app.trace.base-url:http://localhost:5173/product}")
+    private String traceBaseUrl;
 
     public com.agricultural.assistplatform.common.PageResult<ProductInfo> list(Integer pageNum, Integer pageSize) {
         Long merchantId = LoginContext.getUserId();
@@ -95,6 +105,10 @@ public class MerchantProductService {
         trace.setStorageMethod(dto.getStorageMethod());
         trace.setTransportMethod(dto.getTransportMethod());
         productTraceMapper.insert(trace);
+        publicDataCacheService.refreshHotProduct(p);
+        publicDataCacheService.evictProductCatalog(p.getId(), merchantId);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(p.getId()));
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(p.getId()));
         return p;
     }
 
@@ -124,6 +138,10 @@ public class MerchantProductService {
             trace.setTransportMethod(dto.getTransportMethod());
             productTraceMapper.updateById(trace);
         }
+        publicDataCacheService.refreshHotProduct(p);
+        publicDataCacheService.evictProductCatalog(id, merchantId);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(id));
     }
 
     public String generateQrcode(Long productId) {
@@ -132,13 +150,14 @@ public class MerchantProductService {
         ProductInfo p = productInfoMapper.selectOne(new LambdaQueryWrapper<ProductInfo>()
                 .eq(ProductInfo::getId, productId).eq(ProductInfo::getMerchantId, merchantId));
         if (p == null) throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在");
-        String url = "https://your-domain.com/trace/" + productId;
+        String url = buildTraceUrl(productId);
         String qrUrl = qrCodeUtil.generateAndSave(url, "trace_" + productId);
         ProductTrace trace = productTraceMapper.selectOne(new LambdaQueryWrapper<ProductTrace>().eq(ProductTrace::getProductId, productId));
         if (trace != null) {
             trace.setQrCodeUrl(qrUrl);
             productTraceMapper.updateById(trace);
         }
+        publicDataCacheService.evictProductDetail(productId);
         return qrUrl;
     }
 
@@ -154,6 +173,10 @@ public class MerchantProductService {
         }
         p.setStatus(status);
         productInfoMapper.updateById(p);
+        publicDataCacheService.refreshHotProduct(p);
+        publicDataCacheService.evictProductCatalog(productId, merchantId);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(productId));
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(productId));
     }
 
     public void delete(Long productId) {
@@ -163,5 +186,17 @@ public class MerchantProductService {
                 .eq(ProductInfo::getId, productId).eq(ProductInfo::getMerchantId, merchantId));
         if (p == null) throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在");
         productInfoMapper.deleteById(productId);
+        publicDataCacheService.removeHotProduct(productId);
+        publicDataCacheService.evictProductCatalog(productId, merchantId);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(productId));
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", String.valueOf(productId));
+    }
+
+    private String buildTraceUrl(Long productId) {
+        String baseUrl = traceBaseUrl == null ? "" : traceBaseUrl.trim();
+        if (baseUrl.endsWith("/")) {
+            return baseUrl + productId;
+        }
+        return baseUrl + "/" + productId;
     }
 }

@@ -7,17 +7,17 @@ spring:
   # 数据源配置 (MySQL)
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver # MySQL 8.0+ 驱动类
-    url: jdbc:mysql://localhost:3306/nongnong_ecommerce?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true # 数据库连接地址
-    username: root # 数据库用户名
-    password: 798220040520ljj # 数据库密码
+    url: ${DB_URL:jdbc:mysql://localhost:3306/nongnong_ecommerce?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true} # 数据库连接地址
+    username: ${DB_USERNAME:root} # 数据库用户名
+    password: ${DB_PASSWORD:798220040520ljj} # 数据库密码
 
   # Redis 配置
   data:
     redis:
-      host: localhost # Redis 主机地址
-      port: 6379 # Redis 端口号
-      timeout: 3000 # 连接超时时间 (毫秒)
-      database: 0 # 使用的数据库索引
+      host: ${REDIS_HOST:localhost} # Redis 主机地址
+      port: ${REDIS_PORT:6379} # Redis 端口号
+      timeout: ${REDIS_TIMEOUT:3000} # 连接超时时间 (毫秒)
+      database: ${REDIS_DATABASE:0} # 使用的数据库索引
 
   # 文件上传配置
   servlet:
@@ -32,6 +32,12 @@ app:
     path: ./uploads # 文件上传路径
     allowed-types: image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/x-matroska,video/webm
     max-size: 52428800 # 50MB
+  sms:
+    fixed-code: ${APP_SMS_FIXED_CODE:123456}
+  trace:
+    base-url: ${APP_TRACE_BASE_URL:http://localhost:5173/product}
+  public:
+    api-base-url: ${APP_PUBLIC_API_BASE_URL:http://localhost:8080/api}
 
 # 服务器配置（接口文档 Base URL: http://localhost:8080/api）
 server:
@@ -54,8 +60,8 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: agricultural-assist-platform-jwt-secret-key-2026
-  expire-days: 7
+  secret: ${JWT_SECRET:agricultural-assist-platform-jwt-secret-key-2026}
+  expire-days: ${JWT_EXPIRE_DAYS:7}
 
 # SpringDoc OpenAPI 配置
 springdoc:

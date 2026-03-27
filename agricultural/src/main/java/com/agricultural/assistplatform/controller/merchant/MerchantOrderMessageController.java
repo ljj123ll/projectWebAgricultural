@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "商家端-订单沟通")
 @RestController
 @RequestMapping("/merchant")
+@RequireLoginType("merchant")
 @RequiredArgsConstructor
 public class MerchantOrderMessageController {
 
@@ -31,4 +33,3 @@ public class MerchantOrderMessageController {
         return Result.ok(orderCommunicationService.list(orderNo, LoginContext.getUserId(), "merchant", pageNum, pageSize));
     }
 }
-

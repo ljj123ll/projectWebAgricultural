@@ -21,6 +21,7 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.Locale;
 import java.util.Set;
 
@@ -67,6 +68,17 @@ public class AdminPermissionService {
                 .eq(SysUser::getRoleId, roleId)
                 .eq(SysUser::getDeleteFlag, 0));
         admins.forEach(admin -> clearAdminCache(admin.getId()));
+    }
+
+    public Set<String> currentPermissionCodes(Long adminId, String loginType) {
+        if (adminId == null || !"admin".equalsIgnoreCase(String.valueOf(loginType))) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "请先以管理员身份登录");
+        }
+        AdminPermissionSnapshot snapshot = getSnapshot(adminId);
+        if (!snapshot.active) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "管理员账号已被禁用");
+        }
+        return buildEffectivePermissions(snapshot);
     }
 
     private AdminPermissionSnapshot getSnapshot(Long adminId) {
@@ -140,6 +152,25 @@ public class AdminPermissionService {
                     Set.of("audit:manage", "comment:manage", "news:manage").contains(permissionCode);
             default -> false;
         };
+    }
+
+    private Set<String> buildEffectivePermissions(AdminPermissionSnapshot snapshot) {
+        String roleCode = snapshot.roleCode == null ? "" : snapshot.roleCode.trim().toLowerCase(Locale.ROOT);
+        if ("super_admin".equals(roleCode) || "admin".equals(roleCode) || "root".equals(roleCode)) {
+            return Set.of("*");
+        }
+
+        Set<String> effective = new TreeSet<>();
+        if (snapshot.permissionCodes != null) {
+            effective.addAll(snapshot.permissionCodes);
+        }
+        if (Set.of("content_admin", "content-manager", "editor_admin").contains(roleCode)) {
+            effective.add("dashboard:view");
+            effective.add("audit:manage");
+            effective.add("comment:manage");
+            effective.add("news:manage");
+        }
+        return effective;
     }
 
     private String moduleWildcard(String permissionCode) {

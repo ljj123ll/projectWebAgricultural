@@ -11,6 +11,7 @@ import com.agricultural.assistplatform.service.SmsService;
 import com.agricultural.assistplatform.util.JwtUtil;
 import com.agricultural.assistplatform.vo.merchant.MerchantLoginVO;
 import cn.hutool.core.util.StrUtil;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MerchantAuthService {
 
@@ -72,11 +74,8 @@ public class MerchantAuthService {
                         .eq(MerchantInfo::getPhone, phone));
         if (m == null) throw new BusinessException(ResultCode.BAD_REQUEST, "请先注册");
         
-        // 检查审核状态
         Integer auditStatus = m.getAuditStatus();
-        System.out.println("[DEBUG] Login attempt - Phone: " + phone + ", AuditStatus: " + auditStatus);
         
-        // 验证码/密码验证应该在审核状态验证之前，或者只返回对应的错误
         if (StrUtil.isNotBlank(code)) {
             if (!smsService.verifyCode(phone, code)) throw new BusinessException(ResultCode.BAD_REQUEST, "验证码错误或已过期");
         } else if (StrUtil.isNotBlank(password)) {
@@ -85,19 +84,18 @@ public class MerchantAuthService {
         } else throw new BusinessException(ResultCode.BAD_REQUEST, "请提供验证码或密码");
 
         if (auditStatus == null || auditStatus == 0) {
-            System.out.println("[DEBUG] Rejecting login - Account not audited");
+            log.info("商家登录被拒绝，账号待审核，merchantId={}", m.getId());
             throw new BusinessException(ResultCode.FORBIDDEN, "管理员未审核，账号审核中，暂无法登录");
         }
         if (auditStatus == 2) {
             String reason = StrUtil.isNotBlank(m.getRejectReason()) ? ("，原因：" + m.getRejectReason()) : "";
-            System.out.println("[DEBUG] Rejecting login - Audit rejected");
+            log.info("商家登录被拒绝，审核未通过，merchantId={}", m.getId());
             throw new BusinessException(ResultCode.FORBIDDEN, "审核未通过，入驻信息不完整，请重新补充信息进行入驻" + reason);
         }
         if (auditStatus != 1) {
-            System.out.println("[DEBUG] Rejecting login - Invalid audit status");
+            log.warn("商家登录状态异常，merchantId={}, auditStatus={}", m.getId(), auditStatus);
             throw new BusinessException(ResultCode.FORBIDDEN, "账号审核状态异常，暂无法登录");
         }
-        System.out.println("[DEBUG] Audit check passed");
         
         if (m.getStatus() == 2) throw new BusinessException(ResultCode.FORBIDDEN, "店铺已被禁用");
         return buildLoginVO(m);

@@ -156,23 +156,21 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/modules/order';
-import { useUserStore } from '@/stores/modules/user';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { Comment, Order } from '@/types';
 import { getOrders, cancelOrder, receiveOrder, getLogistics, getLogisticsByOrderNo } from '@/apis/order';
 import { listComments, listAfterSale as listUserAfterSale } from '@/apis/user';
 import { getFullImageUrl } from '@/utils/image';
+import { USER_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
 const router = useRouter();
 const orderStore = useOrderStore();
-const userStore = useUserStore();
 
 const currentTab = ref(0);
 const loading = ref(false);
 const hiddenOrderIds = ref<number[]>([]);
 const commentStateMap = ref<Record<string, { id: number; auditStatus: number }>>({});
 const afterSaleNoMap = ref<Record<string, string>>({});
-let realtimeSource: EventSource | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const tabs = ref([
@@ -263,50 +261,17 @@ const loadOrders = async () => {
   }
 };
 
-const closeRealtime = () => {
-  if (realtimeSource) {
-    realtimeSource.close();
-    realtimeSource = null;
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  if (payload.reason === 'ORDER_SHIPPED') {
+    currentTab.value = 3;
   }
-};
-
-const parseRefreshPayload = (event: MessageEvent): { reason?: string } => {
-  try {
-    const data = JSON.parse(event.data || '{}');
-    if (data && typeof data === 'object') return data;
-  } catch (error) {
-    console.warn('解析用户实时消息失败', error);
-  }
-  return {};
-};
-
-const initRealtime = () => {
-  closeRealtime();
-  if (!userStore.token || userStore.role !== 'user') return;
-  const basePath = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
-  const token = encodeURIComponent(userStore.token);
-  realtimeSource = new EventSource(`${basePath}/user/realtime/stream?token=${token}`);
-
-  realtimeSource.addEventListener('refresh', (event) => {
-    const payload = parseRefreshPayload(event as MessageEvent);
-    if (payload.reason === 'ORDER_SHIPPED') {
-      currentTab.value = 3;
-    }
-    void loadOrders();
-  });
-
-  realtimeSource.addEventListener('connected', () => {
-    void loadOrders();
-  });
-
-  realtimeSource.onerror = () => {
-    // EventSource 会自动重连，这里不额外提示，避免打扰用户
-  };
+  void loadOrders();
 };
 
 onMounted(() => {
   void loadOrders();
-  initRealtime();
+  window.addEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
   // SSE 异常断开时的兜底同步
   refreshTimer = setInterval(() => {
     void loadOrders();
@@ -314,7 +279,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  closeRealtime();
+  window.removeEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
   if (refreshTimer) {
     clearInterval(refreshTimer);
     refreshTimer = null;

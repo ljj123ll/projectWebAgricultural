@@ -166,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { handleAfterSale, listAdminAfterSaleMessages, listAfterSale, sendAdminAfterSaleMessage } from '@/apis/admin';
 import { getAfterSaleUnreadCount, markAfterSaleMessagesRead } from '@/apis/after-sale-message';
@@ -180,6 +180,7 @@ import {
   getAfterSaleStatusTagType,
   getAfterSaleStatusText
 } from '@/utils/afterSale';
+import { ADMIN_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
 type TabType = 'pending-judge' | 'processing' | 'resolved' | 'all';
 type DecisionType = 'approve_refund' | 'approve_return_refund' | 'reject';
@@ -431,8 +432,23 @@ const submitJudge = async () => {
   await loadList();
 };
 
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  const isAfterSaleEvent = String(payload.reason || '').startsWith('AFTER_SALE');
+  if (!isAfterSaleEvent) return;
+  void loadList();
+  if (chatDialogVisible.value && chatAfterSaleNo.value && (!payload.refNo || payload.refNo === chatAfterSaleNo.value)) {
+    void enterAfterSaleMessageTab();
+  }
+};
+
 onMounted(() => {
   void loadList();
+  window.addEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
 });
 </script>
 

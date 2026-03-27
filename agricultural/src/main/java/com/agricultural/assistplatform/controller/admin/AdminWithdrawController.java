@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.admin;
 
+import com.agricultural.assistplatform.annotation.AdminPermission;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminPermission("withdraw:audit")
 public class AdminWithdrawController {
 
     private final AdminWithdrawService adminWithdrawService;
@@ -63,4 +65,3 @@ public class AdminWithdrawController {
         throw new BusinessException(ResultCode.BAD_REQUEST, "审核结果无效");
     }
 }
-

@@ -1,8 +1,10 @@
 package com.agricultural.assistplatform.service.admin;
 
 import com.agricultural.assistplatform.common.ResultCode;
+import com.agricultural.assistplatform.entity.SysRole;
 import com.agricultural.assistplatform.entity.SysUser;
 import com.agricultural.assistplatform.exception.BusinessException;
+import com.agricultural.assistplatform.mapper.SysRoleMapper;
 import com.agricultural.assistplatform.mapper.SysUserMapper;
 import com.agricultural.assistplatform.service.SmsService;
 import com.agricultural.assistplatform.util.JwtUtil;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class AdminAuthService {
 
     private final SysUserMapper sysUserMapper;
+    private final SysRoleMapper sysRoleMapper;
     private final SmsService smsService;
     private final JwtUtil jwtUtil;
     private static final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
@@ -32,9 +35,7 @@ public class AdminAuthService {
         String phone = body.get("phone");
         if (username == null || password == null) throw new BusinessException(ResultCode.BAD_REQUEST, "账号密码不能为空");
         
-        // 允许使用 123456 作为通用测试验证码，或者验证 Redis 中的验证码
-        boolean isDevCode = "123456".equals(code);
-        if (!isDevCode && (code == null || phone == null || !smsService.verifyCode(phone, code)))
+        if (code == null || phone == null || !smsService.verifyCode(phone, code))
             throw new BusinessException(ResultCode.BAD_REQUEST, "短信验证码错误或已过期");
             
         List<SysUser> adminCandidates = sysUserMapper.selectList(
@@ -80,6 +81,9 @@ public class AdminAuthService {
         userInfo.put("phone", admin.getPhone());
         userInfo.put("nickname", admin.getRealName() != null ? admin.getRealName() : admin.getUsername());
         userInfo.put("role", "admin");
+        userInfo.put("roleId", admin.getRoleId());
+        SysRole role = admin.getRoleId() == null ? null : sysRoleMapper.selectById(admin.getRoleId());
+        userInfo.put("roleCode", role != null ? role.getRoleCode() : "super_admin");
         
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("token", token);

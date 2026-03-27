@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.service.user.UserInfoService;
 import com.agricultural.assistplatform.vo.user.UserInfoVO;
@@ -13,6 +14,7 @@ import java.util.Map;
 @Tag(name = "用户端-个人中心")
 @RestController
 @RequestMapping("/user")
+@RequireLoginType("user")
 @RequiredArgsConstructor
 public class UserInfoController {
 

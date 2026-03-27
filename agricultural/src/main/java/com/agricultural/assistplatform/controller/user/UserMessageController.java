@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.user;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.LoginContext;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "用户端-我的消息")
 @RestController
 @RequestMapping("/user/messages")
+@RequireLoginType("user")
 @RequiredArgsConstructor
 public class UserMessageController {
 

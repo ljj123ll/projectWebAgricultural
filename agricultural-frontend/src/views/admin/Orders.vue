@@ -199,13 +199,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { listOrders, getOrder, cancelOrder } from '@/apis/admin';
 import type { Order, OrderItem } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
 import OrderChatPanel from '@/components/OrderChatPanel.vue';
+import { ADMIN_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
 const searchKeyword = ref('');
 const activeTab = ref('all');
@@ -336,6 +337,11 @@ const handleTabChange = () => {
 
 onMounted(() => {
   loadOrders();
+  window.addEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
 });
 
 const viewDetail = async (row: Order) => {
@@ -350,6 +356,16 @@ const viewDetail = async (row: Order) => {
     }
   } catch (error) {
     console.error(error);
+  }
+};
+
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  const isOrderEvent = String(payload.reason || '').startsWith('ORDER');
+  if (!isOrderEvent) return;
+  void loadOrders();
+  if (detailVisible.value && currentOrder.value?.id) {
+    void viewDetail(currentOrder.value);
   }
 };
 

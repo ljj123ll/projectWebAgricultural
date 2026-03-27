@@ -25,6 +25,7 @@ public class AdminCommentService {
     private final CommentMapper commentMapper;
     private final ProductInfoMapper productInfoMapper;
     private final UserMessageService userMessageService;
+    private final AdminAuditTrailService adminAuditTrailService;
 
     public PageResult<Comment> list(Long productId, Long userId, Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -50,6 +51,12 @@ public class AdminCommentService {
 
         comment.setAuditStatus(auditStatus);
         commentMapper.updateById(comment);
+        adminAuditTrailService.record(
+                "comment",
+                id,
+                auditStatus,
+                auditStatus == 1 ? "评论审核通过" : "评论审核未通过"
+        );
 
         // 审核后同步刷新商品评分，仅统计已通过评论
         updateProductScore(comment.getProductId());

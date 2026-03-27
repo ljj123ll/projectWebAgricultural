@@ -92,28 +92,86 @@
 
     <!-- 底部信息 -->
     <footer class="user-footer">
-      <p>助农电商平台 - 助力乡村振兴</p>
+      <p>助农电商平台 | 连接产地商家与城市消费者，支持订单、售后、滞销帮扶全流程协同</p>
       <p class="footer-links">
-        <span @click="router.push('/news')">助农新闻</span>
+        <span @click="router.push('/products')">全部商品</span>
         <el-divider direction="vertical" />
-        <span>关于我们</span>
+        <span @click="router.push('/unsold')">滞销帮扶</span>
         <el-divider direction="vertical" />
-        <span>联系方式</span>
+        <span @click="router.push('/news')">平台动态</span>
+        <el-divider direction="vertical" />
+        <span @click="router.push('/merchant/register')">商家入驻</span>
       </p>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/modules/user';
 import { useCartStore } from '@/stores/modules/cart';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  USER_REALTIME_EVENT,
+  buildRealtimeWsUrl,
+  dispatchRealtimeRefresh,
+  parseRealtimePayload
+} from '@/utils/realtime';
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
 const cartStore = useCartStore();
+let socket: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let manualClosed = false;
+
+const clearReconnectTimer = () => {
+  if (!reconnectTimer) return;
+  clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+};
+
+const closeRealtime = () => {
+  clearReconnectTimer();
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
+};
+
+const scheduleReconnect = () => {
+  clearReconnectTimer();
+  reconnectTimer = setTimeout(() => {
+    if (manualClosed) return;
+    initRealtime();
+  }, 2000);
+};
+
+const initRealtime = () => {
+  closeRealtime();
+  if (!userStore.token || userStore.role !== 'user') return;
+
+  socket = new WebSocket(buildRealtimeWsUrl(userStore.token));
+  socket.onmessage = (event) => {
+    const payload = parseRealtimePayload(event);
+    dispatchRealtimeRefresh(USER_REALTIME_EVENT, payload);
+  };
+  socket.onopen = () => {
+    dispatchRealtimeRefresh(USER_REALTIME_EVENT, { reason: 'CONNECTED', timestamp: Date.now() });
+  };
+  socket.onclose = () => {
+    if (!manualClosed) {
+      scheduleReconnect();
+    }
+  };
+  socket.onerror = () => {
+    if (socket?.readyState !== WebSocket.OPEN) {
+      scheduleReconnect();
+    }
+  };
+};
 
 const handleCommand = (command: string) => {
   switch (command) {
@@ -142,6 +200,16 @@ const handleCommand = (command: string) => {
       break;
   }
 };
+
+onMounted(() => {
+  manualClosed = false;
+  initRealtime();
+});
+
+onUnmounted(() => {
+  manualClosed = true;
+  closeRealtime();
+});
 </script>
 
 <style scoped lang="scss">

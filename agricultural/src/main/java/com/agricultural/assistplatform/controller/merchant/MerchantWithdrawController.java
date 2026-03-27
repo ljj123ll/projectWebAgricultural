@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.PageResult;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.dto.merchant.MerchantWithdrawApplyDTO;
@@ -16,6 +17,7 @@ import java.util.Map;
 @Tag(name = "商家端-提现")
 @RestController
 @RequestMapping("/merchant")
+@RequireLoginType("merchant")
 @RequiredArgsConstructor
 public class MerchantWithdrawController {
 
@@ -54,4 +56,3 @@ public class MerchantWithdrawController {
         return Result.ok(merchantWithdrawService.available());
     }
 }
-

@@ -9,6 +9,9 @@ import com.agricultural.assistplatform.entity.*;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.*;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.user.OrderItemVO;
 import com.agricultural.assistplatform.vo.user.OrderVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -40,6 +43,9 @@ public class UserOrderService {
     private final PaymentRecordMapper paymentRecordMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
+    private final PublicDataCacheService publicDataCacheService;
 
     private static final int PAY_DEADLINE_MINUTES = 15;
 
@@ -117,8 +123,13 @@ public class UserOrderService {
                     .eq(ProductInfo::getId, oi.getProductId())
                     .setSql("stock = stock - " + oi.getProductNum())
                     .setSql("sales_volume = sales_volume + " + oi.getProductNum()));
+            refreshProductCache(oi.getProductId(), merchantId);
         }
         if (dto.getCartIds() != null) cartMapper.delete(new LambdaQueryWrapper<Cart>().in(Cart::getId, dto.getCartIds()).eq(Cart::getUserId, userId));
+        userRealtimeEventService.publishRefresh(userId, "ORDER_CREATED", orderNo);
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", orderNo);
+        adminRealtimeEventService.publishRefreshToAll("ORDER_CREATED", orderNo);
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", orderNo);
         return getByOrderNo(orderNo);
     }
 
@@ -182,8 +193,14 @@ public class UserOrderService {
         for (OrderItem oi : orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderNo, main.getOrderNo()))) {
             productInfoMapper.update(null, new LambdaUpdateWrapper<ProductInfo>()
                     .eq(ProductInfo::getId, oi.getProductId())
-                    .setSql("stock = stock + " + oi.getProductNum()));
+                    .setSql("stock = stock + " + oi.getProductNum())
+                    .setSql("sales_volume = GREATEST(sales_volume - " + oi.getProductNum() + ", 0)"));
+            refreshProductCache(oi.getProductId(), main.getMerchantId());
         }
+        userRealtimeEventService.publishRefresh(userId, "ORDER_CANCELED", main.getOrderNo());
+        userRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_CANCELED", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("UNSALABLE_UPDATED", main.getOrderNo());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -216,6 +233,9 @@ public class UserOrderService {
         pr.setPayTime(LocalDateTime.now());
         pr.setPayType(1);
         paymentRecordMapper.insert(pr);
+        userRealtimeEventService.publishRefresh(userId, "ORDER_PAID", main.getOrderNo());
+        merchantRealtimeEventService.publishRefresh(main.getMerchantId(), "ORDER_PAID", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_PAID", main.getOrderNo());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -229,6 +249,8 @@ public class UserOrderService {
         main.setOrderStatus(4);
         orderMainMapper.updateById(main);
         merchantRealtimeEventService.publishRefresh(main.getMerchantId(), "ORDER_RECEIVED", main.getOrderNo());
+        userRealtimeEventService.publishRefresh(userId, "ORDER_RECEIVED", main.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_RECEIVED", main.getOrderNo());
     }
 
     public LogisticsInfo logistics(Long id) {
@@ -271,5 +293,11 @@ public class UserOrderService {
             return iv;
         }).collect(Collectors.toList()));
         return vo;
+    }
+
+    private void refreshProductCache(Long productId, Long merchantId) {
+        ProductInfo product = productInfoMapper.selectById(productId);
+        publicDataCacheService.refreshHotProduct(product);
+        publicDataCacheService.evictProductCatalog(productId, merchantId);
     }
 }

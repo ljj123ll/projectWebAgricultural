@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Plus, ArrowLeft, CircleCheckFilled } from '@element-plus/icons-vue';
@@ -107,6 +107,7 @@ import { listComments, submitComment, updateComment } from '@/apis/user';
 import type { Comment, Order } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
 import OrderChatPanel from '@/components/OrderChatPanel.vue';
+import { USER_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
 const router = useRouter();
 const route = useRoute();
@@ -135,6 +136,25 @@ const reviewForm = reactive({
   mediaUrls: ''
 });
 const fileList = ref<any[]>([]);
+
+const loadOrderDetail = async () => {
+  if (!orderId) {
+    ElMessage.error('订单不存在');
+    router.back();
+    return;
+  }
+
+  try {
+    const res = await getOrderDetail(orderId);
+    if (res) {
+      order.value = res;
+      await loadOrderComments();
+    }
+  } catch (error) {
+    console.error('获取订单详情失败', error);
+    ElMessage.error('获取订单详情失败');
+  }
+};
 
 const parseMediaList = (raw?: string) => {
   if (!raw) return [];
@@ -381,27 +401,25 @@ const submitReview = async () => {
   }
 };
 
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  const isOrderEvent = String(payload.reason || '').startsWith('ORDER');
+  const isAfterSaleEvent = String(payload.reason || '').startsWith('AFTER_SALE');
+  const isCurrentOrder = payload.refNo && payload.refNo === order.value?.orderNo;
+  if (!isCurrentOrder && !isOrderEvent && !isAfterSaleEvent) return;
+  void loadOrderDetail();
+};
+
 onMounted(async () => {
-  if (!orderId) {
-    ElMessage.error('订单不存在');
-    router.back();
-    return;
-  }
-  
-  try {
-    const res = await getOrderDetail(orderId);
-    if (res) {
-      order.value = res;
-      await loadOrderComments();
-    }
-  } catch (error) {
-    console.error('获取订单详情失败', error);
-    ElMessage.error('获取订单详情失败');
-  }
-  
+  await loadOrderDetail();
   if (route.query.review === '1') {
     openReviewDialog();
   }
+  window.addEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
 });
 </script>
 

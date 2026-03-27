@@ -9,6 +9,9 @@ import com.agricultural.assistplatform.mapper.LogisticsInfoMapper;
 import com.agricultural.assistplatform.mapper.OrderItemMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.mapper.PaymentRecordMapper;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.admin.AdminOrderVO;
 import com.agricultural.assistplatform.vo.user.OrderItemVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -27,6 +30,9 @@ public class AdminOrderService {
     private final OrderItemMapper orderItemMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
     private final PaymentRecordMapper paymentRecordMapper;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
 
     public PageResult<AdminOrderVO> list(Integer status, String keyword, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -56,6 +62,9 @@ public class AdminOrderService {
         o.setOrderStatus(5);
         o.setCancelReason(reason);
         orderMainMapper.updateById(o);
+        userRealtimeEventService.publishRefresh(o.getUserId(), "ORDER_CANCELED", o.getOrderNo());
+        merchantRealtimeEventService.publishRefresh(o.getMerchantId(), "ORDER_CANCELED", o.getOrderNo());
+        adminRealtimeEventService.publishRefreshToAll("ORDER_CANCELED", o.getOrderNo());
     }
 
     private AdminOrderVO toVO(OrderMain main) {

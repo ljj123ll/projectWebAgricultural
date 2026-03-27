@@ -1,5 +1,6 @@
 package com.agricultural.assistplatform.controller.merchant;
 
+import com.agricultural.assistplatform.annotation.RequireLoginType;
 import com.agricultural.assistplatform.common.Result;
 import com.agricultural.assistplatform.entity.ShopInfo;
 import com.agricultural.assistplatform.service.merchant.MerchantShopService;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "商家端-店铺信息")
 @RestController
 @RequestMapping("/merchant")
+@RequireLoginType("merchant")
 @RequiredArgsConstructor
 public class MerchantShopController {
 

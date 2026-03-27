@@ -9,6 +9,7 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.AfterSaleMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
 import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.user.AfterSaleVO;
@@ -29,6 +30,7 @@ public class MerchantAfterSaleService {
     private final AfterSaleMapper afterSaleMapper;
     private final OrderMainMapper orderMainMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
     private final UserRealtimeEventService userRealtimeEventService;
     private final UserMessageService userMessageService;
 
@@ -118,6 +120,7 @@ public class MerchantAfterSaleService {
         afterSaleMapper.updateById(as);
         merchantRealtimeEventService.publishRefresh(merchantId, "AFTER_SALE_HANDLED", as.getAfterSaleNo());
         userRealtimeEventService.publishRefresh(as.getUserId(), "AFTER_SALE_HANDLED", as.getAfterSaleNo());
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_HANDLED", as.getAfterSaleNo());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -162,6 +165,7 @@ public class MerchantAfterSaleService {
         );
         merchantRealtimeEventService.publishRefresh(merchantId, "AFTER_SALE_RESOLVED", as.getAfterSaleNo());
         userRealtimeEventService.publishRefresh(as.getUserId(), "AFTER_SALE_RESOLVED", as.getAfterSaleNo());
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_RESOLVED", as.getAfterSaleNo());
     }
 
     private String normalizeRemark(Object rawRemark) {

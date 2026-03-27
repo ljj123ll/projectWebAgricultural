@@ -10,6 +10,7 @@ import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.AfterSaleMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
+import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
 import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -30,6 +31,8 @@ public class AdminAfterSaleService {
     private final UserMessageService userMessageService;
     private final UserRealtimeEventService userRealtimeEventService;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
+    private final AdminAuditTrailService adminAuditTrailService;
 
     public PageResult<AfterSale> list(Integer afterSaleStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -76,6 +79,12 @@ public class AdminAfterSaleService {
             as.setHandleResult(defaultHandleResult(targetStatus, as.getAfterSaleType()));
         }
         afterSaleMapper.updateById(as);
+        adminAuditTrailService.record(
+                "after_sale",
+                id,
+                targetStatus == AfterSaleFlow.STATUS_REJECTED ? 2 : 1,
+                as.getHandleResult()
+        );
 
         OrderMain order = orderMainMapper.selectOne(new LambdaQueryWrapper<OrderMain>()
                 .eq(OrderMain::getOrderNo, as.getOrderNo())
@@ -130,6 +139,7 @@ public class AdminAfterSaleService {
         if (as.getMerchantId() != null) {
             merchantRealtimeEventService.publishRefresh(as.getMerchantId(), "AFTER_SALE_ADMIN_HANDLED", as.getAfterSaleNo());
         }
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_ADMIN_HANDLED", as.getAfterSaleNo());
     }
 
     private String defaultHandleResult(Integer status, Integer afterSaleType) {

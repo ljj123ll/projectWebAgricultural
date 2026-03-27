@@ -20,6 +20,9 @@ public class AfterSaleCommunicationService {
     private final AfterSaleCommunicationMapper afterSaleCommunicationMapper;
     private final AfterSaleMapper afterSaleMapper;
     private final UserMessageService userMessageService;
+    private final UserRealtimeEventService userRealtimeEventService;
+    private final MerchantRealtimeEventService merchantRealtimeEventService;
+    private final AdminRealtimeEventService adminRealtimeEventService;
 
     public PageResult<AfterSaleCommunication> list(String afterSaleNo, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -41,6 +44,7 @@ public class AfterSaleCommunicationService {
         afterSaleCommunicationMapper.insert(msg);
 
         notifyUserWhenNeeded(afterSaleNo, senderType, content);
+        publishRealtimeRefresh(afterSaleNo);
     }
 
     /**
@@ -75,6 +79,7 @@ public class AfterSaleCommunicationService {
         afterSaleCommunicationMapper.insert(msg);
 
         notifyUserWhenNeeded(afterSaleNo, senderType, content);
+        publishRealtimeRefresh(afterSaleNo);
     }
 
     /**
@@ -143,5 +148,17 @@ public class AfterSaleCommunicationService {
                     afterSaleNo
             );
         }
+    }
+
+    private void publishRealtimeRefresh(String afterSaleNo) {
+        if (afterSaleNo == null || afterSaleNo.isBlank()) return;
+        AfterSale afterSale = afterSaleMapper.selectOne(new LambdaQueryWrapper<AfterSale>()
+                .eq(AfterSale::getAfterSaleNo, afterSaleNo)
+                .last("LIMIT 1"));
+        if (afterSale == null) return;
+
+        userRealtimeEventService.publishRefresh(afterSale.getUserId(), "AFTER_SALE_MESSAGE", afterSaleNo);
+        merchantRealtimeEventService.publishRefresh(afterSale.getMerchantId(), "AFTER_SALE_MESSAGE", afterSaleNo);
+        adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_MESSAGE", afterSaleNo);
     }
 }

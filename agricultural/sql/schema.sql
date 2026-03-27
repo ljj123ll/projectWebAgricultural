@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     delete_flag TINYINT DEFAULT 0 COMMENT '软删除 0-未删 1-已删',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_sys_user_username (username),
     INDEX idx_role_id (role_id),
     INDEX idx_phone (phone)
 ) COMMENT = '管理员用户表';
@@ -475,8 +476,13 @@ INSERT INTO news_category (category_name, category_code) VALUES
 ('产地动态', 'origin')
 ON DUPLICATE KEY UPDATE category_name=VALUES(category_name);
 
-INSERT INTO product_category (category_name, parent_id, category_level) VALUES
-('生鲜', 0, 1),
-('干货', 0, 1),
-('粮油', 0, 1)
-ON DUPLICATE KEY UPDATE category_name=VALUES(category_name);
+INSERT INTO product_category (id, category_name, parent_id, category_level, delete_flag) VALUES
+(1, '生鲜果蔬', 0, 1, 0),
+(2, '粮油副食', 0, 1, 0),
+(3, '干货特产', 0, 1, 0),
+(4, '畜禽肉蛋', 0, 1, 0)
+ON DUPLICATE KEY UPDATE
+category_name=VALUES(category_name),
+parent_id=VALUES(parent_id),
+category_level=VALUES(category_level),
+delete_flag=VALUES(delete_flag);

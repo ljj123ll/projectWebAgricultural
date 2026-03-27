@@ -5,6 +5,7 @@ import com.agricultural.assistplatform.entity.News;
 import com.agricultural.assistplatform.entity.NewsCategory;
 import com.agricultural.assistplatform.mapper.NewsCategoryMapper;
 import com.agricultural.assistplatform.mapper.NewsMapper;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class AdminNewsService {
 
     private final NewsMapper newsMapper;
     private final NewsCategoryMapper newsCategoryMapper;
+    private final PublicDataCacheService publicDataCacheService;
 
     public PageResult<News> list(Long categoryId, Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -37,16 +39,19 @@ public class AdminNewsService {
     public Long create(News news) {
         if (news.getAuditStatus() == null) news.setAuditStatus(1);
         newsMapper.insert(news);
+        publicDataCacheService.evictNews();
         return news.getId();
     }
 
     public void update(Long id, News news) {
         news.setId(id);
         newsMapper.updateById(news);
+        publicDataCacheService.evictNews();
     }
 
     public void delete(Long id) {
         newsMapper.deleteById(id);
+        publicDataCacheService.evictNews();
     }
 
     public List<NewsCategory> listCategories() {
@@ -55,15 +60,18 @@ public class AdminNewsService {
 
     public Long createCategory(NewsCategory c) {
         newsCategoryMapper.insert(c);
+        publicDataCacheService.evictNews();
         return c.getId();
     }
 
     public void updateCategory(Long id, NewsCategory c) {
         c.setId(id);
         newsCategoryMapper.updateById(c);
+        publicDataCacheService.evictNews();
     }
 
     public void deleteCategory(Long id) {
         newsCategoryMapper.deleteById(id);
+        publicDataCacheService.evictNews();
     }
 }

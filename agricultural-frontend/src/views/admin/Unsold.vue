@@ -1,43 +1,121 @@
 <template>
   <div class="unsold-page">
     <div class="page-header">
-      <h2>滞销专区管理</h2>
-      <el-button type="primary" @click="showAddDialog = true">添加滞销商品 (ID)</el-button>
+      <div>
+        <h2>滞销帮扶管理</h2>
+        <p>这里同时展示管理员手动帮扶池和算法实时命中的商品。</p>
+      </div>
+      <div class="header-actions">
+        <el-tag type="warning">WebSocket 自动刷新</el-tag>
+        <el-button type="primary" @click="showAddDialog = true">添加手动帮扶商品</el-button>
+      </div>
     </div>
 
-    <!-- 滞销统计 -->
     <el-row :gutter="16" class="stats-row">
-      <el-col :span="12" :md="8">
+      <el-col :xs="12" :md="6">
         <el-card class="stat-card">
-          <div class="stat-value">{{ total }}</div>
-          <div class="stat-label">滞销商品数</div>
+          <div class="stat-value">{{ summary.totalCount }}</div>
+          <div class="stat-label">总命中数</div>
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :md="6">
+        <el-card class="stat-card accent-red">
+          <div class="stat-value">{{ summary.manualCount }}</div>
+          <div class="stat-label">手动加入</div>
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :md="6">
+        <el-card class="stat-card accent-orange">
+          <div class="stat-value">{{ summary.algorithmCount }}</div>
+          <div class="stat-label">算法命中</div>
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :md="6">
+        <el-card class="stat-card accent-gold">
+          <div class="stat-value">{{ summary.mixedCount }}</div>
+          <div class="stat-label">双重命中</div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-card>
+    <el-card class="table-card">
+      <div class="toolbar">
+        <el-input
+          v-model="keyword"
+          placeholder="搜索商品、商家、产地"
+          clearable
+          @keyup.enter="loadData"
+        />
+        <el-select v-model="sourceType">
+          <el-option label="全部来源" value="all" />
+          <el-option label="管理员手动" value="manual" />
+          <el-option label="算法推荐" value="algorithm" />
+          <el-option label="双重命中" value="mixed" />
+        </el-select>
+        <el-select v-model="sortType">
+          <el-option label="帮扶优先级" value="support" />
+          <el-option label="最新上架优先" value="latest" />
+          <el-option label="库存高优先" value="stock" />
+          <el-option label="销量最低优先" value="sales" />
+          <el-option label="价格从低到高" value="price_asc" />
+          <el-option label="价格从高到低" value="price_desc" />
+        </el-select>
+        <el-button type="primary" @click="loadData">筛选</el-button>
+      </div>
+
       <el-table :data="unsoldList" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column label="商品" min-width="200">
+        <el-table-column label="商品" min-width="240">
           <template #default="{ row }">
             <div class="product-cell">
-              <img :src="getFullImageUrl(row.productImg)" class="product-thumb" />
+              <img :src="resolveImage(row.productImg)" class="product-thumb" />
               <div class="product-info">
                 <span class="name">{{ row.productName }}</span>
+                <span class="merchant">{{ row.merchantName || '未命名商家' }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="price" label="价格">
+        <el-table-column label="来源" min-width="170">
           <template #default="{ row }">
-            <span class="sale-price">¥{{ row.price.toFixed(2) }}</span>
+            <div class="source-tags">
+              <el-tag v-if="row.manualIncluded" type="danger">手动</el-tag>
+              <el-tag v-if="row.algorithmIncluded" type="warning">算法</el-tag>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="stock" label="库存" />
-        <el-table-column prop="salesVolume" label="销量" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="unsalableScore" label="紧急度" width="100" />
+        <el-table-column label="原因" min-width="300">
           <template #default="{ row }">
-            <el-button link type="danger" @click="removeProduct(row)">移出滞销</el-button>
+            <div class="reason-cell">{{ row.unsalableReason || '-' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="价格" width="110">
+          <template #default="{ row }">
+            <span class="sale-price">¥{{ Number(row.price || 0).toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="stock" label="库存" width="90" />
+        <el-table-column prop="salesVolume" label="销量" width="90" />
+        <el-table-column prop="ageDays" label="上架天数" width="110" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="!row.manualIncluded"
+              link
+              type="primary"
+              @click="saveProduct(Number(row.id))"
+            >
+              加入手动帮扶
+            </el-button>
+            <el-button
+              v-if="row.manualIncluded"
+              link
+              type="danger"
+              @click="removeProduct(row)"
+            >
+              移出手动帮扶
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -53,8 +131,7 @@
       </div>
     </el-card>
 
-    <!-- 添加/编辑弹窗 -->
-    <el-dialog v-model="showAddDialog" title="设置商品为滞销" width="500px">
+    <el-dialog v-model="showAddDialog" title="添加手动帮扶商品" width="500px">
       <el-form label-position="top">
         <el-form-item label="商品ID">
           <el-input v-model="addProductId" placeholder="请输入商品ID" />
@@ -62,76 +139,121 @@
       </el-form>
       <template #footer>
         <el-button @click="showAddDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveProduct">确认</el-button>
+        <el-button type="primary" @click="saveProduct()">确认</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUnsalableProducts, setUnsalable } from '@/apis/admin'
-import { getFullImageUrl } from '@/utils/image'
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { getUnsalableProducts, getUnsalableSummary, setUnsalable } from '@/apis/admin';
+import { getFullImageUrl } from '@/utils/image';
+import { ADMIN_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
+import type { UnsalableProduct, UnsalableSummary } from '@/types';
 
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const showAddDialog = ref(false)
-const loading = ref(false)
-const addProductId = ref('')
-const unsoldList = ref<any[]>([])
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+const showAddDialog = ref(false);
+const loading = ref(false);
+const addProductId = ref('');
+const keyword = ref('');
+const sourceType = ref('all');
+const sortType = ref('support');
+const unsoldList = ref<UnsalableProduct[]>([]);
+const summary = reactive<UnsalableSummary>({
+  totalCount: 0,
+  manualCount: 0,
+  algorithmCount: 0,
+  mixedCount: 0
+});
+
+let refreshTimer: number | undefined;
 
 const loadData = async () => {
   loading.value = true;
   try {
-    const res = await getUnsalableProducts({ pageNum: currentPage.value, pageSize: pageSize.value });
-    if (res) {
-      unsoldList.value = res.list || [];
-      total.value = res.total || 0;
-    }
+    const [listRes, summaryRes] = await Promise.all([
+      getUnsalableProducts({
+        pageNum: currentPage.value,
+        pageSize: pageSize.value,
+        keyword: keyword.value,
+        sourceType: sourceType.value,
+        sortBy: sortType.value
+      }),
+      getUnsalableSummary({ keyword: keyword.value })
+    ]);
+    unsoldList.value = listRes?.list || [];
+    total.value = Number(listRes?.total || 0);
+    Object.assign(summary, summaryRes || {});
   } catch (error) {
-    ElMessage.error('加载失败');
+    ElMessage.error('加载滞销帮扶数据失败');
   } finally {
     loading.value = false;
   }
-}
+};
+
+const handleRealtimeRefresh = (event: Event) => {
+  const payload = parseRealtimePayload(event);
+  if (payload.reason !== 'UNSALABLE_UPDATED') return;
+  void loadData();
+};
 
 onMounted(() => {
-  loadData();
-})
+  void loadData();
+  window.addEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
+  refreshTimer = window.setInterval(() => {
+    void loadData();
+  }, 30000);
+});
 
-const removeProduct = (row: any) => {
-  ElMessageBox.confirm('确定要移出滞销专区吗？', '提示', {
+onUnmounted(() => {
+  window.removeEventListener(ADMIN_REALTIME_EVENT, handleRealtimeRefresh);
+  if (refreshTimer) window.clearInterval(refreshTimer);
+});
+
+const removeProduct = (row: UnsalableProduct) => {
+  ElMessageBox.confirm('确定要移出手动帮扶池吗？算法命中的商品仍可能继续保留。', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
-      await setUnsalable(row.id, 0);
-      ElMessage.success('已移出');
-      loadData();
+      await setUnsalable(Number(row.id), 0);
+      ElMessage.success('已移出手动帮扶池');
+      await loadData();
     } catch (e) {
       ElMessage.error('操作失败');
     }
-  })
-}
+  });
+};
 
-const saveProduct = async () => {
-  if (!addProductId.value) {
+const saveProduct = async (productId?: number) => {
+  const targetId = Number(productId || addProductId.value);
+  if (!targetId) {
     ElMessage.warning('请输入商品ID');
     return;
   }
   try {
-    await setUnsalable(Number(addProductId.value), 1);
-    ElMessage.success('添加成功');
+    await setUnsalable(targetId, 1);
+    ElMessage.success('已加入手动帮扶池');
     showAddDialog.value = false;
     addProductId.value = '';
-    loadData();
+    await loadData();
   } catch (e) {
     ElMessage.error('操作失败');
   }
-}
+};
+
+const resolveImage = (source?: string) => {
+  const first = String(source || '')
+    .split(',')
+    .map(item => item.trim())
+    .find(Boolean);
+  return getFullImageUrl(first || '');
+};
 </script>
 
 <style scoped lang="scss">
@@ -142,13 +264,25 @@ const saveProduct = async () => {
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 20px;
 
   h2 {
-    margin: 0;
-    font-size: 20px;
+    margin: 0 0 6px;
+    font-size: 22px;
   }
+
+  p {
+    margin: 0;
+    color: #7c8798;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .stats-row {
@@ -157,19 +291,42 @@ const saveProduct = async () => {
 
 .stat-card {
   text-align: center;
-  margin-bottom: 16px;
+  border-radius: 16px;
 
   .stat-value {
     font-size: 28px;
-    font-weight: 600;
-    color: #f56c6c;
+    font-weight: 700;
+    color: #303133;
     margin-bottom: 8px;
   }
 
   .stat-label {
-    color: #666;
+    color: #606266;
     font-size: 14px;
   }
+
+  &.accent-red .stat-value {
+    color: #f56c6c;
+  }
+
+  &.accent-orange .stat-value {
+    color: #e6a23c;
+  }
+
+  &.accent-gold .stat-value {
+    color: #c17811;
+  }
+}
+
+.table-card {
+  border-radius: 18px;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) 160px 170px 120px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .product-cell {
@@ -178,40 +335,64 @@ const saveProduct = async () => {
   gap: 12px;
 
   .product-thumb {
-    width: 50px;
-    height: 50px;
-    border-radius: 4px;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
     object-fit: cover;
+    background: #f5f7fa;
   }
 
   .product-info {
     display: flex;
     flex-direction: column;
+    gap: 4px;
+  }
 
-    .name {
-      font-weight: 500;
-    }
+  .name {
+    font-weight: 600;
+    color: #303133;
+  }
 
-    .farmer {
-      font-size: 12px;
-      color: #999;
-    }
+  .merchant {
+    color: #909399;
+    font-size: 12px;
   }
 }
 
-.original-price {
-  text-decoration: line-through;
-  color: #999;
+.source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reason-cell {
+  color: #606266;
+  line-height: 1.6;
 }
 
 .sale-price {
-  color: #f56c6c;
-  font-weight: 600;
+  color: #d97706;
+  font-weight: 700;
 }
 
 .pagination {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 960px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { UserMessage } from '@/types';
@@ -69,6 +69,7 @@ import {
   markAllUserMessagesRead,
   markUserMessageRead
 } from '@/apis/user';
+import { USER_REALTIME_EVENT } from '@/utils/realtime';
 
 type TabType = 'all' | 'system' | 'merchant' | 'admin' | 'unread';
 
@@ -174,8 +175,17 @@ const jumpByRef = async (msg: UserMessage) => {
   router.push('/orders');
 };
 
+const handleRealtimeRefresh = () => {
+  void loadMessages();
+};
+
 onMounted(() => {
   void loadMessages();
+  window.addEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(USER_REALTIME_EVENT, handleRealtimeRefresh);
 });
 </script>
 

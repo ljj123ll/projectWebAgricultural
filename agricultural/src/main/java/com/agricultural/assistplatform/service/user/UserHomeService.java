@@ -4,6 +4,8 @@ import com.agricultural.assistplatform.entity.News;
 import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.mapper.NewsMapper;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
+import com.agricultural.assistplatform.service.common.RedisCacheService;
 import com.agricultural.assistplatform.vo.user.HomeVO;
 import com.agricultural.assistplatform.vo.user.NewsSimpleVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
@@ -11,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,10 +23,33 @@ public class UserHomeService {
 
     private final ProductInfoMapper productInfoMapper;
     private final NewsMapper newsMapper;
+    private final RedisCacheService redisCacheService;
 
     private static final int PAGE_SIZE = 10;
+    private static final Duration HOME_CACHE_TTL = Duration.ofMinutes(10);
 
     public HomeVO getHome() {
+        return redisCacheService.getOrLoad(PublicDataCacheService.HOME_KEY, HOME_CACHE_TTL, HomeVO.class, this::loadHome);
+    }
+
+    private List<ProductSimpleVO> listProducts(LambdaQueryWrapper<ProductInfo> query) {
+        List<ProductInfo> list = productInfoMapper.selectList(query);
+        return list.stream().map(this::toSimpleVO).collect(Collectors.toList());
+    }
+
+    private ProductSimpleVO toSimpleVO(ProductInfo p) {
+        ProductSimpleVO v = new ProductSimpleVO();
+        v.setId(p.getId());
+        v.setProductName(p.getProductName());
+        v.setPrice(p.getPrice());
+        v.setSalesVolume(p.getSalesVolume() != null ? p.getSalesVolume() : 0);
+        v.setStock(p.getStock() != null ? p.getStock() : 0);
+        v.setProductImg(p.getProductImg());
+        v.setScore(p.getScore() != null ? p.getScore() : java.math.BigDecimal.ZERO);
+        return v;
+    }
+
+    private HomeVO loadHome() {
         HomeVO vo = new HomeVO();
         vo.setRecommendList(listProducts(new LambdaQueryWrapper<ProductInfo>()
                 .eq(ProductInfo::getStatus, 1).orderByDesc(ProductInfo::getCreateTime).last("LIMIT " + PAGE_SIZE)));
@@ -42,22 +68,5 @@ public class UserHomeService {
             return nv;
         }).collect(Collectors.toList()));
         return vo;
-    }
-
-    private List<ProductSimpleVO> listProducts(LambdaQueryWrapper<ProductInfo> query) {
-        List<ProductInfo> list = productInfoMapper.selectList(query);
-        return list.stream().map(this::toSimpleVO).collect(Collectors.toList());
-    }
-
-    private ProductSimpleVO toSimpleVO(ProductInfo p) {
-        ProductSimpleVO v = new ProductSimpleVO();
-        v.setId(p.getId());
-        v.setProductName(p.getProductName());
-        v.setPrice(p.getPrice());
-        v.setSalesVolume(p.getSalesVolume() != null ? p.getSalesVolume() : 0);
-        v.setStock(p.getStock() != null ? p.getStock() : 0);
-        v.setProductImg(p.getProductImg());
-        v.setScore(p.getScore() != null ? p.getScore() : java.math.BigDecimal.ZERO);
-        return v;
     }
 }
