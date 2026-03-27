@@ -1,0 +1,1226 @@
+[
+  {
+    "product_id": 1,
+    "product_name": "四川红心糖苹果",
+    "role": "main",
+    "index": 1,
+    "term": "red apple fruit",
+    "source_url": "https://loremflickr.com/900/900/red%2Capple%2Cfruit?lock=101",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-1-main-1.jpg"
+  },
+  {
+    "product_id": 1,
+    "product_name": "四川红心糖苹果",
+    "role": "main",
+    "index": 2,
+    "term": "apple orchard",
+    "source_url": "https://loremflickr.com/900/900/apple%2Corchard?lock=102",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-1-main-2.jpg"
+  },
+  {
+    "product_id": 1,
+    "product_name": "四川红心糖苹果",
+    "role": "detail",
+    "index": 1,
+    "term": "apple sliced",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Csliced?lock=151",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-1-detail-1.jpg"
+  },
+  {
+    "product_id": 1,
+    "product_name": "四川红心糖苹果",
+    "role": "detail",
+    "index": 2,
+    "term": "apple fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Cfruit%2Cclose-up?lock=152",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-1-detail-2.jpg"
+  },
+  {
+    "product_id": 2,
+    "product_name": "四川红心猕猴桃",
+    "role": "main",
+    "index": 1,
+    "term": "kiwifruit fruit",
+    "source_url": "https://loremflickr.com/900/900/kiwifruit%2Cfruit?lock=201",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-2-main-1.jpg"
+  },
+  {
+    "product_id": 2,
+    "product_name": "四川红心猕猴桃",
+    "role": "main",
+    "index": 2,
+    "term": "kiwi fruit sliced",
+    "source_url": "https://loremflickr.com/900/900/kiwi%2Cfruit%2Csliced?lock=202",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-2-main-2.jpg"
+  },
+  {
+    "product_id": 2,
+    "product_name": "四川红心猕猴桃",
+    "role": "detail",
+    "index": 1,
+    "term": "kiwifruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/kiwifruit%2Cclose-up?lock=251",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-2-detail-1.jpg"
+  },
+  {
+    "product_id": 2,
+    "product_name": "四川红心猕猴桃",
+    "role": "detail",
+    "index": 2,
+    "term": "kiwifruit vine",
+    "source_url": "https://loremflickr.com/1200/800/kiwifruit%2Cvine?lock=252",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-2-detail-2.jpg"
+  },
+  {
+    "product_id": 3,
+    "product_name": "农家土鸡蛋 30枚",
+    "role": "main",
+    "index": 1,
+    "term": "brown chicken eggs",
+    "source_url": "https://loremflickr.com/900/900/brown%2Cchicken%2Ceggs?lock=301",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-3-main-1.jpg"
+  },
+  {
+    "product_id": 3,
+    "product_name": "农家土鸡蛋 30枚",
+    "role": "main",
+    "index": 2,
+    "term": "egg basket",
+    "source_url": "https://loremflickr.com/900/900/egg%2Cbasket?lock=302",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-3-main-2.jpg"
+  },
+  {
+    "product_id": 3,
+    "product_name": "农家土鸡蛋 30枚",
+    "role": "detail",
+    "index": 1,
+    "term": "fresh eggs close-up",
+    "source_url": "https://loremflickr.com/1200/800/fresh%2Ceggs%2Cclose-up?lock=351",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-3-detail-1.jpg"
+  },
+  {
+    "product_id": 3,
+    "product_name": "农家土鸡蛋 30枚",
+    "role": "detail",
+    "index": 2,
+    "term": "hen eggs",
+    "source_url": "https://loremflickr.com/1200/800/hen%2Ceggs?lock=352",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-3-detail-2.jpg"
+  },
+  {
+    "product_id": 4,
+    "product_name": "安岳柠檬 5斤装",
+    "role": "main",
+    "index": 1,
+    "term": "lemon fruit",
+    "source_url": "https://loremflickr.com/900/900/lemon%2Cfruit?lock=401",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-4-main-1.jpg"
+  },
+  {
+    "product_id": 4,
+    "product_name": "安岳柠檬 5斤装",
+    "role": "main",
+    "index": 2,
+    "term": "yellow lemon",
+    "source_url": "https://loremflickr.com/900/900/yellow%2Clemon?lock=402",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-4-main-2.jpg"
+  },
+  {
+    "product_id": 4,
+    "product_name": "安岳柠檬 5斤装",
+    "role": "detail",
+    "index": 1,
+    "term": "lemon sliced",
+    "source_url": "https://loremflickr.com/1200/800/lemon%2Csliced?lock=451",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-4-detail-1.jpg"
+  },
+  {
+    "product_id": 4,
+    "product_name": "安岳柠檬 5斤装",
+    "role": "detail",
+    "index": 2,
+    "term": "lemon tree fruit",
+    "source_url": "https://loremflickr.com/1200/800/lemon%2Ctree%2Cfruit?lock=452",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-4-detail-2.jpg"
+  },
+  {
+    "product_id": 5,
+    "product_name": "通江银耳 特级",
+    "role": "main",
+    "index": 1,
+    "term": "tremella fuciformis",
+    "source_url": "https://loremflickr.com/900/900/tremella%2Cfuciformis?lock=501",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-5-main-1.jpg"
+  },
+  {
+    "product_id": 5,
+    "product_name": "通江银耳 特级",
+    "role": "main",
+    "index": 2,
+    "term": "white fungus mushroom",
+    "source_url": "https://loremflickr.com/900/900/white%2Cfungus%2Cmushroom?lock=502",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-5-main-2.jpg"
+  },
+  {
+    "product_id": 5,
+    "product_name": "通江银耳 特级",
+    "role": "detail",
+    "index": 1,
+    "term": "tremella dried",
+    "source_url": "https://loremflickr.com/1200/800/tremella%2Cdried?lock=551",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-5-detail-1.jpg"
+  },
+  {
+    "product_id": 5,
+    "product_name": "通江银耳 特级",
+    "role": "detail",
+    "index": 2,
+    "term": "white fungus close-up",
+    "source_url": "https://loremflickr.com/1200/800/white%2Cfungus%2Cclose-up?lock=552",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-5-detail-2.jpg"
+  },
+  {
+    "product_id": 6,
+    "product_name": "川西精选大牛肉",
+    "role": "main",
+    "index": 1,
+    "term": "raw beef meat",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cbeef%2Cmeat?lock=601",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-6-main-1.jpg"
+  },
+  {
+    "product_id": 6,
+    "product_name": "川西精选大牛肉",
+    "role": "main",
+    "index": 2,
+    "term": "beef slices raw",
+    "source_url": "https://loremflickr.com/900/900/beef%2Cslices%2Craw?lock=602",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-6-main-2.jpg"
+  },
+  {
+    "product_id": 6,
+    "product_name": "川西精选大牛肉",
+    "role": "detail",
+    "index": 1,
+    "term": "beef close-up",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Cclose-up?lock=651",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-6-detail-1.jpg"
+  },
+  {
+    "product_id": 6,
+    "product_name": "川西精选大牛肉",
+    "role": "detail",
+    "index": 2,
+    "term": "beef steak raw",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Csteak%2Craw?lock=652",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-6-detail-2.jpg"
+  },
+  {
+    "product_id": 7,
+    "product_name": "理塘顶真牛肉",
+    "role": "main",
+    "index": 1,
+    "term": "raw beef meat",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cbeef%2Cmeat?lock=701",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-7-main-1.jpg"
+  },
+  {
+    "product_id": 7,
+    "product_name": "理塘顶真牛肉",
+    "role": "main",
+    "index": 2,
+    "term": "beef slices raw",
+    "source_url": "https://loremflickr.com/900/900/beef%2Cslices%2Craw?lock=702",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-7-main-2.jpg"
+  },
+  {
+    "product_id": 7,
+    "product_name": "理塘顶真牛肉",
+    "role": "detail",
+    "index": 1,
+    "term": "beef close-up",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Cclose-up?lock=751",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-7-detail-1.jpg"
+  },
+  {
+    "product_id": 7,
+    "product_name": "理塘顶真牛肉",
+    "role": "detail",
+    "index": 2,
+    "term": "beef steak raw",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Csteak%2Craw?lock=752",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-7-detail-2.jpg"
+  },
+  {
+    "product_id": 8,
+    "product_name": "精品牛肉",
+    "role": "main",
+    "index": 1,
+    "term": "raw beef meat",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cbeef%2Cmeat?lock=801",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-8-main-1.jpg"
+  },
+  {
+    "product_id": 8,
+    "product_name": "精品牛肉",
+    "role": "main",
+    "index": 2,
+    "term": "beef slices raw",
+    "source_url": "https://loremflickr.com/900/900/beef%2Cslices%2Craw?lock=802",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-8-main-2.jpg"
+  },
+  {
+    "product_id": 8,
+    "product_name": "精品牛肉",
+    "role": "detail",
+    "index": 1,
+    "term": "beef close-up",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Cclose-up?lock=851",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-8-detail-1.jpg"
+  },
+  {
+    "product_id": 8,
+    "product_name": "精品牛肉",
+    "role": "detail",
+    "index": 2,
+    "term": "beef steak raw",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Csteak%2Craw?lock=852",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-8-detail-2.jpg"
+  },
+  {
+    "product_id": 16,
+    "product_name": "联调测试苹果修复后",
+    "role": "main",
+    "index": 1,
+    "term": "red apple fruit",
+    "source_url": "https://loremflickr.com/900/900/red%2Capple%2Cfruit?lock=1601",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-16-main-1.jpg"
+  },
+  {
+    "product_id": 16,
+    "product_name": "联调测试苹果修复后",
+    "role": "main",
+    "index": 2,
+    "term": "apple orchard",
+    "source_url": "https://loremflickr.com/900/900/apple%2Corchard?lock=1602",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-16-main-2.jpg"
+  },
+  {
+    "product_id": 16,
+    "product_name": "联调测试苹果修复后",
+    "role": "detail",
+    "index": 1,
+    "term": "apple sliced",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Csliced?lock=1651",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-16-detail-1.jpg"
+  },
+  {
+    "product_id": 16,
+    "product_name": "联调测试苹果修复后",
+    "role": "detail",
+    "index": 2,
+    "term": "apple fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Cfruit%2Cclose-up?lock=1652",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-16-detail-2.jpg"
+  },
+  {
+    "product_id": 17,
+    "product_name": "超级牛肉",
+    "role": "main",
+    "index": 1,
+    "term": "raw beef meat",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cbeef%2Cmeat?lock=1701",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-17-main-1.jpg"
+  },
+  {
+    "product_id": 17,
+    "product_name": "超级牛肉",
+    "role": "main",
+    "index": 2,
+    "term": "beef slices raw",
+    "source_url": "https://loremflickr.com/900/900/beef%2Cslices%2Craw?lock=1702",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-17-main-2.jpg"
+  },
+  {
+    "product_id": 17,
+    "product_name": "超级牛肉",
+    "role": "detail",
+    "index": 1,
+    "term": "beef close-up",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Cclose-up?lock=1751",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-17-detail-1.jpg"
+  },
+  {
+    "product_id": 17,
+    "product_name": "超级牛肉",
+    "role": "detail",
+    "index": 2,
+    "term": "beef steak raw",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Csteak%2Craw?lock=1752",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-17-detail-2.jpg"
+  },
+  {
+    "product_id": 21,
+    "product_name": "高山草莓礼盒500g",
+    "role": "main",
+    "index": 1,
+    "term": "strawberry fruit",
+    "source_url": "https://loremflickr.com/900/900/strawberry%2Cfruit?lock=2101",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-21-main-1.jpg"
+  },
+  {
+    "product_id": 21,
+    "product_name": "高山草莓礼盒500g",
+    "role": "main",
+    "index": 2,
+    "term": "strawberry basket",
+    "source_url": "https://loremflickr.com/900/900/strawberry%2Cbasket?lock=2102",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-21-main-2.jpg"
+  },
+  {
+    "product_id": 21,
+    "product_name": "高山草莓礼盒500g",
+    "role": "detail",
+    "index": 1,
+    "term": "strawberry close-up",
+    "source_url": "https://loremflickr.com/1200/800/strawberry%2Cclose-up?lock=2151",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-21-detail-1.jpg"
+  },
+  {
+    "product_id": 21,
+    "product_name": "高山草莓礼盒500g",
+    "role": "detail",
+    "index": 2,
+    "term": "strawberry farm",
+    "source_url": "https://loremflickr.com/1200/800/strawberry%2Cfarm?lock=2152",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-21-detail-2.jpg"
+  },
+  {
+    "product_id": 22,
+    "product_name": "蒲江耙耙柑5斤装",
+    "role": "main",
+    "index": 1,
+    "term": "mandarin orange fruit",
+    "source_url": "https://loremflickr.com/900/900/mandarin%2Corange%2Cfruit?lock=2201",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-22-main-1.jpg"
+  },
+  {
+    "product_id": 22,
+    "product_name": "蒲江耙耙柑5斤装",
+    "role": "main",
+    "index": 2,
+    "term": "tangerine fruit",
+    "source_url": "https://loremflickr.com/900/900/tangerine%2Cfruit?lock=2202",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-22-main-2.jpg"
+  },
+  {
+    "product_id": 22,
+    "product_name": "蒲江耙耙柑5斤装",
+    "role": "detail",
+    "index": 1,
+    "term": "citrus fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/citrus%2Cfruit%2Cclose-up?lock=2251",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-22-detail-1.jpg"
+  },
+  {
+    "product_id": 22,
+    "product_name": "蒲江耙耙柑5斤装",
+    "role": "detail",
+    "index": 2,
+    "term": "orange basket",
+    "source_url": "https://loremflickr.com/1200/800/orange%2Cbasket?lock=2252",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-22-detail-2.jpg"
+  },
+  {
+    "product_id": 23,
+    "product_name": "资中血橙精选礼盒",
+    "role": "main",
+    "index": 1,
+    "term": "blood orange fruit",
+    "source_url": "https://loremflickr.com/900/900/blood%2Corange%2Cfruit?lock=2301",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-23-main-1.jpg"
+  },
+  {
+    "product_id": 23,
+    "product_name": "资中血橙精选礼盒",
+    "role": "main",
+    "index": 2,
+    "term": "blood orange sliced",
+    "source_url": "https://loremflickr.com/900/900/blood%2Corange%2Csliced?lock=2302",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-23-main-2.jpg"
+  },
+  {
+    "product_id": 23,
+    "product_name": "资中血橙精选礼盒",
+    "role": "detail",
+    "index": 1,
+    "term": "orange fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/orange%2Cfruit%2Cclose-up?lock=2351",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-23-detail-1.jpg"
+  },
+  {
+    "product_id": 23,
+    "product_name": "资中血橙精选礼盒",
+    "role": "detail",
+    "index": 2,
+    "term": "blood orange",
+    "source_url": "https://loremflickr.com/1200/800/blood%2Corange?lock=2352",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-23-detail-2.jpg"
+  },
+  {
+    "product_id": 24,
+    "product_name": "盐源糖心苹果5斤",
+    "role": "main",
+    "index": 1,
+    "term": "red apple fruit",
+    "source_url": "https://loremflickr.com/900/900/red%2Capple%2Cfruit?lock=2401",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-24-main-1.jpg"
+  },
+  {
+    "product_id": 24,
+    "product_name": "盐源糖心苹果5斤",
+    "role": "main",
+    "index": 2,
+    "term": "apple orchard",
+    "source_url": "https://loremflickr.com/900/900/apple%2Corchard?lock=2402",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-24-main-2.jpg"
+  },
+  {
+    "product_id": 24,
+    "product_name": "盐源糖心苹果5斤",
+    "role": "detail",
+    "index": 1,
+    "term": "apple sliced",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Csliced?lock=2451",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-24-detail-1.jpg"
+  },
+  {
+    "product_id": 24,
+    "product_name": "盐源糖心苹果5斤",
+    "role": "detail",
+    "index": 2,
+    "term": "apple fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/apple%2Cfruit%2Cclose-up?lock=2452",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-24-detail-2.jpg"
+  },
+  {
+    "product_id": 25,
+    "product_name": "阿坝蓝莓125g*4",
+    "role": "main",
+    "index": 1,
+    "term": "blueberry fruit",
+    "source_url": "https://loremflickr.com/900/900/blueberry%2Cfruit?lock=2501",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-25-main-1.jpg"
+  },
+  {
+    "product_id": 25,
+    "product_name": "阿坝蓝莓125g*4",
+    "role": "main",
+    "index": 2,
+    "term": "blueberry close-up",
+    "source_url": "https://loremflickr.com/900/900/blueberry%2Cclose-up?lock=2502",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-25-main-2.jpg"
+  },
+  {
+    "product_id": 25,
+    "product_name": "阿坝蓝莓125g*4",
+    "role": "detail",
+    "index": 1,
+    "term": "blueberry basket",
+    "source_url": "https://loremflickr.com/1200/800/blueberry%2Cbasket?lock=2551",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-25-detail-1.jpg"
+  },
+  {
+    "product_id": 25,
+    "product_name": "阿坝蓝莓125g*4",
+    "role": "detail",
+    "index": 2,
+    "term": "blueberry fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/blueberry%2Cfruit%2Cclose-up?lock=2552",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-25-detail-2.jpg"
+  },
+  {
+    "product_id": 26,
+    "product_name": "攀枝花凯特芒果3斤",
+    "role": "main",
+    "index": 1,
+    "term": "mango fruit",
+    "source_url": "https://loremflickr.com/900/900/mango%2Cfruit?lock=2601",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-26-main-1.jpg"
+  },
+  {
+    "product_id": 26,
+    "product_name": "攀枝花凯特芒果3斤",
+    "role": "main",
+    "index": 2,
+    "term": "ripe mango",
+    "source_url": "https://loremflickr.com/900/900/ripe%2Cmango?lock=2602",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-26-main-2.jpg"
+  },
+  {
+    "product_id": 26,
+    "product_name": "攀枝花凯特芒果3斤",
+    "role": "detail",
+    "index": 1,
+    "term": "mango sliced",
+    "source_url": "https://loremflickr.com/1200/800/mango%2Csliced?lock=2651",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-26-detail-1.jpg"
+  },
+  {
+    "product_id": 26,
+    "product_name": "攀枝花凯特芒果3斤",
+    "role": "detail",
+    "index": 2,
+    "term": "mango fruit close-up",
+    "source_url": "https://loremflickr.com/1200/800/mango%2Cfruit%2Cclose-up?lock=2652",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-26-detail-2.jpg"
+  },
+  {
+    "product_id": 27,
+    "product_name": "通江银耳中朵200g",
+    "role": "main",
+    "index": 1,
+    "term": "tremella fuciformis",
+    "source_url": "https://loremflickr.com/900/900/tremella%2Cfuciformis?lock=2701",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-27-main-1.jpg"
+  },
+  {
+    "product_id": 27,
+    "product_name": "通江银耳中朵200g",
+    "role": "main",
+    "index": 2,
+    "term": "white fungus mushroom",
+    "source_url": "https://loremflickr.com/900/900/white%2Cfungus%2Cmushroom?lock=2702",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-27-main-2.jpg"
+  },
+  {
+    "product_id": 27,
+    "product_name": "通江银耳中朵200g",
+    "role": "detail",
+    "index": 1,
+    "term": "tremella dried",
+    "source_url": "https://loremflickr.com/1200/800/tremella%2Cdried?lock=2751",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-27-detail-1.jpg"
+  },
+  {
+    "product_id": 27,
+    "product_name": "通江银耳中朵200g",
+    "role": "detail",
+    "index": 2,
+    "term": "white fungus close-up",
+    "source_url": "https://loremflickr.com/1200/800/white%2Cfungus%2Cclose-up?lock=2752",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-27-detail-2.jpg"
+  },
+  {
+    "product_id": 28,
+    "product_name": "大凉山黑木耳250g",
+    "role": "main",
+    "index": 1,
+    "term": "wood ear mushroom",
+    "source_url": "https://loremflickr.com/900/900/wood%2Cear%2Cmushroom?lock=2801",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-28-main-1.jpg"
+  },
+  {
+    "product_id": 28,
+    "product_name": "大凉山黑木耳250g",
+    "role": "main",
+    "index": 2,
+    "term": "black fungus mushroom",
+    "source_url": "https://loremflickr.com/900/900/black%2Cfungus%2Cmushroom?lock=2802",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-28-main-2.jpg"
+  },
+  {
+    "product_id": 28,
+    "product_name": "大凉山黑木耳250g",
+    "role": "detail",
+    "index": 1,
+    "term": "dried wood ear mushroom",
+    "source_url": "https://loremflickr.com/1200/800/dried%2Cwood%2Cear%2Cmushroom?lock=2851",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-28-detail-1.jpg"
+  },
+  {
+    "product_id": 28,
+    "product_name": "大凉山黑木耳250g",
+    "role": "detail",
+    "index": 2,
+    "term": "wood ear close-up",
+    "source_url": "https://loremflickr.com/1200/800/wood%2Cear%2Cclose-up?lock=2852",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-28-detail-2.jpg"
+  },
+  {
+    "product_id": 29,
+    "product_name": "青川香菇干300g",
+    "role": "main",
+    "index": 1,
+    "term": "shiitake mushroom dried",
+    "source_url": "https://loremflickr.com/900/900/shiitake%2Cmushroom%2Cdried?lock=2901",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-29-main-1.jpg"
+  },
+  {
+    "product_id": 29,
+    "product_name": "青川香菇干300g",
+    "role": "main",
+    "index": 2,
+    "term": "shiitake mushroom",
+    "source_url": "https://loremflickr.com/900/900/shiitake%2Cmushroom?lock=2902",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-29-main-2.jpg"
+  },
+  {
+    "product_id": 29,
+    "product_name": "青川香菇干300g",
+    "role": "detail",
+    "index": 1,
+    "term": "dried shiitake close-up",
+    "source_url": "https://loremflickr.com/1200/800/dried%2Cshiitake%2Cclose-up?lock=2951",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-29-detail-1.jpg"
+  },
+  {
+    "product_id": 29,
+    "product_name": "青川香菇干300g",
+    "role": "detail",
+    "index": 2,
+    "term": "shiitake mushroom basket",
+    "source_url": "https://loremflickr.com/1200/800/shiitake%2Cmushroom%2Cbasket?lock=2952",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-29-detail-2.jpg"
+  },
+  {
+    "product_id": 30,
+    "product_name": "剑阁核桃仁500g",
+    "role": "main",
+    "index": 1,
+    "term": "walnut kernel",
+    "source_url": "https://loremflickr.com/900/900/walnut%2Ckernel?lock=3001",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-30-main-1.jpg"
+  },
+  {
+    "product_id": 30,
+    "product_name": "剑阁核桃仁500g",
+    "role": "main",
+    "index": 2,
+    "term": "shelled walnuts",
+    "source_url": "https://loremflickr.com/900/900/shelled%2Cwalnuts?lock=3002",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-30-main-2.jpg"
+  },
+  {
+    "product_id": 30,
+    "product_name": "剑阁核桃仁500g",
+    "role": "detail",
+    "index": 1,
+    "term": "walnut close-up",
+    "source_url": "https://loremflickr.com/1200/800/walnut%2Cclose-up?lock=3051",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-30-detail-1.jpg"
+  },
+  {
+    "product_id": 30,
+    "product_name": "剑阁核桃仁500g",
+    "role": "detail",
+    "index": 2,
+    "term": "walnut nuts",
+    "source_url": "https://loremflickr.com/1200/800/walnut%2Cnuts?lock=3052",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-30-detail-2.jpg"
+  },
+  {
+    "product_id": 31,
+    "product_name": "若尔盖牦牛肉干120g",
+    "role": "main",
+    "index": 1,
+    "term": "beef jerky",
+    "source_url": "https://loremflickr.com/900/900/beef%2Cjerky?lock=3101",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-31-main-1.jpg"
+  },
+  {
+    "product_id": 31,
+    "product_name": "若尔盖牦牛肉干120g",
+    "role": "main",
+    "index": 2,
+    "term": "jerky snack",
+    "source_url": "https://loremflickr.com/900/900/jerky%2Csnack?lock=3102",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-31-main-2.jpg"
+  },
+  {
+    "product_id": 31,
+    "product_name": "若尔盖牦牛肉干120g",
+    "role": "detail",
+    "index": 1,
+    "term": "dried beef jerky",
+    "source_url": "https://loremflickr.com/1200/800/dried%2Cbeef%2Cjerky?lock=3151",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-31-detail-1.jpg"
+  },
+  {
+    "product_id": 31,
+    "product_name": "若尔盖牦牛肉干120g",
+    "role": "detail",
+    "index": 2,
+    "term": "beef jerky close-up",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Cjerky%2Cclose-up?lock=3152",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-31-detail-2.jpg"
+  },
+  {
+    "product_id": 32,
+    "product_name": "雅安藏茶散茶250g",
+    "role": "main",
+    "index": 1,
+    "term": "dark tea leaves",
+    "source_url": "https://loremflickr.com/900/900/dark%2Ctea%2Cleaves?lock=3201",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-32-main-1.jpg"
+  },
+  {
+    "product_id": 32,
+    "product_name": "雅安藏茶散茶250g",
+    "role": "main",
+    "index": 2,
+    "term": "tea leaves",
+    "source_url": "https://loremflickr.com/900/900/tea%2Cleaves?lock=3202",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-32-main-2.jpg"
+  },
+  {
+    "product_id": 32,
+    "product_name": "雅安藏茶散茶250g",
+    "role": "detail",
+    "index": 1,
+    "term": "Chinese tea close-up",
+    "source_url": "https://loremflickr.com/1200/800/Chinese%2Ctea%2Cclose-up?lock=3251",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-32-detail-1.jpg"
+  },
+  {
+    "product_id": 32,
+    "product_name": "雅安藏茶散茶250g",
+    "role": "detail",
+    "index": 2,
+    "term": "tea leaves dry",
+    "source_url": "https://loremflickr.com/1200/800/tea%2Cleaves%2Cdry?lock=3252",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-32-detail-2.jpg"
+  },
+  {
+    "product_id": 33,
+    "product_name": "五常大米5kg",
+    "role": "main",
+    "index": 1,
+    "term": "rice grains",
+    "source_url": "https://loremflickr.com/900/900/rice%2Cgrains?lock=3301",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-33-main-1.jpg"
+  },
+  {
+    "product_id": 33,
+    "product_name": "五常大米5kg",
+    "role": "main",
+    "index": 2,
+    "term": "rice harvest",
+    "source_url": "https://loremflickr.com/900/900/rice%2Charvest?lock=3302",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-33-main-2.jpg"
+  },
+  {
+    "product_id": 33,
+    "product_name": "五常大米5kg",
+    "role": "detail",
+    "index": 1,
+    "term": "rice bowl grains",
+    "source_url": "https://loremflickr.com/1200/800/rice%2Cbowl%2Cgrains?lock=3351",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-33-detail-1.jpg"
+  },
+  {
+    "product_id": 33,
+    "product_name": "五常大米5kg",
+    "role": "detail",
+    "index": 2,
+    "term": "rice close-up",
+    "source_url": "https://loremflickr.com/1200/800/rice%2Cclose-up?lock=3352",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-33-detail-2.jpg"
+  },
+  {
+    "product_id": 34,
+    "product_name": "小榨菜籽油5L",
+    "role": "main",
+    "index": 1,
+    "term": "rapeseed oil bottle",
+    "source_url": "https://loremflickr.com/900/900/rapeseed%2Coil%2Cbottle?lock=3401",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-34-main-1.jpg"
+  },
+  {
+    "product_id": 34,
+    "product_name": "小榨菜籽油5L",
+    "role": "main",
+    "index": 2,
+    "term": "canola oil bottle",
+    "source_url": "https://loremflickr.com/900/900/canola%2Coil%2Cbottle?lock=3402",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-34-main-2.jpg"
+  },
+  {
+    "product_id": 34,
+    "product_name": "小榨菜籽油5L",
+    "role": "detail",
+    "index": 1,
+    "term": "cooking oil bottle",
+    "source_url": "https://loremflickr.com/1200/800/cooking%2Coil%2Cbottle?lock=3451",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-34-detail-1.jpg"
+  },
+  {
+    "product_id": 34,
+    "product_name": "小榨菜籽油5L",
+    "role": "detail",
+    "index": 2,
+    "term": "rapeseed oil",
+    "source_url": "https://loremflickr.com/1200/800/rapeseed%2Coil?lock=3452",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-34-detail-2.jpg"
+  },
+  {
+    "product_id": 35,
+    "product_name": "农家红薯粉条1kg",
+    "role": "main",
+    "index": 1,
+    "term": "sweet potato noodles",
+    "source_url": "https://loremflickr.com/900/900/sweet%2Cpotato%2Cnoodles?lock=3501",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-35-main-1.jpg"
+  },
+  {
+    "product_id": 35,
+    "product_name": "农家红薯粉条1kg",
+    "role": "main",
+    "index": 2,
+    "term": "sweet potato vermicelli",
+    "source_url": "https://loremflickr.com/900/900/sweet%2Cpotato%2Cvermicelli?lock=3502",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-35-main-2.jpg"
+  },
+  {
+    "product_id": 35,
+    "product_name": "农家红薯粉条1kg",
+    "role": "detail",
+    "index": 1,
+    "term": "glass noodles",
+    "source_url": "https://loremflickr.com/1200/800/glass%2Cnoodles?lock=3551",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-35-detail-1.jpg"
+  },
+  {
+    "product_id": 35,
+    "product_name": "农家红薯粉条1kg",
+    "role": "detail",
+    "index": 2,
+    "term": "sweet potato noodles close-up",
+    "source_url": "https://loremflickr.com/1200/800/sweet%2Cpotato%2Cnoodles%2Cclose-up?lock=3552",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-35-detail-2.jpg"
+  },
+  {
+    "product_id": 36,
+    "product_name": "青稞面1kg",
+    "role": "main",
+    "index": 1,
+    "term": "barley flour",
+    "source_url": "https://loremflickr.com/900/900/barley%2Cflour?lock=3601",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-36-main-1.jpg"
+  },
+  {
+    "product_id": 36,
+    "product_name": "青稞面1kg",
+    "role": "main",
+    "index": 2,
+    "term": "barley grain",
+    "source_url": "https://loremflickr.com/900/900/barley%2Cgrain?lock=3602",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-36-main-2.jpg"
+  },
+  {
+    "product_id": 36,
+    "product_name": "青稞面1kg",
+    "role": "detail",
+    "index": 1,
+    "term": "flour bowl",
+    "source_url": "https://loremflickr.com/1200/800/flour%2Cbowl?lock=3651",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-36-detail-1.jpg"
+  },
+  {
+    "product_id": 36,
+    "product_name": "青稞面1kg",
+    "role": "detail",
+    "index": 2,
+    "term": "barley flour close-up",
+    "source_url": "https://loremflickr.com/1200/800/barley%2Cflour%2Cclose-up?lock=3652",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-36-detail-2.jpg"
+  },
+  {
+    "product_id": 37,
+    "product_name": "有机黄豆2.5kg",
+    "role": "main",
+    "index": 1,
+    "term": "soybeans",
+    "source_url": "https://loremflickr.com/900/900/soybeans?lock=3701",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-37-main-1.jpg"
+  },
+  {
+    "product_id": 37,
+    "product_name": "有机黄豆2.5kg",
+    "role": "main",
+    "index": 2,
+    "term": "soy bean seeds",
+    "source_url": "https://loremflickr.com/900/900/soy%2Cbean%2Cseeds?lock=3702",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-37-main-2.jpg"
+  },
+  {
+    "product_id": 37,
+    "product_name": "有机黄豆2.5kg",
+    "role": "detail",
+    "index": 1,
+    "term": "soybeans close-up",
+    "source_url": "https://loremflickr.com/1200/800/soybeans%2Cclose-up?lock=3751",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-37-detail-1.jpg"
+  },
+  {
+    "product_id": 37,
+    "product_name": "有机黄豆2.5kg",
+    "role": "detail",
+    "index": 2,
+    "term": "soybean harvest",
+    "source_url": "https://loremflickr.com/1200/800/soybean%2Charvest?lock=3752",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-37-detail-2.jpg"
+  },
+  {
+    "product_id": 38,
+    "product_name": "土蜂蜜500g",
+    "role": "main",
+    "index": 1,
+    "term": "honey jar",
+    "source_url": "https://loremflickr.com/900/900/honey%2Cjar?lock=3801",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-38-main-1.jpg"
+  },
+  {
+    "product_id": 38,
+    "product_name": "土蜂蜜500g",
+    "role": "main",
+    "index": 2,
+    "term": "raw honey",
+    "source_url": "https://loremflickr.com/900/900/raw%2Choney?lock=3802",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-38-main-2.jpg"
+  },
+  {
+    "product_id": 38,
+    "product_name": "土蜂蜜500g",
+    "role": "detail",
+    "index": 1,
+    "term": "honey dipper",
+    "source_url": "https://loremflickr.com/1200/800/honey%2Cdipper?lock=3851",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-38-detail-1.jpg"
+  },
+  {
+    "product_id": 38,
+    "product_name": "土蜂蜜500g",
+    "role": "detail",
+    "index": 2,
+    "term": "honey close-up",
+    "source_url": "https://loremflickr.com/1200/800/honey%2Cclose-up?lock=3852",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-38-detail-2.jpg"
+  },
+  {
+    "product_id": 39,
+    "product_name": "林下散养土鸡1.2kg",
+    "role": "main",
+    "index": 1,
+    "term": "free range chicken",
+    "source_url": "https://loremflickr.com/900/900/free%2Crange%2Cchicken?lock=3901",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-39-main-1.jpg"
+  },
+  {
+    "product_id": 39,
+    "product_name": "林下散养土鸡1.2kg",
+    "role": "main",
+    "index": 2,
+    "term": "raw whole chicken",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cwhole%2Cchicken?lock=3902",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-39-main-2.jpg"
+  },
+  {
+    "product_id": 39,
+    "product_name": "林下散养土鸡1.2kg",
+    "role": "detail",
+    "index": 1,
+    "term": "chicken meat",
+    "source_url": "https://loremflickr.com/1200/800/chicken%2Cmeat?lock=3951",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-39-detail-1.jpg"
+  },
+  {
+    "product_id": 39,
+    "product_name": "林下散养土鸡1.2kg",
+    "role": "detail",
+    "index": 2,
+    "term": "fresh chicken",
+    "source_url": "https://loremflickr.com/1200/800/fresh%2Cchicken?lock=3952",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-39-detail-2.jpg"
+  },
+  {
+    "product_id": 40,
+    "product_name": "冷鲜土猪前腿肉500g",
+    "role": "main",
+    "index": 1,
+    "term": "raw pork shoulder",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cpork%2Cshoulder?lock=4001",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-40-main-1.jpg"
+  },
+  {
+    "product_id": 40,
+    "product_name": "冷鲜土猪前腿肉500g",
+    "role": "main",
+    "index": 2,
+    "term": "fresh pork",
+    "source_url": "https://loremflickr.com/900/900/fresh%2Cpork?lock=4002",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-40-main-2.jpg"
+  },
+  {
+    "product_id": 40,
+    "product_name": "冷鲜土猪前腿肉500g",
+    "role": "detail",
+    "index": 1,
+    "term": "pork meat close-up",
+    "source_url": "https://loremflickr.com/1200/800/pork%2Cmeat%2Cclose-up?lock=4051",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-40-detail-1.jpg"
+  },
+  {
+    "product_id": 40,
+    "product_name": "冷鲜土猪前腿肉500g",
+    "role": "detail",
+    "index": 2,
+    "term": "raw pork",
+    "source_url": "https://loremflickr.com/1200/800/raw%2Cpork?lock=4052",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-40-detail-2.jpg"
+  },
+  {
+    "product_id": 41,
+    "product_name": "农家土鸡蛋40枚",
+    "role": "main",
+    "index": 1,
+    "term": "brown chicken eggs",
+    "source_url": "https://loremflickr.com/900/900/brown%2Cchicken%2Ceggs?lock=4101",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-41-main-1.jpg"
+  },
+  {
+    "product_id": 41,
+    "product_name": "农家土鸡蛋40枚",
+    "role": "main",
+    "index": 2,
+    "term": "egg basket",
+    "source_url": "https://loremflickr.com/900/900/egg%2Cbasket?lock=4102",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-41-main-2.jpg"
+  },
+  {
+    "product_id": 41,
+    "product_name": "农家土鸡蛋40枚",
+    "role": "detail",
+    "index": 1,
+    "term": "fresh eggs close-up",
+    "source_url": "https://loremflickr.com/1200/800/fresh%2Ceggs%2Cclose-up?lock=4151",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-41-detail-1.jpg"
+  },
+  {
+    "product_id": 41,
+    "product_name": "农家土鸡蛋40枚",
+    "role": "detail",
+    "index": 2,
+    "term": "hen eggs",
+    "source_url": "https://loremflickr.com/1200/800/hen%2Ceggs?lock=4152",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-41-detail-2.jpg"
+  },
+  {
+    "product_id": 42,
+    "product_name": "生态鸭肉1kg",
+    "role": "main",
+    "index": 1,
+    "term": "raw duck meat",
+    "source_url": "https://loremflickr.com/900/900/raw%2Cduck%2Cmeat?lock=4201",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-42-main-1.jpg"
+  },
+  {
+    "product_id": 42,
+    "product_name": "生态鸭肉1kg",
+    "role": "main",
+    "index": 2,
+    "term": "fresh duck",
+    "source_url": "https://loremflickr.com/900/900/fresh%2Cduck?lock=4202",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-42-main-2.jpg"
+  },
+  {
+    "product_id": 42,
+    "product_name": "生态鸭肉1kg",
+    "role": "detail",
+    "index": 1,
+    "term": "duck meat close-up",
+    "source_url": "https://loremflickr.com/1200/800/duck%2Cmeat%2Cclose-up?lock=4251",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-42-detail-1.jpg"
+  },
+  {
+    "product_id": 42,
+    "product_name": "生态鸭肉1kg",
+    "role": "detail",
+    "index": 2,
+    "term": "duck raw meat",
+    "source_url": "https://loremflickr.com/1200/800/duck%2Craw%2Cmeat?lock=4252",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-42-detail-2.jpg"
+  },
+  {
+    "product_id": 43,
+    "product_name": "高原牦牛里脊500g",
+    "role": "main",
+    "index": 1,
+    "term": "yak meat",
+    "source_url": "https://loremflickr.com/900/900/yak%2Cmeat?lock=4301",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-43-main-1.jpg"
+  },
+  {
+    "product_id": 43,
+    "product_name": "高原牦牛里脊500g",
+    "role": "main",
+    "index": 2,
+    "term": "yak steak",
+    "source_url": "https://loremflickr.com/900/900/yak%2Csteak?lock=4302",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-43-main-2.jpg"
+  },
+  {
+    "product_id": 43,
+    "product_name": "高原牦牛里脊500g",
+    "role": "detail",
+    "index": 1,
+    "term": "yak meat close-up",
+    "source_url": "https://loremflickr.com/1200/800/yak%2Cmeat%2Cclose-up?lock=4351",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-43-detail-1.jpg"
+  },
+  {
+    "product_id": 43,
+    "product_name": "高原牦牛里脊500g",
+    "role": "detail",
+    "index": 2,
+    "term": "beef tenderloin raw",
+    "source_url": "https://loremflickr.com/1200/800/beef%2Ctenderloin%2Craw?lock=4352",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-43-detail-2.jpg"
+  },
+  {
+    "product_id": 44,
+    "product_name": "川味腊肠500g",
+    "role": "main",
+    "index": 1,
+    "term": "Chinese sausage",
+    "source_url": "https://loremflickr.com/900/900/Chinese%2Csausage?lock=4401",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-44-main-1.jpg"
+  },
+  {
+    "product_id": 44,
+    "product_name": "川味腊肠500g",
+    "role": "main",
+    "index": 2,
+    "term": "cured sausage",
+    "source_url": "https://loremflickr.com/900/900/cured%2Csausage?lock=4402",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-44-main-2.jpg"
+  },
+  {
+    "product_id": 44,
+    "product_name": "川味腊肠500g",
+    "role": "detail",
+    "index": 1,
+    "term": "sausage slices",
+    "source_url": "https://loremflickr.com/1200/800/sausage%2Cslices?lock=4451",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-44-detail-1.jpg"
+  },
+  {
+    "product_id": 44,
+    "product_name": "川味腊肠500g",
+    "role": "detail",
+    "index": 2,
+    "term": "Chinese sausage close-up",
+    "source_url": "https://loremflickr.com/1200/800/Chinese%2Csausage%2Cclose-up?lock=4452",
+    "local_path": "c:\\project\\毕业设计\\projectWebAgricultural\\agricultural\\uploads\\product-44-detail-2.jpg"
+  }
+]
