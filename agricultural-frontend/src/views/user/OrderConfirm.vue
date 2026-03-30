@@ -51,13 +51,15 @@
           <h3><el-icon><Goods /></el-icon> 商品清单</h3>
         </div>
         
-        <div class="goods-list">
+      <div class="goods-list">
           <div class="goods-item" v-for="item in selectedItems" :key="item.productId">
             <img :src="getCoverImage(item.productImg)" class="thumb" />
             <div class="info">
               <div class="name">{{ item.productName }}</div>
               <div class="props">
                 <span>数量: x{{ item.productNum }}</span>
+                <span v-if="item.stock <= 0" class="danger-text">已无库存</span>
+                <span v-else-if="item.productNum > item.stock" class="danger-text">库存不足，仅剩 {{ item.stock }} 件</span>
               </div>
             </div>
             <div class="price">
@@ -99,6 +101,7 @@
           size="large" 
           class="btn-submit"
           :loading="submitting"
+          :disabled="!canSubmit"
           @click="handleSubmit"
         >
           提交订单
@@ -119,6 +122,11 @@ import { getAddresses } from '@/apis/user';
 import { getProductDetail } from '@/apis/product';
 import type { UserAddress, CartItem } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
+
+/**
+ * 确认订单页。
+ * 这里负责把“购物车购买”和“立即购买”两条链路统一收口成一次下单请求。
+ */
 
 const router = useRouter();
 const route = useRoute();
@@ -145,6 +153,18 @@ const selectedItems = computed(() => {
     return [directBuyItem.value];
   }
   return cartStore.getSelectedItems();
+});
+
+const hasInvalidItems = computed(() => {
+  return selectedItems.value.some(item => item.productNum <= 0 || item.stock <= 0 || item.productNum > item.stock);
+});
+
+const canSubmit = computed(() => {
+  return !submitting.value
+    && !!selectedAddressId.value
+    && selectedItems.value.length > 0
+    && totalCount.value > 0
+    && !hasInvalidItems.value;
 });
 
 // 总件数
@@ -179,17 +199,32 @@ onMounted(async () => {
   await loadAddresses();
 });
 
+// 直接购买入口：根据商品 ID 拉取实时商品信息，避免库存和价格过期。
 const loadDirectBuyItem = async (pid: number, num: number) => {
   try {
+    if (!pid || !num || num <= 0) {
+      ElMessage.error('购买参数无效');
+      router.replace('/products');
+      return;
+    }
     const res = await getProductDetail(pid);
     if (res) {
+      if ((res.stock || 0) <= 0) {
+        ElMessage.warning('该商品当前无库存');
+        router.replace(`/product/${pid}`);
+        return;
+      }
+      const safeNum = Math.min(num, Number(res.stock || 0));
+      if (safeNum !== num) {
+        ElMessage.warning(`商品库存不足，已自动调整为 ${safeNum} 件`);
+      }
       directBuyItem.value = {
         id: 0, // 临时ID
         productId: res.id,
         productName: res.productName,
         productImg: res.productImg,
         price: res.price,
-        productNum: num,
+        productNum: safeNum,
         stock: res.stock,
         selectStatus: true
       };
@@ -204,6 +239,7 @@ const loadDirectBuyItem = async (pid: number, num: number) => {
   }
 };
 
+// 收货地址入口：订单提交前必须先有有效地址。
 const loadAddresses = async () => {
   loadingAddress.value = true;
   try {
@@ -226,14 +262,25 @@ const loadAddresses = async () => {
     }
   } catch (error) {
     console.error('加载地址失败', error);
+    ElMessage.error('加载收货地址失败，请稍后重试');
   } finally {
     loadingAddress.value = false;
   }
 };
 
+// 提交订单主入口：兼容购物车下单和直接购买两种业务来源。
 const handleSubmit = async () => {
+  if (selectedItems.value.length === 0) {
+    ElMessage.warning('请先选择商品');
+    router.replace('/cart');
+    return;
+  }
   if (!selectedAddressId.value) {
     ElMessage.warning('请选择收货地址');
+    return;
+  }
+  if (hasInvalidItems.value) {
+    ElMessage.warning('商品库存状态已变化，请返回重新确认');
     return;
   }
 
@@ -306,7 +353,6 @@ const handleSubmit = async () => {
     
   } catch (error) {
     console.error('提交订单失败', error);
-    ElMessage.error('订单提交失败，请重试');
   } finally {
     submitting.value = false;
   }
@@ -434,7 +480,13 @@ const handleSubmit = async () => {
     .info {
       flex: 1;
       .name { font-size: 15px; color: #303133; margin-bottom: 8px; }
-      .props { font-size: 13px; color: #909399; }
+      .props {
+        font-size: 13px;
+        color: #909399;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
     }
     
     .price {
@@ -443,6 +495,11 @@ const handleSubmit = async () => {
       .subtotal { font-size: 16px; font-weight: bold; color: #f56c6c; }
     }
   }
+}
+
+.danger-text {
+  color: #f56c6c;
+  font-weight: 600;
 }
 
 .action-bar {

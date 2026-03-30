@@ -168,11 +168,15 @@ const sendCode = async () => {
   try {
     await merchantSendSms(formData.phone);
     ElMessage.success('验证码发送成功');
+    if (timer) clearInterval(timer);
     codeCountdown.value = 60;
     timer = setInterval(() => {
       codeCountdown.value--;
       if (codeCountdown.value <= 0) {
-        if (timer) clearInterval(timer);
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
       }
     }, 1000);
   } catch (error) {
@@ -190,7 +194,6 @@ const handleLogin = async () => {
   try {
     await formRef.value.validate();
   } catch (validationError) {
-    console.log('Form validation failed');
     return;
   }
 
@@ -199,12 +202,8 @@ const handleLogin = async () => {
     const loginData = loginType.value === 'code' 
       ? { phone: formData.phone, code: formData.code }
       : { phone: formData.phone, password: formData.password };
-    
-    console.log('Sending login request:', loginData);
     const res: any = await merchantLogin(loginData);
-    console.log('Login response:', res);
-    
-    // Transform response to match store expectation
+
     const loginResult = {
       token: res.token,
       userInfo: {
@@ -219,14 +218,8 @@ const handleLogin = async () => {
     router.push('/merchant/dashboard');
   } catch (error: any) {
     console.error('Login error:', error);
-    console.error('Error type:', typeof error);
-    console.error('Error keys:', Object.keys(error));
-    
-    // 处理各种错误情况
     if (error?.response?.data) {
       const responseData = error.response.data;
-      console.log('Error response data:', responseData);
-      
       if (responseData.code === 403) {
         const msg = responseData.msg || '';
         if (msg.includes('审核中') || msg.includes('未审核')) {
@@ -263,7 +256,10 @@ const handleLogin = async () => {
 
 // 清理定时器
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
 });
 </script>
 
@@ -273,11 +269,26 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f0f2f5;
-  background-image: url('https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2940&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center;
+  background:
+    radial-gradient(circle at top right, rgba(255, 214, 112, 0.18), transparent 26%),
+    radial-gradient(circle at left center, rgba(94, 155, 94, 0.22), transparent 28%),
+    linear-gradient(135deg, #16302a 0%, #28493e 42%, #eef5eb 100%);
   position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(9, 27, 22, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%),
+      repeating-linear-gradient(
+        120deg,
+        rgba(255, 255, 255, 0.035) 0,
+        rgba(255, 255, 255, 0.035) 14px,
+        transparent 14px,
+        transparent 28px
+      );
+  }
 }
 
 // 返回按钮

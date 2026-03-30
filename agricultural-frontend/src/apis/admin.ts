@@ -17,6 +17,11 @@ import type {
   UnsalableSummary
 } from '@/types';
 
+/**
+ * 管理员端接口聚合。
+ * 审核、订单、支付退款、评论、风控、系统运维等后台能力都在这里声明调用入口。
+ */
+
 export const adminLogin = (data: any) => request.post('/admin/login', data);
 export const adminSendSms = (phone: string) => request.post('/admin/sms/send', { phone });
 export const getCurrentAdminPermissions = () => request.get<any, string[]>('/admin/me/permissions');
@@ -35,6 +40,7 @@ export const getUnsalableProducts = (params: any) => request.get<any, PageResult
 export const getUnsalableSummary = (params?: any) => request.get<any, UnsalableSummary>('/admin/unsalable/summary', { params });
 export const setUnsalable = (id: number, isUnsalable: number) => request.put(`/admin/unsalable/${id}`, null, { params: { isUnsalable } });
 
+// 审核链路：商家审核与商品审核。
 export const listMerchants = (params: any) => request.get<any, PageResult<MerchantInfo>>('/admin/merchants', { params });
 export const updateMerchantStatus = (id: number, status: number) => request.put(`/admin/merchants/${id}/status`, { status });
 export const listMerchantAudit = (params: any) => request.get<any, PageResult<MerchantInfo>>('/admin/merchants/audit', { params });
@@ -57,6 +63,7 @@ export const createNewsCategory = (data: any) => request.post('/admin/news/categ
 export const updateNewsCategory = (id: number, data: any) => request.put(`/admin/news/categories/${id}`, data);
 export const deleteNewsCategory = (id: number) => request.delete(`/admin/news/categories/${id}`);
 
+// 平台订单管理。
 export const listOrders = (params: any) => request.get<any, PageResult<Order>>('/admin/orders', { params });
 export const getOrder = (id: number) => request.get<any, Order>(`/admin/orders/${id}`);
 export const cancelOrder = (id: number, reason?: string) => request.put(`/admin/orders/${id}/cancel`, { reason });
@@ -68,6 +75,7 @@ export const listAdminAfterSaleMessages = (afterSaleNo: string, params: any) =>
 export const sendAdminAfterSaleMessage = (afterSaleNo: string, data: { content: string }) =>
   request.post(`/admin/after-sale/${afterSaleNo}/messages`, data);
 
+// 资金链路：支付记录、退款处理、打款台账。
 export const listPayments = (params: any) => request.get<any, PageResult<PaymentRecord>>('/admin/payments', { params });
 export const updateRefund = (id: number, refundStatus: number) => request.put(`/admin/payments/${id}/refund`, { refundStatus });
 export const listTransfers = (params: any) => request.get<any, PageResult<ReconciliationRecord>>('/admin/transfers', { params });

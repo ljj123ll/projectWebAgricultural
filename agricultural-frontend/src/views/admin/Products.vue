@@ -35,7 +35,7 @@
         </el-table-column>
         <el-table-column prop="price" label="价格" width="120">
           <template #default="{ row }">
-            ¥{{ row.price.toFixed(2) }}
+            ¥{{ Number(row.price || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="提交时间" width="180" />
@@ -50,8 +50,23 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="viewDetail(row)">查看</el-button>
             <template v-if="row.status === 0">
-              <el-button link type="success" @click="approve(row)">通过</el-button>
-              <el-button link type="danger" @click="reject(row)">驳回</el-button>
+              <el-button
+                link
+                type="success"
+                :loading="isAuditSubmitting(row.id)"
+                :disabled="isAnyAuditSubmitting"
+                @click="approve(row)"
+              >
+                通过
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                :disabled="isAnyAuditSubmitting"
+                @click="reject(row)"
+              >
+                驳回
+              </el-button>
             </template>
           </template>
         </el-table-column>
@@ -110,11 +125,31 @@
             <span class="value">{{ currentProduct.originPlaceDetail || '请输入详细产地' }}</span>
           </div>
           <div class="detail-item">
-            <span class="label">种植周期</span>
-            <span class="value">{{ currentProduct.plantingCycle || '如：3月播种，9月采摘；或 孵化期30天，出栏180天' }}</span>
+            <span class="label">{{ cycleLabel }}</span>
+            <span class="value">{{ currentProduct.plantingCycle || '-' }}</span>
           </div>
           <div class="detail-item">
-            <span class="label">施肥类型</span>
+            <span class="label">溯源码</span>
+            <span class="value">{{ currentProduct.traceCode || '待生成' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">批次编号</span>
+            <span class="value">{{ currentProduct.batchNo || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">{{ productionDateLabel }}</span>
+            <span class="value">{{ formatDateValue(currentProduct.productionDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">{{ harvestDateLabel }}</span>
+            <span class="value">{{ formatDateValue(currentProduct.harvestDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">包装入库日期</span>
+            <span class="value">{{ formatDateValue(currentProduct.packagingDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">生产方式</span>
             <span class="value">{{ currentProduct.fertilizerType || '-' }}</span>
           </div>
           <div class="detail-item">
@@ -124,6 +159,21 @@
           <div class="detail-item">
             <span class="label">运输方式</span>
             <span class="value">{{ currentProduct.transportMethod || '-' }}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">检测与溯源说明</div>
+          <div class="desc-box">{{ currentProduct.inspectionReport || '未填写检测/检疫说明' }}</div>
+        </div>
+
+        <div class="section" v-if="extraTraceFields.length">
+          <div class="section-title">分类特色溯源字段</div>
+          <div class="trace-field-grid">
+            <div v-for="field in extraTraceFields" :key="field.key" class="trace-field-item">
+              <span class="label">{{ field.label }}</span>
+              <span class="value">{{ field.value || '-' }}</span>
+            </div>
           </div>
         </div>
 
@@ -198,6 +248,12 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listProductAudit, auditProduct } from '@/apis/admin'
 import { getProductCategoryName } from '@/constants/category'
+import { getHarvestDateLabel, getProductionDateLabel, getTraceCycleLabel, getTraceFieldDefinitions } from '@/constants/trace'
+
+/**
+ * 管理员商品审核页。
+ * 这里既能看商品基础信息，也能看溯源档案、二维码和分类特色字段，是答辩时最适合展示后台审核的页面之一。
+ */
 
 const filterStatus = ref('all')
 const currentPage = ref(1)
@@ -206,6 +262,8 @@ const total = ref(0)
 const loading = ref(false)
 const showDetailDialog = ref(false)
 const currentProduct = ref<any>({})
+const auditSubmittingMap = ref<Record<number, boolean>>({})
+let listRequestNo = 0
 
 const productList = ref<any[]>([])
 
@@ -264,6 +322,34 @@ const traceQrcodeUrl = computed(() => {
   const source = currentProduct.value?.qrCodeUrl
   return source ? getFullImageUrl(source) : ''
 })
+const cycleLabel = computed(() => getTraceCycleLabel(currentProduct.value?.categoryId))
+const productionDateLabel = computed(() => getProductionDateLabel(currentProduct.value?.categoryId))
+const harvestDateLabel = computed(() => getHarvestDateLabel(currentProduct.value?.categoryId))
+const extraTraceFields = computed(() => {
+  const traceExtra = currentProduct.value?.traceExtra || {}
+  return getTraceFieldDefinitions(currentProduct.value?.categoryId).map(field => ({
+    key: field.key,
+    label: field.label,
+    value: traceExtra[field.key] || ''
+  }))
+})
+
+const formatDateValue = (value?: string) => value || '-'
+const isAuditSubmitting = (id?: number) => {
+  const targetId = Number(id || 0)
+  return targetId > 0 && !!auditSubmittingMap.value[targetId]
+}
+const isAnyAuditSubmitting = computed(() => Object.keys(auditSubmittingMap.value).length > 0)
+
+const setAuditSubmitting = (id: number, submitting: boolean) => {
+  const next = { ...auditSubmittingMap.value }
+  if (submitting) {
+    next[id] = true
+  } else {
+    delete next[id]
+  }
+  auditSubmittingMap.value = next
+}
 
 const statusParam = () => {
   if (filterStatus.value === 'pending') return 0
@@ -272,7 +358,9 @@ const statusParam = () => {
   return undefined
 }
 
+// 商品审核列表入口，按筛选状态和分页条件加载后台审核数据。
 const loadList = async () => {
+  const requestNo = ++listRequestNo
   try {
     loading.value = true
     const res = await listProductAudit({
@@ -280,35 +368,69 @@ const loadList = async () => {
       pageNum: currentPage.value,
       pageSize: pageSize.value
     })
+    if (requestNo !== listRequestNo) return
     productList.value = res?.list || []
     total.value = res?.total || 0
+  } catch (error) {
+    if (requestNo !== listRequestNo) return
+    productList.value = []
+    total.value = 0
+    ElMessage.error('加载商品审核列表失败，请稍后重试')
   } finally {
-    loading.value = false
+    if (requestNo === listRequestNo) {
+      loading.value = false
+    }
   }
 }
 
+// 商品审核通过入口。
 const approve = async (row: any) => {
-  await ElMessageBox.confirm('确认通过该商品审核吗？', '审核确认', {
-    confirmButtonText: '通过',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-  await auditProduct(row.id, { pass: true })
-  ElMessage.success('已通过')
-  await loadList()
+  const id = Number(row?.id || 0)
+  if (!id || isAuditSubmitting(id) || isAnyAuditSubmitting.value) return
+  setAuditSubmitting(id, true)
+  try {
+    await ElMessageBox.confirm('确认通过该商品审核吗？', '审核确认', {
+      confirmButtonText: '通过',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await auditProduct(id, { pass: true })
+    ElMessage.success('已通过')
+    await loadList()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error('商品审核通过失败，请稍后重试')
+  } finally {
+    setAuditSubmitting(id, false)
+  }
 }
 
+// 商品驳回入口，要求管理员填写驳回原因。
 const reject = async (row: any) => {
-  const result = (await ElMessageBox.prompt('请输入驳回原因', '驳回审核', {
-    confirmButtonText: '驳回',
-    cancelButtonText: '取消',
-    inputType: 'textarea',
-    inputValidator: (val: string) => !!val?.trim(),
-    inputErrorMessage: '驳回原因不能为空'
-  })) as { value: string }
-  await auditProduct(row.id, { pass: false, rejectReason: result.value })
-  ElMessage.success('已驳回')
-  await loadList()
+  const id = Number(row?.id || 0)
+  if (!id || isAuditSubmitting(id) || isAnyAuditSubmitting.value) return
+  setAuditSubmitting(id, true)
+  try {
+    const result = (await ElMessageBox.prompt('请输入驳回原因', '驳回审核', {
+      confirmButtonText: '驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputValidator: (val: string) => !!val?.trim(),
+      inputErrorMessage: '驳回原因不能为空'
+    })) as { value: string }
+    await auditProduct(id, { pass: false, rejectReason: result.value })
+    ElMessage.success('已驳回')
+    await loadList()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error('商品驳回失败，请稍后重试')
+  } finally {
+    setAuditSubmitting(id, false)
+  }
 }
 
 watch([filterStatus, currentPage, pageSize], () => {
@@ -466,6 +588,22 @@ onMounted(() => {
   min-height: 72px;
 }
 
+.trace-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trace-field-item {
+  border: 1px solid #e8eef5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fbfcfe;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .trace-qrcode {
   display: flex;
   flex-direction: column;
@@ -506,6 +644,10 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .detail-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .trace-field-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }

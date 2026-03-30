@@ -24,6 +24,10 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 管理员售后裁决服务。
+ * 负责后台售后列表查询，以及管理员对争议售后进行最终裁决和状态回写。
+ */
 public class AdminAfterSaleService {
 
     private final AfterSaleMapper afterSaleMapper;
@@ -34,6 +38,9 @@ public class AdminAfterSaleService {
     private final AdminRealtimeEventService adminRealtimeEventService;
     private final AdminAuditTrailService adminAuditTrailService;
 
+    /**
+     * 售后分页查询入口，支持按售后状态筛选。
+     */
     public PageResult<AfterSale> list(Integer afterSaleStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
@@ -44,6 +51,10 @@ public class AdminAfterSaleService {
         return PageResult.of(page.getTotal(), page.getRecords());
     }
 
+    /**
+     * 管理员裁决主流程。
+     * 会校验当前售后是否允许裁决，并同步更新售后单、订单主状态、审计记录和消息通知。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void handle(Long id, Map<String, Object> body) {
         AfterSale as = afterSaleMapper.selectById(id);
@@ -142,6 +153,9 @@ public class AdminAfterSaleService {
         adminRealtimeEventService.publishRefreshToAll("AFTER_SALE_ADMIN_HANDLED", as.getAfterSaleNo());
     }
 
+    /**
+     * 生成不同裁决结果下的默认说明文案。
+     */
     private String defaultHandleResult(Integer status, Integer afterSaleType) {
         if (status == null) return "管理员已更新售后处理状态。";
         if (status == AfterSaleFlow.STATUS_RESOLVED) return "管理员裁决：支持用户诉求，售后处理完成。";

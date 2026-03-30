@@ -28,6 +28,10 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 用户端售后服务。
+ * 负责售后申请、管理员介入申请、退货物流提交以及售后详情查询。
+ */
 public class UserAfterSaleService {
 
     private final AfterSaleMapper afterSaleMapper;
@@ -37,6 +41,10 @@ public class UserAfterSaleService {
     private final UserRealtimeEventService userRealtimeEventService;
     private final UserMessageService userMessageService;
 
+    /**
+     * 用户提交售后申请。
+     * 会校验订单状态、拦截重复售后，并把订单推进到“售后中”状态。
+     */
     @Transactional(rollbackFor = Exception.class)
     public AfterSaleVO apply(AfterSaleApplyDTO dto) {
         Long userId = LoginContext.getUserId();
@@ -86,6 +94,9 @@ public class UserAfterSaleService {
         return toVO(as);
     }
 
+    /**
+     * 用户售后列表查询。
+     */
     public com.agricultural.assistplatform.common.PageResult<AfterSaleVO> list(Integer pageNum, Integer pageSize) {
         Long userId = LoginContext.getUserId();
         if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");
@@ -97,6 +108,10 @@ public class UserAfterSaleService {
         return com.agricultural.assistplatform.common.PageResult.of(page.getTotal(), list);
     }
 
+    /**
+     * 用户申请管理员介入。
+     * 当商家处理结果存在争议时，会把售后单升级到平台裁决阶段。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void escalate(Long id) {
         Long userId = LoginContext.getUserId();
@@ -134,6 +149,10 @@ public class UserAfterSaleService {
         );
     }
 
+    /**
+     * 用户提交退货物流。
+     * 适用于“退货退款”型售后，提交后状态流转为待商家收货退款。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void submitReturnLogistics(Long id, AfterSaleReturnLogisticsDTO dto) {
         Long userId = LoginContext.getUserId();
@@ -183,6 +202,9 @@ public class UserAfterSaleService {
         );
     }
 
+    /**
+     * 按售后单号查看详情。
+     */
     public AfterSaleVO getDetailByNo(String afterSaleNo) {
         Long userId = LoginContext.getUserId();
         if (userId == null) throw new BusinessException(ResultCode.UNAUTHORIZED, "请先登录");

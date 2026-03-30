@@ -19,6 +19,10 @@ import java.util.Map;
 @RequestMapping("/merchant")
 @RequireLoginType("merchant")
 @RequiredArgsConstructor
+/**
+ * 商家商品控制器。
+ * 商品发布、编辑、上下架、生成二维码的 HTTP 入口都在这里。
+ */
 public class MerchantProductController {
 
     private final MerchantProductService merchantProductService;
@@ -31,6 +35,9 @@ public class MerchantProductController {
         return Result.ok(merchantProductService.list(pageNum, pageSize));
     }
 
+    /**
+     * 商家发布商品入口，同时会建立基础溯源档案。
+     */
     @Operation(summary = "新增商品")
     @PostMapping("/products")
     public Result<ProductInfo> add(@RequestBody ProductSaveDTO dto) {
@@ -50,6 +57,9 @@ public class MerchantProductController {
         return Result.ok();
     }
 
+    /**
+     * 生成溯源二维码入口，对应商家端“二维码预览/刷新”按钮。
+     */
     @Operation(summary = "生成溯源码")
     @PostMapping("/products/{id}/qrcode")
     public Result<Map<String, String>> qrcode(@PathVariable Long id) {

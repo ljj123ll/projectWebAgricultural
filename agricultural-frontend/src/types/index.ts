@@ -47,12 +47,49 @@ export interface Product {
   status?: number; // 0-待审核 1-已上架 2-已下架 3-已驳回
   merchantName?: string;
   categoryName?: string;
+  traceCode?: string;
+  batchNo?: string;
+  productionDate?: string;
+  harvestDate?: string;
+  packagingDate?: string;
+  inspectionReport?: string;
   plantingCycle?: string;
   originPlaceDetail?: string;
   fertilizerType?: string;
   storageMethod?: string;
   transportMethod?: string;
   qrCodeUrl?: string;
+  traceExtra?: Record<string, string>;
+}
+
+export interface TraceField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface TraceArchive {
+  productId: number;
+  traceCode: string;
+  batchNo?: string;
+  categoryId?: number;
+  categoryName?: string;
+  productName: string;
+  productImg?: string;
+  productDesc?: string;
+  shopName?: string;
+  originPlace?: string;
+  originPlaceDetail?: string;
+  plantingCycle?: string;
+  fertilizerType?: string;
+  storageMethod?: string;
+  transportMethod?: string;
+  inspectionReport?: string;
+  productionDate?: string;
+  harvestDate?: string;
+  packagingDate?: string;
+  baseFields?: TraceField[];
+  featureFields?: TraceField[];
 }
 
 // 购物车项
@@ -172,6 +209,8 @@ export interface ProductComment {
   id: number;
   orderNo: string;
   productId: number;
+  productName?: string;
+  productImg?: string;
   userId: number;
   nickname?: string;
   avatarUrl?: string;
@@ -252,6 +291,11 @@ export interface ShopInfo {
   shopType?: string;
   categories?: string;
   shopAddress?: string;
+  productCount?: number;
+  commentCount?: number;
+  reviewCount?: number;
+  totalSalesVolume?: number;
+  averageScore?: number;
 }
 
 export interface MerchantAccount {
@@ -388,3 +432,4 @@ export interface OrderChatMessage {
   mediaName?: string;
   createTime?: string;
 }
+

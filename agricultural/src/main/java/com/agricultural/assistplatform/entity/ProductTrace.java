@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,6 +15,13 @@ public class ProductTrace {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long productId;
+    private String traceCode;
+    private String batchNo;
+    private LocalDate productionDate;
+    private LocalDate harvestDate;
+    private LocalDate packagingDate;
+    private String inspectionReport;
+    private String traceExtra;
     private String plantingCycle;
     private String originPlaceDetail;
     private String fertilizerType;

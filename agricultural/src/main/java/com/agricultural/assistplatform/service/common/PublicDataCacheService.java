@@ -16,10 +16,15 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 用户端公共数据缓存服务。
+ * 首页、商品详情、商家页、新闻、滞销专区等公共数据缓存统一在这里维护。
+ */
 public class PublicDataCacheService {
 
     public static final String HOME_KEY = "cache:user:home";
     public static final String PRODUCT_DETAIL_KEY_PREFIX = "cache:user:product:detail:";
+    public static final String PRODUCT_TRACE_ARCHIVE_KEY_PREFIX = "cache:user:product:trace:";
     public static final String PRODUCT_SEARCH_KEY_PREFIX = "cache:user:product:search:";
     public static final String PRODUCT_HOT_LIST_KEY_PREFIX = "cache:user:product:hot:";
     public static final String PRODUCT_ORIGINS_KEY = "cache:user:product:origins";
@@ -45,6 +50,12 @@ public class PublicDataCacheService {
     public void evictProductDetail(Long productId) {
         if (productId != null) {
             redisCacheService.delete(PRODUCT_DETAIL_KEY_PREFIX + productId);
+        }
+    }
+
+    public void evictTraceArchive(String traceCode) {
+        if (StringUtils.hasText(traceCode)) {
+            redisCacheService.delete(PRODUCT_TRACE_ARCHIVE_KEY_PREFIX + traceCode);
         }
     }
 
@@ -78,6 +89,9 @@ public class PublicDataCacheService {
         evictHome();
     }
 
+    /**
+     * 商品有变化时，统一清理会受到影响的公共缓存。
+     */
     public void evictProductCatalog(Long productId, Long merchantId) {
         evictHome();
         evictProductDetail(productId);
@@ -106,6 +120,9 @@ public class PublicDataCacheService {
         return result;
     }
 
+    /**
+     * 更新热销商品排行缓存。
+     */
     public void refreshHotProduct(ProductInfo product) {
         if (product == null || product.getId() == null) {
             return;

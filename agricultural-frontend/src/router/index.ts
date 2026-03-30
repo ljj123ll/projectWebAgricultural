@@ -2,6 +2,11 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/modules/user';
 import { ElMessage } from 'element-plus';
 
+/**
+ * 前端总路由入口。
+ * 答辩时如果老师问“某个功能页面从哪里进入”，优先从这里按角色查找：
+ * 用户端 / 商家端 / 管理员端 的页面注册都集中在本文件。
+ */
 const routes: Array<RouteRecordRaw> = [
   // 落地页
   {
@@ -143,6 +148,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'UserForgotPassword',
     component: () => import('@/views/user/ForgotPassword.vue'),
     meta: { title: '找回密码' }
+  },
+  {
+    path: '/trace/:traceCode',
+    name: 'TraceArchive',
+    component: () => import('@/views/user/TraceArchive.vue'),
+    meta: { title: '商品溯源档案' }
   },
   // 商家端路由
   {
@@ -358,13 +369,14 @@ const router = createRouter({
   routes
 });
 
-// 全局前置守卫
+// 全局前置守卫：统一处理登录校验、角色校验和页面标题。
 router.beforeEach((to, _from, next) => {
   const userStore = useUserStore();
   const isAuthenticated = !!userStore.token;
   const userRole = userStore.role;
   const targetRole = to.meta.role as string | undefined;
 
+  // 根据角色把未登录用户送到正确的登录页，避免三端入口混淆。
   const getLoginPathByRole = (role?: string) => {
     if (role === 'merchant') return '/merchant/login';
     if (role === 'admin') return '/admin/login';
@@ -394,3 +406,4 @@ router.beforeEach((to, _from, next) => {
 });
 
 export default router;
+

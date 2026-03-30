@@ -17,10 +17,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/user")
 @RequireLoginType("user")
 @RequiredArgsConstructor
+/**
+ * 用户端订单控制器。
+ * 如果答辩时老师问“前端下单、支付、取消订单最终打到哪个后端入口”，可以从这里开始看。
+ */
 public class UserOrderController {
 
     private final UserOrderService userOrderService;
 
+    /**
+     * 创建订单入口，兼容购物车下单和直接购买。
+     */
     @Operation(summary = "创建订单")
     @PostMapping("/orders")
     public Result<OrderVO> create(@Valid @RequestBody CreateOrderDTO dto) {
@@ -49,6 +56,9 @@ public class UserOrderController {
         return Result.ok();
     }
 
+    /**
+     * 模拟支付入口，后续会进入订单状态流转和支付记录幂等处理。
+     */
     @Operation(summary = "支付订单（模拟）")
     @PostMapping("/orders/{id}/pay")
     public Result<Void> pay(@PathVariable Long id, @RequestParam(defaultValue = "true") Boolean success) {

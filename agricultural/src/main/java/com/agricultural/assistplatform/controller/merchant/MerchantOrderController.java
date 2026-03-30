@@ -17,6 +17,10 @@ import java.util.Map;
 @RequestMapping("/merchant")
 @RequireLoginType("merchant")
 @RequiredArgsConstructor
+/**
+ * 商家订单控制器。
+ * 商家发货、查看订单、取消待发货订单都从这里进入服务层。
+ */
 public class MerchantOrderController {
 
     private final MerchantOrderService merchantOrderService;
@@ -42,6 +46,9 @@ public class MerchantOrderController {
         return Result.ok(merchantOrderService.getByOrderNo(orderNo));
     }
 
+    /**
+     * 发货入口，要求商家填写物流公司和物流单号。
+     */
     @Operation(summary = "发货")
     @PutMapping("/orders/{id}/ship")
     public Result<Void> ship(@PathVariable Long id, @RequestBody Map<String, String> body) {

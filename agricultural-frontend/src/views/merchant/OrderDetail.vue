@@ -11,6 +11,8 @@
       <el-button
         v-if="order && Number(order.orderStatus) === 2"
         type="primary"
+        :loading="shipSubmitting"
+        :disabled="shipSubmitting || shipDialogVisible"
         @click="openShipDialog"
       >
         立即发货
@@ -84,7 +86,14 @@
       <OrderChatPanel v-if="order.orderNo" :order-no="order.orderNo" role="merchant" />
     </template>
 
-    <el-dialog v-model="shipDialogVisible" title="订单发货" width="420px">
+    <el-dialog
+      v-model="shipDialogVisible"
+      title="订单发货"
+      width="420px"
+      :close-on-click-modal="!shipSubmitting"
+      :show-close="!shipSubmitting"
+      @closed="handleShipDialogClosed"
+    >
       <el-form :model="shipForm" label-position="top">
         <el-form-item label="物流公司">
           <el-select v-model="shipForm.logisticsCompany" placeholder="请选择物流公司" style="width: 100%">
@@ -99,15 +108,15 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="shipDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmShip">确认发货</el-button>
+        <el-button :disabled="shipSubmitting" @click="closeShipDialog">取消</el-button>
+        <el-button type="primary" :loading="shipSubmitting" @click="confirmShip">确认发货</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
@@ -116,27 +125,44 @@ import { getOrderByNo, shipOrder } from '@/apis/merchant';
 import { getFullImageUrl } from '@/utils/image';
 import OrderChatPanel from '@/components/OrderChatPanel.vue';
 
+/**
+ * 商家端订单详情页。
+ * 主要承载订单详情查看、物流填写和发货动作，是商家履约演示的核心页面。
+ */
+
 const route = useRoute();
 const router = useRouter();
 
 const loading = ref(false);
 const order = ref<Order | null>(null);
 const shipDialogVisible = ref(false);
+const shipSubmitting = ref(false);
 const shipForm = reactive({
   logisticsCompany: '',
   logisticsNo: ''
 });
 
 const orderNo = computed(() => String(route.params.orderNo || '').trim());
+const defaultCover = (() => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+      <rect width="160" height="160" rx="24" fill="#f3f7f2" />
+      <circle cx="80" cy="62" r="26" fill="#d9ead3" />
+      <rect x="34" y="100" width="92" height="14" rx="7" fill="#b8d6ae" />
+      <rect x="48" y="124" width="64" height="10" rx="5" fill="#dbe8d5" />
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+})();
 
 const getOrderItems = (value: Order): OrderItem[] => {
   return value.items || value.orderItems || [];
 };
 
 const getCoverImage = (raw?: string) => {
-  if (!raw) return '';
+  if (!raw) return defaultCover;
   const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
-  return getFullImageUrl(first);
+  return first ? getFullImageUrl(first) : defaultCover;
 };
 
 const getStatusText = (status?: number) => {
@@ -184,8 +210,17 @@ const formatDate = (value?: string) => {
   return String(value).replace('T', ' ').slice(0, 19);
 };
 
+const resetShipDialogState = () => {
+  shipForm.logisticsCompany = '';
+  shipForm.logisticsNo = '';
+};
+
+// 订单详情加载入口：按订单号读取完整订单，页面刷新或切页后都能恢复到最新状态。
 const loadOrderDetail = async () => {
-  if (!orderNo.value) return;
+  if (!orderNo.value) {
+    order.value = null;
+    return;
+  }
   loading.value = true;
   try {
     const res = await getOrderByNo(orderNo.value);
@@ -193,33 +228,58 @@ const loadOrderDetail = async () => {
   } catch (error) {
     console.error('加载订单详情失败', error);
     order.value = null;
+    ElMessage.error('订单详情加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }
 };
 
 const openShipDialog = () => {
+  if (shipSubmitting.value || shipDialogVisible.value) return;
   shipForm.logisticsCompany = '';
   shipForm.logisticsNo = '';
   shipDialogVisible.value = true;
 };
 
+const closeShipDialog = () => {
+  if (shipSubmitting.value) return;
+  shipDialogVisible.value = false;
+};
+
+const handleShipDialogClosed = () => {
+  if (shipSubmitting.value) return;
+  resetShipDialogState();
+};
+
+// 发货主流程：校验物流信息后提交，成功后刷新详情并通知列表页同步更新。
 const confirmShip = async () => {
+  if (shipSubmitting.value) return;
   if (!order.value?.id) return;
   if (!shipForm.logisticsCompany || !shipForm.logisticsNo) {
     ElMessage.warning('请填写完整物流信息');
     return;
   }
-  await shipOrder(order.value.id, shipForm);
-  ElMessage.success('发货成功');
-  shipDialogVisible.value = false;
-  window.dispatchEvent(new Event('merchant-pending-refresh'));
-  await loadOrderDetail();
+  shipSubmitting.value = true;
+  try {
+    await shipOrder(order.value.id, shipForm);
+    ElMessage.success('发货成功');
+    shipDialogVisible.value = false;
+    window.dispatchEvent(new Event('merchant-pending-refresh'));
+    await loadOrderDetail();
+  } catch (error) {
+    console.error('订单发货失败', error);
+    ElMessage.error('发货失败，请稍后重试');
+  } finally {
+    shipSubmitting.value = false;
+    if (!shipDialogVisible.value) {
+      resetShipDialogState();
+    }
+  }
 };
 
-onMounted(() => {
+watch(orderNo, () => {
   void loadOrderDetail();
-});
+}, { immediate: true });
 </script>
 
 <style scoped lang="scss">

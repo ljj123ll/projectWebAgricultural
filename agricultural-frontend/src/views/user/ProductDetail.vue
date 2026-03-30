@@ -2,7 +2,7 @@
   <div class="product-detail-page">
     <div class="container">
       <div class="header-nav" style="display: flex; align-items: center; margin-bottom: 20px;">
-        <el-button link @click="$router.back()" class="back-btn" style="margin-right: 15px; font-size: 18px;">
+        <el-button link :disabled="navigationPending" @click="handleBack" class="back-btn" style="margin-right: 15px; font-size: 18px;">
           <el-icon><ArrowLeft /></el-icon> 返回
         </el-button>
         <!-- 面包屑导航 -->
@@ -77,7 +77,7 @@
             <dl class="meta-row">
               <dt>溯源</dt>
               <dd>
-                <el-button type="success" link @click="showTrace = true">
+                <el-button type="success" link @click="openTraceArchive" :disabled="!product.traceCode">
                   <el-icon><CircleCheck /></el-icon> 查看溯源档案
                 </el-button>
               </dd>
@@ -123,7 +123,8 @@
                 type="danger" 
                 size="large" 
                 class="btn-buy"
-                :disabled="product.stock === 0"
+                :loading="buyNowLoading"
+                :disabled="product.stock === 0 || buyNowLoading || addCartLoading"
                 @click="handleBuyNow"
               >
                 立即购买
@@ -189,7 +190,7 @@
                     <span class="value">{{ product.originPlaceDetail || '-' }}</span>
                   </div>
                   <div class="attr-item">
-                    <span class="label">种植周期</span>
+                    <span class="label">{{ cycleLabel }}</span>
                     <span class="value">{{ product.plantingCycle || '自然生长' }}</span>
                   </div>
                   <div class="attr-item">
@@ -298,42 +299,11 @@
 
     </div>
 
-    <!-- 溯源弹窗 -->
-    <el-dialog
-      v-model="showTrace"
-      title="商品溯源档案"
-      width="400px"
-      center
-      align-center
-    >
-      <div class="trace-dialog-body">
-        <div class="qr-wrapper">
-          <img :src="product.qrCodeUrl || 'https://via.placeholder.com/200?text=QRCode'" class="qr-code" />
-          <p class="scan-tip">扫描二维码查看完整信息</p>
-        </div>
-        <div class="trace-timeline">
-          <el-timeline>
-            <el-timeline-item type="primary" :hollow="true" timestamp="种植">
-              {{ product.plantingCycle || '周期未知' }}
-            </el-timeline-item>
-            <el-timeline-item type="success" :hollow="true" timestamp="施肥">
-              {{ product.fertilizerType || '有机肥' }}
-            </el-timeline-item>
-            <el-timeline-item type="warning" :hollow="true" timestamp="采摘">
-              {{ product.storageMethod || '常温保存' }}
-            </el-timeline-item>
-             <el-timeline-item type="info" :hollow="true" timestamp="运输">
-              {{ product.transportMethod || '普通物流' }}
-            </el-timeline-item>
-          </el-timeline>
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { CircleCheck, ArrowLeft } from '@element-plus/icons-vue';
@@ -344,6 +314,12 @@ import { useCartStore } from '@/stores/modules/cart';
 import type { Product, ProductComment, ShopInfo } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
 import { getProductCategoryName } from '@/constants/category';
+import { getTraceCycleLabel } from '@/constants/trace';
+
+/**
+ * 用户端商品详情页。
+ * 这里串起了商品详情、评论、商家跳转、加入购物车、立即购买和溯源档案入口。
+ */
 
 const route = useRoute();
 const router = useRouter();
@@ -356,8 +332,9 @@ const product = ref<Product>({} as Product);
 const merchant = ref<ShopInfo | null>(null);
 const quantity = ref(1);
 const activeTab = ref('detail');
-const showTrace = ref(false);
 const addCartLoading = ref(false);
+const buyNowLoading = ref(false);
+const navigationPending = ref(false);
 const reviewLoading = ref(false);
 const reviewTotal = ref(0);
 const reviewList = ref<ProductComment[]>([]);
@@ -365,6 +342,36 @@ const categoryNameMap = ref<Record<number, string>>({});
 const merchantRecommendList = ref<Product[]>([]);
 
 const activeImageIndex = ref(0);
+let productRequestNo = 0;
+let reviewRequestNo = 0;
+let merchantInfoRequestNo = 0;
+let merchantRecommendRequestNo = 0;
+let navigationTimer: ReturnType<typeof setTimeout> | null = null;
+let detailAlive = true;
+
+const detailFallbackImage = (() => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 760">
+      <defs>
+        <linearGradient id="detailBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f3f8ef" />
+          <stop offset="100%" stop-color="#e4eee0" />
+        </linearGradient>
+      </defs>
+      <rect width="760" height="760" rx="40" fill="url(#detailBg)" />
+      <circle cx="566" cy="182" r="120" fill="#7cbf6d" opacity="0.15" />
+      <circle cx="190" cy="586" r="96" fill="#f2c14e" opacity="0.14" />
+      <rect x="122" y="182" width="132" height="14" rx="7" fill="#469a48" />
+      <text x="122" y="326" font-size="72" font-family="'Microsoft YaHei', sans-serif" font-weight="700" fill="#28422f">
+        商品图片
+      </text>
+      <text x="122" y="400" font-size="30" font-family="'Microsoft YaHei', sans-serif" fill="#667568">
+        当前商品未上传图片，已切换为本地占位图
+      </text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+})();
 
 const parseImages = (value?: string) => {
   if (!value) return [];
@@ -409,7 +416,10 @@ const parseReviewVideos = (review: ProductComment) => {
   return parseReviewMedia(review).filter(url => isVideoUrl(url));
 };
 
-const mainImageList = computed(() => parseImages(product.value.productImg));
+const mainImageList = computed(() => {
+  const images = parseImages(product.value.productImg);
+  return images.length ? images : [detailFallbackImage];
+});
 const detailImageList = computed(() => parseImages(product.value.productDetailImg));
 
 const setActiveImageIndex = (index: number) => {
@@ -435,6 +445,14 @@ onMounted(async () => {
   applyTabFromQuery();
 });
 
+onUnmounted(() => {
+  detailAlive = false;
+  if (navigationTimer) {
+    clearTimeout(navigationTimer);
+    navigationTimer = null;
+  }
+});
+
 watch(() => route.query.tab, () => {
   applyTabFromQuery();
 });
@@ -454,25 +472,39 @@ watch(
   }
 );
 
+// 加载当前商品的基础信息，并同步触发商家信息与商家推荐商品查询。
 const loadProductData = async (targetProductId: number) => {
+  const requestNo = ++productRequestNo;
   loading.value = true;
   try {
     const res = await getProductDetail(targetProductId);
+    if (!detailAlive || requestNo !== productRequestNo || Number(route.params.id || 0) !== Number(targetProductId)) {
+      return;
+    }
     if (res) {
       product.value = res;
       activeImageIndex.value = 0;
       
       // 加载商家信息
       if (res.merchantId) {
-        loadMerchantInfo(res.merchantId);
-        loadMerchantRecommend(res.merchantId, targetProductId);
+        void loadMerchantInfo(res.merchantId, targetProductId);
+        void loadMerchantRecommend(res.merchantId, targetProductId);
+      } else {
+        merchant.value = null;
+        merchantRecommendList.value = [];
       }
     }
   } catch (error) {
+    if (!detailAlive || requestNo !== productRequestNo || Number(route.params.id || 0) !== Number(targetProductId)) {
+      return;
+    }
     console.error('加载商品详情失败', error);
     ElMessage.error('商品不存在或已下架');
+    router.replace('/products');
   } finally {
-    loading.value = false;
+    if (detailAlive && requestNo === productRequestNo) {
+      loading.value = false;
+    }
   }
 };
 
@@ -489,43 +521,81 @@ const loadCategories = async () => {
   }
 };
 
-const loadMerchantInfo = async (merchantId: number) => {
+// 商品详情右侧的商家信息展示入口。
+const loadMerchantInfo = async (merchantId: number, targetProductId: number) => {
+  const requestNo = ++merchantInfoRequestNo;
   try {
     const res = await getMerchantShop(merchantId);
-    if (res) {
+    if (
+      res &&
+      detailAlive &&
+      requestNo === merchantInfoRequestNo &&
+      Number(route.params.id || 0) === Number(targetProductId)
+    ) {
       merchant.value = res;
     }
   } catch (error) {
+    if (
+      detailAlive &&
+      requestNo === merchantInfoRequestNo &&
+      Number(route.params.id || 0) === Number(targetProductId)
+    ) {
+      merchant.value = null;
+    }
     console.warn('加载商家信息失败', error);
   }
 };
 
+// 商品详情左侧“商家推荐”区域的数据来源。
 const loadMerchantRecommend = async (merchantId: number, excludeProductId: number) => {
+  const requestNo = ++merchantRecommendRequestNo;
   try {
     const res = await getMerchantProductsPublic(merchantId, { pageNum: 1, pageSize: 8 });
     const source = res?.list || [];
+    if (
+      !detailAlive ||
+      requestNo !== merchantRecommendRequestNo ||
+      Number(route.params.id || 0) !== Number(excludeProductId)
+    ) {
+      return;
+    }
     merchantRecommendList.value = source
       .filter(item => Number(item.id) !== Number(excludeProductId))
       .sort((a, b) => Number(b.salesVolume || 0) - Number(a.salesVolume || 0))
       .slice(0, 4);
   } catch (error) {
     console.warn('加载商家推荐失败', error);
-    merchantRecommendList.value = [];
+    if (
+      detailAlive &&
+      requestNo === merchantRecommendRequestNo &&
+      Number(route.params.id || 0) === Number(excludeProductId)
+    ) {
+      merchantRecommendList.value = [];
+    }
   }
 };
 
+// 商品评论列表入口，对应页面中的“累计评价”页签。
 const loadProductReviews = async (targetProductId: number) => {
+  const requestNo = ++reviewRequestNo;
   reviewLoading.value = true;
   try {
     const res = await getProductComments(targetProductId, { pageNum: 1, pageSize: 50 });
+    if (!detailAlive || requestNo !== reviewRequestNo || Number(route.params.id || 0) !== Number(targetProductId)) {
+      return;
+    }
     reviewList.value = res?.list || [];
     reviewTotal.value = Number(res?.total || 0);
   } catch (error) {
     console.warn('加载商品评价失败', error);
-    reviewList.value = [];
-    reviewTotal.value = 0;
+    if (detailAlive && requestNo === reviewRequestNo && Number(route.params.id || 0) === Number(targetProductId)) {
+      reviewList.value = [];
+      reviewTotal.value = 0;
+    }
   } finally {
-    reviewLoading.value = false;
+    if (detailAlive && requestNo === reviewRequestNo) {
+      reviewLoading.value = false;
+    }
   }
 };
 
@@ -547,6 +617,8 @@ const categoryText = computed(() => {
   return product.value.categoryId ? `分类ID ${product.value.categoryId}` : '-';
 });
 
+const cycleLabel = computed(() => getTraceCycleLabel(product.value.categoryId));
+
 const applyTabFromQuery = () => {
   const tab = String(route.query.tab || '').trim();
   if (tab === 'reviews' || tab === 'detail' || tab === 'guarantee') {
@@ -554,6 +626,38 @@ const applyTabFromQuery = () => {
   }
 };
 
+const releaseNavigationLock = () => {
+  if (navigationTimer) {
+    clearTimeout(navigationTimer);
+  }
+  navigationTimer = setTimeout(() => {
+    navigationPending.value = false;
+  }, 300);
+};
+
+const safePush = async (target: string | { path: string; query?: Record<string, any> }) => {
+  if (navigationPending.value) return;
+  navigationPending.value = true;
+  try {
+    await router.push(target as any);
+  } catch (error) {
+    console.warn('页面跳转失败', error);
+  } finally {
+    releaseNavigationLock();
+  }
+};
+
+const handleBack = async () => {
+  if (navigationPending.value) return;
+  navigationPending.value = true;
+  try {
+    router.back();
+  } finally {
+    releaseNavigationLock();
+  }
+};
+
+// 加入购物车：商品详情页最常演示的购物入口。
 const handleAddToCart = async () => {
   if (addCartLoading.value) return;
   if (!userStore.token) {
@@ -598,42 +702,48 @@ const syncCartBadge = async () => {
   }
 };
 
+// 立即购买：跳转确认订单页，并带上当前商品和购买数量。
 const handleBuyNow = async () => {
+  if (buyNowLoading.value) return;
   if (!userStore.token) {
     ElMessage.warning('请先登录');
-    router.push(`/login?redirect=${route.fullPath}`);
+    void safePush(`/login?redirect=${route.fullPath}`);
     return;
   }
-  
-  // 立即购买通常是直接跳转到确认订单页，携带商品信息
-  // 或者先加入购物车再跳转
-  // 这里简化为先加入购物车，然后跳转到购物车页面（或者直接跳转确认订单页，如果支持直接购买）
-  // 接口测试顺序中提到：24 创建订单-直接购买 POST /user/orders { productItems: [...] }
-  // 所以可以直接跳转到确认订单页，并传递参数
-  
-  // 方式1：加入购物车 -> 购物车页
-  // await handleAddToCart();
-  // router.push('/cart');
 
-  // 方式2：直接跳转确认订单页 (需确认订单页支持 query 参数或 store 传递)
-  // 我们使用 query 传递 product info (简单方式)
-  router.push({
-    path: '/order-confirm',
-    query: {
-      productId: product.value.id,
-      productNum: quantity.value
-    }
-  });
+  if (!product.value.id || navigationPending.value) return;
+
+  buyNowLoading.value = true;
+  try {
+    await safePush({
+      path: '/order-confirm',
+      query: {
+        productId: product.value.id,
+        productNum: quantity.value
+      }
+    });
+  } finally {
+    buyNowLoading.value = false;
+  }
 };
 
 const goToMerchant = () => {
   const id = merchant.value?.merchantId || product.value.merchantId;
   if (!id) return;
-  router.push(`/shop/${id}`);
+  void safePush(`/shop/${id}`);
 };
 
 const goToRecommend = (id: number) => {
-  router.push(`/product/${id}`);
+  void safePush(`/product/${id}`);
+};
+
+// 独立溯源档案入口，扫码页和商品页最终都会落到这里。
+const openTraceArchive = () => {
+  if (!product.value.traceCode) {
+    ElMessage.warning('当前商品暂未生成溯源码');
+    return;
+  }
+  void safePush(`/trace/${product.value.traceCode}`);
 };
 </script>
 
@@ -1067,21 +1177,6 @@ const goToRecommend = (id: number) => {
     border: 1px solid #ebeef5;
     background: #000;
     object-fit: cover;
-  }
-}
-
-.trace-dialog-body {
-  text-align: center;
-  
-  .qr-wrapper {
-    margin-bottom: 20px;
-    .qr-code { width: 150px; height: 150px; }
-    .scan-tip { color: #909399; font-size: 12px; margin-top: 5px; }
-  }
-  
-  .trace-timeline {
-    text-align: left;
-    padding: 0 20px;
   }
 }
 

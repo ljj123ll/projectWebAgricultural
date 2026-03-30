@@ -146,6 +146,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listMerchantAudit, auditMerchant, getMerchantDetail } from '@/apis/admin'
 import { getFullImageUrl } from '@/utils/image'
 
+/**
+ * 管理员商家审核页。
+ * 负责商家入驻申请列表、详情查看以及通过/驳回审核，是后台审核演示的重要入口。
+ */
+
 const filterStatus = ref('all')
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -183,6 +188,7 @@ const auditStatusParam = () => {
   return undefined
 }
 
+// 审核列表加载入口：根据筛选状态拉取不同审核阶段的商家申请。
 const loadList = async () => {
   try {
     loading.value = true
@@ -193,39 +199,64 @@ const loadList = async () => {
     })
     merchantList.value = res?.list || []
     total.value = res?.total || 0
+  } catch (error) {
+    merchantList.value = []
+    total.value = 0
+    ElMessage.error('加载商家审核列表失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
 
+// 查看商家完整入驻资料，包含店铺信息、证件照片和资质图片。
 const viewDetail = async (row: any) => {
-  const res = await getMerchantDetail(row.id)
-  Object.assign(currentMerchant, res || {})
-  showDetailDialog.value = true
+  try {
+    const res = await getMerchantDetail(row.id)
+    Object.assign(currentMerchant, res || {})
+    showDetailDialog.value = true
+  } catch (error) {
+    ElMessage.error('加载商家详情失败，请稍后重试')
+  }
 }
 
+// 管理员通过审核动作。
 const approve = async (row: any) => {
-  await ElMessageBox.confirm('确认通过该商家入驻审核吗？', '审核确认', {
-    confirmButtonText: '通过',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-  await auditMerchant(row.id, { pass: true })
-  ElMessage.success('已通过')
-  await loadList()
+  try {
+    await ElMessageBox.confirm('确认通过该商家入驻审核吗？', '审核确认', {
+      confirmButtonText: '通过',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await auditMerchant(row.id, { pass: true })
+    ElMessage.success('已通过')
+    await loadList()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error('商家审核通过失败，请稍后重试')
+  }
 }
 
+// 管理员驳回审核动作，必须填写驳回原因。
 const reject = async (row: any) => {
-  const result = (await ElMessageBox.prompt('请输入驳回原因', '驳回审核', {
-    confirmButtonText: '驳回',
-    cancelButtonText: '取消',
-    inputType: 'textarea',
-    inputValidator: (val: string) => !!val?.trim(),
-    inputErrorMessage: '驳回原因不能为空'
-  })) as { value: string }
-  await auditMerchant(row.id, { pass: false, rejectReason: result.value })
-  ElMessage.success('已驳回')
-  await loadList()
+  try {
+    const result = (await ElMessageBox.prompt('请输入驳回原因', '驳回审核', {
+      confirmButtonText: '驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputValidator: (val: string) => !!val?.trim(),
+      inputErrorMessage: '驳回原因不能为空'
+    })) as { value: string }
+    await auditMerchant(row.id, { pass: false, rejectReason: result.value })
+    ElMessage.success('已驳回')
+    await loadList()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error('商家驳回失败，请稍后重试')
+  }
 }
 
 watch([filterStatus, currentPage, pageSize], () => {

@@ -17,6 +17,10 @@ import java.util.Map;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminPermission("payment:manage")
+/**
+ * 管理员支付与退款控制器。
+ * 管理后台的支付记录查询和退款处理请求都从这里下发。
+ */
 public class AdminPaymentController {
 
     private final AdminPaymentService adminPaymentService;
@@ -31,6 +35,9 @@ public class AdminPaymentController {
         return Result.ok(adminPaymentService.list(payStatus, refundStatus, pageNum, pageSize));
     }
 
+    /**
+     * 退款处理入口，支持把“退款中”流转为成功或失败。
+     */
     @Operation(summary = "更新退款状态")
     @PutMapping("/payments/{id}/refund")
     public Result<Void> updateRefund(@PathVariable Long id, @RequestBody Map<String, Integer> body) {

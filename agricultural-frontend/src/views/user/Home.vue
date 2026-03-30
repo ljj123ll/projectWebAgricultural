@@ -6,8 +6,8 @@
         <div class="left">
           <span>欢迎来到助农电商平台！精选产地好物，天天有新鲜。</span>
           <template v-if="!userInfo">
-            <el-button link type="primary" @click="$router.push('/login')">请登录</el-button>
-            <el-button link @click="$router.push('/register')">免费注册</el-button>
+            <el-button link type="primary" @click="safePush('/login')">请登录</el-button>
+            <el-button link @click="safePush('/register')">免费注册</el-button>
           </template>
           <template v-else>
             <span class="username">你好，{{ userInfo.nickname || userInfo.phone }}</span>
@@ -15,7 +15,7 @@
           </template>
         </div>
         <div class="right">
-          <el-button link @click="$router.push('/merchant/login')">商家入口</el-button>
+          <el-button link @click="safePush('/merchant/login')">商家入口</el-button>
         </div>
       </div>
     </div>
@@ -23,7 +23,7 @@
     <!-- 头部搜索区 -->
     <div class="header-search">
       <div class="container">
-        <div class="logo" @click="$router.push('/')">
+        <div class="logo" @click="safePush('/')">
           <div class="logo-icon">
             <el-icon><Shop /></el-icon>
           </div>
@@ -45,7 +45,7 @@
             </template>
           </el-input>
         </div>
-        <div class="cart-entry" @click="$router.push('/cart')">
+        <div class="cart-entry" @click="safePush('/cart')">
           <el-badge :value="cartCount" class="item" :hidden="cartCount === 0">
             <el-button size="large" plain>
               <el-icon><ShoppingCart /></el-icon>
@@ -64,9 +64,9 @@
         </div>
         <ul class="nav-list">
           <li class="active">首页</li>
-          <li @click="$router.push('/products')">全部商品</li>
-          <li @click="$router.push('/unsold')">滞销专区</li>
-          <li @click="$router.push('/news')">助农资讯</li>
+          <li @click="safePush('/products')">全部商品</li>
+          <li @click="safePush('/unsold')">滞销专区</li>
+          <li @click="safePush('/news')">助农资讯</li>
         </ul>
       </div>
     </div>
@@ -95,28 +95,28 @@
     <div class="main-container">
       <!-- 核心板块 -->
       <div class="feature-section">
-        <div class="feature-card hot" @click="$router.push('/products?sort=sales')">
+        <div class="feature-card hot" @click="safePush('/products?sort=sales')">
           <div class="text">
             <h3>助农热销</h3>
             <p>大家都在买</p>
           </div>
           <el-icon size="40"><TrendCharts /></el-icon>
         </div>
-        <div class="feature-card unsold" @click="$router.push('/unsold')">
+        <div class="feature-card unsold" @click="safePush('/unsold')">
           <div class="text">
             <h3>滞销帮扶</h3>
             <p>爱心助农</p>
           </div>
           <el-icon size="40"><WarningFilled /></el-icon>
         </div>
-        <div class="feature-card news" @click="$router.push('/news')">
+        <div class="feature-card news" @click="safePush('/news')">
           <div class="text">
             <h3>产地资讯</h3>
             <p>了解源头</p>
           </div>
           <el-icon size="40"><Document /></el-icon>
         </div>
-        <div class="feature-card recommend" @click="$router.push('/products')">
+        <div class="feature-card recommend" @click="safePush('/products')">
           <div class="text">
             <h3>为你推荐</h3>
             <p>猜你喜欢</p>
@@ -129,7 +129,7 @@
       <section class="section-block">
         <div class="section-header-large">
           <h2><span class="highlight">精选</span> 助农好物</h2>
-          <div class="more" @click="$router.push('/products')">查看更多 <el-icon><ArrowRight /></el-icon></div>
+          <div class="more" @click="safePush('/products')">查看更多 <el-icon><ArrowRight /></el-icon></div>
         </div>
         
         <el-skeleton :loading="loading" animated :count="4">
@@ -210,14 +210,14 @@
       <section class="section-block" v-if="newsList.length > 0">
         <div class="section-header-large">
           <h2>助农资讯精选</h2>
-          <div class="more" @click="$router.push('/news')">更多 <el-icon><ArrowRight /></el-icon></div>
+          <div class="more" @click="safePush('/news')">更多 <el-icon><ArrowRight /></el-icon></div>
         </div>
         <div class="news-grid">
           <div
             v-for="item in newsList.slice(0, 4)"
             :key="item.id"
             class="news-card"
-            @click="$router.push(`/news/${item.id}`)"
+            @click="goToNews(item.id)"
           >
             <img :src="getNewsCover(item.coverImg)" class="news-cover" />
             <div class="news-content">
@@ -262,11 +262,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Menu, ArrowRight, TrendCharts, WarningFilled, Document, StarFilled, Location, Shop, ShoppingCart } from '@element-plus/icons-vue';
 import { searchProducts } from '@/apis/product';
 import { listNews, getUserInfo, logout as userLogout } from '@/apis/user';
+import { getCart } from '@/apis/order';
 import type { Product, News, ProductCategory } from '@/types';
 import { getFullImageUrl } from '@/utils/image';
 import { ElMessage } from 'element-plus';
@@ -275,19 +276,103 @@ import { PRODUCT_CATEGORY_OPTIONS, getProductCategoryName } from '@/constants/ca
 const router = useRouter();
 const loading = ref(false);
 const userInfo = ref<any>(null);
-const cartCount = ref(0); // 暂未实现购物车数量
+const cartCount = ref(0);
+const navigationPending = ref(false);
+let navigationTimer: ReturnType<typeof setTimeout> | null = null;
+let startupRequestNo = 0;
+let homeAlive = true;
+
+const createSvgPlaceholder = (config: {
+  title: string;
+  subtitle: string;
+  start: string;
+  end: string;
+  accent: string;
+}) => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${config.start}" />
+          <stop offset="100%" stop-color="${config.end}" />
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="420" rx="32" fill="url(#bg)" />
+      <circle cx="980" cy="98" r="118" fill="rgba(255,255,255,0.14)" />
+      <circle cx="1092" cy="308" r="146" fill="rgba(255,255,255,0.1)" />
+      <circle cx="168" cy="332" r="98" fill="rgba(255,255,255,0.08)" />
+      <rect x="88" y="84" width="132" height="12" rx="6" fill="${config.accent}" opacity="0.9" />
+      <text x="88" y="178" font-size="56" font-family="'Microsoft YaHei', sans-serif" font-weight="700" fill="#ffffff">
+        ${config.title}
+      </text>
+      <text x="88" y="236" font-size="28" font-family="'Microsoft YaHei', sans-serif" fill="rgba(255,255,255,0.88)">
+        ${config.subtitle}
+      </text>
+      <rect x="88" y="286" width="224" height="52" rx="26" fill="rgba(255,255,255,0.18)" />
+      <text x="120" y="320" font-size="24" font-family="'Microsoft YaHei', sans-serif" fill="#ffffff">
+        产地直供 · 助农增收
+      </text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const createCardPlaceholder = (title: string, accent: string) => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+      <defs>
+        <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f4f8ef" />
+          <stop offset="100%" stop-color="#e6efe0" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="450" rx="28" fill="url(#cardBg)" />
+      <circle cx="644" cy="112" r="92" fill="${accent}" opacity="0.16" />
+      <circle cx="162" cy="346" r="74" fill="${accent}" opacity="0.1" />
+      <rect x="92" y="112" width="132" height="14" rx="7" fill="${accent}" opacity="0.82" />
+      <text x="92" y="206" font-size="52" font-family="'Microsoft YaHei', sans-serif" font-weight="700" fill="#27412e">
+        ${title}
+      </text>
+      <text x="92" y="258" font-size="26" font-family="'Microsoft YaHei', sans-serif" fill="#617265">
+        平台本地占位图，离线演示也能稳定显示
+      </text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
 // Banner 数据
 const banners = [
-  { id: 1, title: '绿色助农', imgUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80' },
-  { id: 2, title: '春季特惠', imgUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80' },
+  {
+    id: 1,
+    title: '绿色助农',
+    imgUrl: createSvgPlaceholder({
+      title: '从田间到餐桌',
+      subtitle: '精选产地好物，离线演示也能稳定打开',
+      start: '#3d8f46',
+      end: '#8bc76d',
+      accent: '#ffd76a'
+    })
+  },
+  {
+    id: 2,
+    title: '春季特惠',
+    imgUrl: createSvgPlaceholder({
+      title: '助农专区精选',
+      subtitle: '热销商品、滞销帮扶、溯源档案一页直达',
+      start: '#f08a24',
+      end: '#f4c95d',
+      accent: '#2d5d34'
+    })
+  }
 ];
 
 const searchKeyword = ref('');
 const categoryOptions = ref<ProductCategory[]>([]);
 const products = ref<Product[]>([]);
 const categoryTopProductsMap = reactive<Record<number, Product[]>>({});
-const defaultNewsCover = 'https://picsum.photos/seed/agri_home_news/800/450';
+const defaultNewsCover = createCardPlaceholder('助农资讯', '#5d9d52');
+const defaultProductCover = createCardPlaceholder('助农好物', '#3f9f43');
 
 const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((item) => ({
   id: item.value,
@@ -298,26 +383,76 @@ const fixedCategoryOptions: ProductCategory[] = PRODUCT_CATEGORY_OPTIONS.map((it
 const newsList = ref<News[]>([]);
 
 onMounted(async () => {
-  // 只在有token时检查登录状态
+  const requestNo = ++startupRequestNo;
   const token = localStorage.getItem('token');
+  const startupTasks = [
+    loadCategories(requestNo),
+    loadProducts(requestNo),
+    loadNews(requestNo),
+    loadCategoryTopProducts(requestNo)
+  ];
   if (token) {
-    checkLogin();
+    startupTasks.unshift(checkLogin(requestNo), syncCartCount(requestNo));
   }
-  await Promise.all([
-    loadCategories(),
-    loadProducts(),
-    loadNews(),
-    loadCategoryTopProducts()
-  ]);
+  await Promise.all(startupTasks);
 });
 
-const checkLogin = async () => {
+onUnmounted(() => {
+  homeAlive = false;
+  if (navigationTimer) {
+    clearTimeout(navigationTimer);
+    navigationTimer = null;
+  }
+});
+
+const isLatestStartupRequest = (requestNo: number) => {
+  return homeAlive && requestNo === startupRequestNo;
+};
+
+const releaseNavigationLock = () => {
+  if (navigationTimer) {
+    clearTimeout(navigationTimer);
+  }
+  navigationTimer = setTimeout(() => {
+    navigationPending.value = false;
+  }, 300);
+};
+
+const safePush = async (target: string | { path: string; query?: Record<string, any> }) => {
+  if (navigationPending.value) return;
+  navigationPending.value = true;
+  try {
+    await router.push(target as any);
+  } catch (error) {
+    console.warn('页面跳转失败', error);
+  } finally {
+    releaseNavigationLock();
+  }
+};
+
+const checkLogin = async (requestNo: number) => {
   try {
     const res = await getUserInfo();
-    if (res) userInfo.value = res;
+    if (res && isLatestStartupRequest(requestNo)) {
+      userInfo.value = res;
+    }
   } catch (e) {
-    // 未登录或token过期，清除本地token
-    localStorage.removeItem('token');
+    if (isLatestStartupRequest(requestNo)) {
+      localStorage.removeItem('token');
+      userInfo.value = null;
+    }
+  }
+};
+
+const syncCartCount = async (requestNo: number) => {
+  try {
+    const cartItems = await getCart();
+    if (!isLatestStartupRequest(requestNo)) return;
+    cartCount.value = (cartItems || []).reduce((sum, item) => sum + Number(item.productNum || 0), 0);
+  } catch (error) {
+    if (isLatestStartupRequest(requestNo)) {
+      cartCount.value = 0;
+    }
   }
 };
 
@@ -325,6 +460,7 @@ const logout = async () => {
   try {
     await userLogout();
     userInfo.value = null;
+    cartCount.value = 0;
     localStorage.removeItem('token');
     ElMessage.success('已退出登录');
   } catch (e) {
@@ -332,32 +468,37 @@ const logout = async () => {
   }
 };
 
-const loadCategories = async () => {
+const loadCategories = async (requestNo: number) => {
+  if (!isLatestStartupRequest(requestNo)) return;
   categoryOptions.value = fixedCategoryOptions;
 };
 
-const loadProducts = async () => {
+const loadProducts = async (requestNo: number) => {
   loading.value = true;
   try {
     const res = await searchProducts({ pageNum: 1, pageSize: 8, sortBy: 'sales' });
-    if (res && res.list) {
+    if (res && res.list && isLatestStartupRequest(requestNo)) {
       products.value = res.list;
     }
   } catch (error) {
     console.error(error);
   } finally {
-    loading.value = false;
+    if (isLatestStartupRequest(requestNo)) {
+      loading.value = false;
+    }
   }
 };
 
-const loadNews = async () => {
+const loadNews = async (requestNo: number) => {
   try {
     const res = await listNews({ pageNum: 1, pageSize: 6 });
-    if (res && res.list) newsList.value = res.list;
+    if (res && res.list && isLatestStartupRequest(requestNo)) {
+      newsList.value = res.list;
+    }
   } catch (error) {}
 };
 
-const loadCategoryTopProducts = async () => {
+const loadCategoryTopProducts = async (requestNo: number) => {
   try {
     const tasks = fixedCategoryOptions.map((cat) =>
       searchProducts({
@@ -368,11 +509,13 @@ const loadCategoryTopProducts = async () => {
       })
     );
     const responses = await Promise.all(tasks);
+    if (!isLatestStartupRequest(requestNo)) return;
     fixedCategoryOptions.forEach((cat, index) => {
       categoryTopProductsMap[cat.id] = responses[index]?.list || [];
     });
   } catch (error) {
     console.error('加载分类热销商品失败', error);
+    if (!isLatestStartupRequest(requestNo)) return;
     fixedCategoryOptions.forEach((cat) => {
       categoryTopProductsMap[cat.id] = [];
     });
@@ -384,9 +527,9 @@ const getCategoryText = (product: Product) => {
 };
 
 const getCoverImage = (raw?: string) => {
-  if (!raw) return '';
+  if (!raw) return defaultProductCover;
   const first = raw.split(',').map((item) => item.trim()).find(Boolean) || '';
-  return getFullImageUrl(first);
+  return first ? getFullImageUrl(first) : defaultProductCover;
 };
 
 const getNewsCover = (raw?: string) => {
@@ -399,15 +542,22 @@ const formatDate = (value?: string) => {
 };
 
 const handleSearch = () => {
-  router.push(`/products?keyword=${searchKeyword.value}`);
+  void safePush({
+    path: '/products',
+    query: { keyword: searchKeyword.value.trim() }
+  });
 };
 
 const filterByCategory = (id: number) => {
-  router.push(`/products?category=${id}`);
+  void safePush(`/products?category=${id}`);
 };
 
 const goToProduct = (id: number) => {
-  router.push(`/product/${id}`);
+  void safePush(`/product/${id}`);
+};
+
+const goToNews = (id: number) => {
+  void safePush(`/news/${id}`);
 };
 </script>
 

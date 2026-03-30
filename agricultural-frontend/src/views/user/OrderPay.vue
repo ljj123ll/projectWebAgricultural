@@ -9,8 +9,10 @@
         <p class="pay-amount">
           支付金额：<span class="amount">¥{{ orderAmount }}</span>
         </p>
+        <p class="order-status" v-if="orderStatusText">当前状态：{{ orderStatusText }}</p>
       </div>
       <el-countdown 
+        v-if="showCountdown"
         title="支付剩余时间" 
         :value="countdownTime"
         format="mm:ss"
@@ -25,7 +27,7 @@
         <div 
           class="pay-method" 
           :class="{ active: payMethod === 'alipay' }"
-          @click="payMethod = 'alipay'"
+          @click="selectPayMethod('alipay')"
         >
           <div class="method-icon alipay">
             <el-icon size="32"><Wallet /></el-icon>
@@ -40,7 +42,7 @@
         <div 
           class="pay-method" 
           :class="{ active: payMethod === 'wechat' }"
-          @click="payMethod = 'wechat'"
+          @click="selectPayMethod('wechat')"
         >
           <div class="method-icon wechat">
             <el-icon size="32"><ChatDotRound /></el-icon>
@@ -60,7 +62,8 @@
         type="danger" 
         size="large"
         class="pay-btn"
-        :loading="paying"
+        :loading="paying && payAction === 'success'"
+        :disabled="!canPay"
         @click="handlePay(true)"
       >
         确认支付 ¥{{ orderAmount }}
@@ -69,13 +72,15 @@
         type="warning" 
         size="large"
         class="pay-btn"
-        :loading="paying"
+        :loading="paying && payAction === 'failed'"
+        :disabled="!canPay"
         @click="handlePay(false)"
       >
         模拟支付失败
       </el-button>
       <el-button 
         link 
+        :disabled="paying || canceling"
         @click="handleCancel"
         class="cancel-btn"
       >
@@ -101,54 +106,105 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Wallet, ChatDotRound, CircleCheckFilled } from '@element-plus/icons-vue';
-import { payOrder, getOrderDetail } from '@/apis/order';
+import { cancelOrder, payOrder, getOrderDetail } from '@/apis/order';
+import { useOrderStore } from '@/stores/modules/order';
+
+/**
+ * 用户端支付页。
+ * 用于演示订单支付、支付失败重试、支付超时和取消支付的完整前端流程。
+ */
 
 const router = useRouter();
 const route = useRoute();
+const orderStore = useOrderStore();
 
 const orderId = Number(route.params.orderId);
 const orderNo = ref('');
 const orderAmount = ref('0.00');
 const payMethod = ref<'alipay' | 'wechat'>('alipay');
 const paying = ref(false);
+const payAction = ref<'success' | 'failed' | ''>('');
 const payError = ref(false);
+const loadingOrder = ref(false);
+const canceling = ref(false);
+const orderStatus = ref<number | null>(null);
 const countdownTime = ref(Date.now() + 15 * 60 * 1000); // 15分钟倒计时
 
-// 获取订单金额
-onMounted(async () => {
+const canPay = computed(() => !loadingOrder.value && !paying.value && !canceling.value && (orderStatus.value === 1 || orderStatus.value === 6));
+const showCountdown = computed(() => canPay.value && countdownTime.value > Date.now());
+const orderStatusText = computed(() => {
+  if (orderStatus.value == null) return '';
+  return orderStore.getStatusText(orderStatus.value);
+});
+
+const selectPayMethod = (method: 'alipay' | 'wechat') => {
+  if (paying.value || canceling.value) return;
+  payMethod.value = method;
+};
+
+const redirectByStatus = (status?: number | null) => {
+  if (status == null) return;
+  if (status === 5) {
+    ElMessage.warning('订单已取消');
+    router.replace('/orders');
+    return;
+  }
+  if (status !== 1 && status !== 6) {
+    ElMessage.success('订单状态已更新');
+    router.replace(`/order-detail/${orderId}`);
+  }
+};
+
+// 支付页初始化入口：读取订单最新状态与支付截止时间，避免重复进入旧状态页面。
+const loadOrder = async () => {
   if (!orderId) {
     ElMessage.error('订单不存在');
     router.replace('/orders');
     return;
   }
-  
+
+  loadingOrder.value = true;
   try {
     const res = await getOrderDetail(orderId);
-    if (res) {
-      orderNo.value = res.orderNo;
-      orderAmount.value = res.totalAmount.toFixed(2);
-      // 检查订单状态，如果已支付则跳转
-      if (res.orderStatus > 1 && res.orderStatus !== 5 && res.orderStatus !== 6) {
-        ElMessage.success('订单已支付');
-        router.replace(`/order-detail/${orderId}`);
-      } else if (res.orderStatus === 5) {
-        ElMessage.warning('订单已取消');
-        router.replace('/orders');
-      }
+    if (!res) {
+      ElMessage.error('订单不存在');
+      router.replace('/orders');
+      return;
     }
+
+    orderNo.value = res.orderNo || '';
+    orderAmount.value = Number(res.totalAmount || 0).toFixed(2);
+    orderStatus.value = Number(res.orderStatus ?? 0);
+    if (res.payDeadline) {
+      const deadline = new Date(res.payDeadline).getTime();
+      countdownTime.value = Number.isFinite(deadline) ? deadline : Date.now();
+    }
+
+    if (countdownTime.value <= Date.now() && orderStatus.value === 1) {
+      ElMessage.warning('该订单已超时，请刷新订单状态');
+    }
+    redirectByStatus(orderStatus.value);
   } catch (error) {
     console.error('加载订单详情失败', error);
     ElMessage.error('无法获取订单信息');
+    router.replace('/orders');
+  } finally {
+    loadingOrder.value = false;
   }
+};
+
+onMounted(async () => {
+  await loadOrder();
 });
 
 // 支付超时
-const handleTimeout = () => {
-  ElMessageBox.alert('订单支付超时，已自动取消', '提示', {
+const handleTimeout = async () => {
+  await loadOrder();
+  ElMessageBox.alert('订单支付时间已到，请在订单列表中确认最新状态。', '提示', {
     confirmButtonText: '确定',
     callback: () => {
       router.push('/orders');
@@ -156,44 +212,56 @@ const handleTimeout = () => {
   });
 };
 
-// 处理支付
+// 支付主流程：按钮防重复点击，成功后跳转详情页，失败则回拉订单状态兜底。
 const handlePay = async (success: boolean = true) => {
+  if (!canPay.value || paying.value) return;
   paying.value = true;
+  payAction.value = success ? 'success' : 'failed';
   payError.value = false;
 
   try {
-    // 调用支付接口
-    // 文档：POST /user/orders/{id}/pay
     await payOrder(orderId, success);
-    
     ElMessage.success('支付成功');
-    // 跳转到订单详情
     router.replace(`/order-detail/${orderId}`);
-    
   } catch (error) {
     console.error('支付失败', error);
+    await loadOrder();
     payError.value = true;
-    ElMessage.error('支付异常，请重新支付');
+    if (!canPay.value) {
+      return;
+    }
+    ElMessage.error(success ? '支付异常，请重新支付' : '已模拟支付失败，请重新支付');
   } finally {
     paying.value = false;
+    payAction.value = '';
   }
 };
 
-// 重新支付
+// 重新发起一次支付请求，用于模拟支付失败后的恢复演示。
 const retryPay = () => {
   payError.value = false;
-  handlePay(true);
+  void handlePay(true);
 };
 
-// 取消支付
+// 取消支付本质上是取消订单，答辩时可以从这里串到订单状态回退逻辑。
 const handleCancel = () => {
+  if (paying.value || canceling.value) return;
   ElMessageBox.confirm('确定要取消支付吗？订单将在15分钟后自动取消', '提示', {
     confirmButtonText: '确定取消',
     cancelButtonText: '继续支付',
     type: 'warning'
   }).then(() => {
-    ElMessage.info('订单已取消');
+    canceling.value = true;
+    return cancelOrder(orderId);
+  }).then(async () => {
+    ElMessage.success('订单已取消');
+    await loadOrder();
     router.push('/orders');
+  }).catch((error) => {
+    if (error === 'cancel') return;
+    console.error('取消订单失败', error);
+  }).finally(() => {
+    canceling.value = false;
   });
 };
 </script>
@@ -226,6 +294,11 @@ const handleCancel = () => {
     .order-no {
       color: #606266;
       margin: 0 0 8px;
+    }
+
+    .order-status {
+      color: #909399;
+      margin: 0;
     }
 
     .pay-amount {

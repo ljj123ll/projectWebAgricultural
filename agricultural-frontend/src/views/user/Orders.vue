@@ -51,10 +51,16 @@
           <div class="order-actions">
             <!-- 待付款 -->
             <template v-if="order.orderStatus === 1">
-              <el-button type="primary" @click="goToPay(order.id)">
+              <el-button type="primary" :disabled="isCancelSubmitting(order.id)" @click="goToPay(order.id)">
                 立即支付
               </el-button>
-              <el-button @click="cancelCurrentOrder(order)">取消订单</el-button>
+              <el-button
+                :loading="isCancelSubmitting(order.id)"
+                :disabled="isCancelSubmitting(order.id)"
+                @click="cancelCurrentOrder(order)"
+              >
+                取消订单
+              </el-button>
             </template>
 
             <!-- 待发货 -->
@@ -163,12 +169,18 @@ import { listComments, listAfterSale as listUserAfterSale } from '@/apis/user';
 import { getFullImageUrl } from '@/utils/image';
 import { USER_REALTIME_EVENT, parseRealtimePayload } from '@/utils/realtime';
 
+/**
+ * 用户端订单列表页。
+ * 负责订单筛选、取消订单、确认收货，以及评价状态和售后状态的聚合展示。
+ */
+
 const router = useRouter();
 const orderStore = useOrderStore();
 
 const currentTab = ref(0);
 const loading = ref(false);
 const hiddenOrderIds = ref<number[]>([]);
+const cancelSubmittingMap = ref<Record<number, boolean>>({});
 const commentStateMap = ref<Record<string, { id: number; auditStatus: number }>>({});
 const afterSaleNoMap = ref<Record<string, string>>({});
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -248,6 +260,7 @@ const mergeDuplicateOrders = (list: Order[]) => {
   });
 };
 
+// 订单页主加载入口：先取订单，再补评价状态和售后编号，方便页面统一渲染动作按钮。
 const loadOrders = async () => {
   loading.value = true;
   try {
@@ -290,6 +303,7 @@ const visibleOrders = computed(() => orders.value.filter(order => !hiddenOrderId
 
 const makeReviewedKey = (orderNo: string, productId: number) => `${orderNo}::${productId}`;
 
+// 读取当前用户全部评论记录，用于判断订单是否“已评价 / 审核中 / 未通过”。
 const loadReviewedComments = async () => {
   try {
     const res = await listComments({ pageNum: 1, pageSize: 1000 });
@@ -313,6 +327,7 @@ const loadReviewedComments = async () => {
   }
 };
 
+// 读取售后记录并按订单号建立映射，便于从订单列表一键跳转到对应售后单。
 const loadAfterSaleRecords = async () => {
   try {
     const res = await listUserAfterSale({ pageNum: 1, pageSize: 1000 });
@@ -442,27 +457,63 @@ const goToPay = (orderId: number) => {
   router.push(`/order-pay/${orderId}`);
 };
 
-const cancelCurrentOrder = (order: Order) => {
-  ElMessageBox.confirm('确定要取消该订单吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await cancelOrder(order.id);
-    ElMessage.success('订单已取消');
-    await loadOrders();
-  });
+const isCancelSubmitting = (orderId?: number) => {
+  const id = Number(orderId || 0);
+  return id > 0 && !!cancelSubmittingMap.value[id];
 };
 
+const setCancelSubmitting = (orderId: number, submitting: boolean) => {
+  const next = { ...cancelSubmittingMap.value };
+  if (submitting) {
+    next[orderId] = true;
+  } else {
+    delete next[orderId];
+  }
+  cancelSubmittingMap.value = next;
+};
+
+// 取消订单入口：前端先锁定当前行按钮，避免重复点击时连续发起请求。
+const cancelCurrentOrder = async (order: Order) => {
+  const orderId = Number(order.id || 0);
+  if (!orderId || isCancelSubmitting(orderId)) return;
+
+  setCancelSubmitting(orderId, true);
+  try {
+    await ElMessageBox.confirm('确定要取消该订单吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    try {
+      await cancelOrder(orderId);
+      ElMessage.success('订单已取消');
+      await loadOrders();
+    } catch (error) {
+      console.error('取消订单失败', error);
+    }
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      console.error('取消订单确认失败', error);
+    }
+  } finally {
+    setCancelSubmitting(orderId, false);
+  }
+};
+
+// 确认收货入口：成功后刷新订单列表，让订单状态立即切换到“已完成”。
 const confirmReceive = (order: Order) => {
   ElMessageBox.confirm('确认已收到商品？', '提示', {
     confirmButtonText: '确认收货',
     cancelButtonText: '取消',
     type: 'info'
   }).then(async () => {
-    await receiveOrder(order.id);
-    ElMessage.success('确认收货成功');
-    await loadOrders();
+    try {
+      await receiveOrder(order.id);
+      ElMessage.success('确认收货成功');
+      await loadOrders();
+    } catch (error) {
+      console.error('确认收货失败', error);
+    }
   });
 };
 

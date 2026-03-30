@@ -35,7 +35,7 @@ app:
   sms:
     fixed-code: ${APP_SMS_FIXED_CODE:123456}
   trace:
-    base-url: ${APP_TRACE_BASE_URL:http://localhost:5173/product}
+    base-url: ${APP_TRACE_BASE_URL:http://localhost:5173/trace}
   public:
     api-base-url: ${APP_PUBLIC_API_BASE_URL:http://localhost:8080/api}
 

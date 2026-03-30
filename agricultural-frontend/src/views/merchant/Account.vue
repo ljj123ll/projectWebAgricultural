@@ -565,6 +565,7 @@ const showSubsidyRules = ref(false)
 const activeTab = ref('reconciliation')
 const withdrawDialogVisible = ref(false)
 const withdrawSubmitting = ref(false)
+const pageReady = ref(false)
 
 const overview = ref<MerchantAccountOverview>({
   balance: 0,
@@ -635,6 +636,26 @@ const withdrawForm = reactive({
 })
 
 const recentRecords = ref<RecentRecord[]>([])
+const emptyOverview: MerchantAccountOverview = {
+  balance: 0,
+  totalIncome: 0,
+  totalServiceFee: 0,
+  todayIncome: 0,
+  weekIncome: 0,
+  monthIncome: 0,
+  pendingTransferCount: 0,
+  failedTransferCount: 0,
+  manualFallbackCount: 0,
+  subsidyTotal: 0,
+  subsidyMonth: 0,
+  subsidyOrderCount: 0,
+  subsidyPendingCount: 0,
+  subsidyRejectedCount: 0,
+  hasPassedReceivingAccount: false,
+  withdrawAvailableAmount: 0,
+  withdrawFrozenAmount: 0,
+  withdrawSuccessAmount: 0
+}
 
 const approvedAccountText = computed(() => {
   if (!overview.value.hasPassedReceivingAccount) return '未设置可用收款账户'
@@ -747,50 +768,62 @@ const mapDateRange = (range: string[]) => {
   return { startDate, endDate }
 }
 
-const loadOverview = async () => {
-  const [data, withdrawData] = await Promise.all([
-    getMerchantAccountOverview(),
-    getWithdrawAvailable().catch(() => null)
-  ])
-  const fallbackAvailable = Number(withdrawData?.availableAmount || 0)
-  const fallbackFrozen = Number(withdrawData?.frozenAmount || 0)
-  const fallbackSuccess = Number(withdrawData?.withdrawSuccessAmount || 0)
-  overview.value = {
-    balance: Number(data?.balance || 0),
-    totalIncome: Number(data?.totalIncome || 0),
-    totalServiceFee: Number(data?.totalServiceFee || 0),
-    todayIncome: Number(data?.todayIncome || 0),
-    weekIncome: Number(data?.weekIncome || 0),
-    monthIncome: Number(data?.monthIncome || 0),
-    pendingTransferCount: Number(data?.pendingTransferCount || 0),
-    failedTransferCount: Number(data?.failedTransferCount || 0),
-    manualFallbackCount: Number(data?.manualFallbackCount || 0),
-    subsidyTotal: Number(data?.subsidyTotal || 0),
-    subsidyMonth: Number(data?.subsidyMonth || 0),
-    subsidyOrderCount: Number(data?.subsidyOrderCount || 0),
-    subsidyPendingCount: Number(data?.subsidyPendingCount || 0),
-    subsidyRejectedCount: Number(data?.subsidyRejectedCount || 0),
-    hasPassedReceivingAccount: !!data?.hasPassedReceivingAccount,
-    approvedAccountType: data?.approvedAccountType,
-    approvedAccountName: data?.approvedAccountName || '',
-    approvedAccountNoMask: data?.approvedAccountNoMask || '',
-    withdrawAvailableAmount: Number(data?.withdrawAvailableAmount ?? fallbackAvailable),
-    withdrawFrozenAmount: Number(data?.withdrawFrozenAmount ?? fallbackFrozen),
-    withdrawSuccessAmount: Number(data?.withdrawSuccessAmount ?? fallbackSuccess)
+const loadOverview = async (silent = false) => {
+  try {
+    const [data, withdrawData] = await Promise.all([
+      getMerchantAccountOverview(),
+      getWithdrawAvailable().catch(() => null)
+    ])
+    const fallbackAvailable = Number(withdrawData?.availableAmount || 0)
+    const fallbackFrozen = Number(withdrawData?.frozenAmount || 0)
+    const fallbackSuccess = Number(withdrawData?.withdrawSuccessAmount || 0)
+    overview.value = {
+      balance: Number(data?.balance || 0),
+      totalIncome: Number(data?.totalIncome || 0),
+      totalServiceFee: Number(data?.totalServiceFee || 0),
+      todayIncome: Number(data?.todayIncome || 0),
+      weekIncome: Number(data?.weekIncome || 0),
+      monthIncome: Number(data?.monthIncome || 0),
+      pendingTransferCount: Number(data?.pendingTransferCount || 0),
+      failedTransferCount: Number(data?.failedTransferCount || 0),
+      manualFallbackCount: Number(data?.manualFallbackCount || 0),
+      subsidyTotal: Number(data?.subsidyTotal || 0),
+      subsidyMonth: Number(data?.subsidyMonth || 0),
+      subsidyOrderCount: Number(data?.subsidyOrderCount || 0),
+      subsidyPendingCount: Number(data?.subsidyPendingCount || 0),
+      subsidyRejectedCount: Number(data?.subsidyRejectedCount || 0),
+      hasPassedReceivingAccount: !!data?.hasPassedReceivingAccount,
+      approvedAccountType: data?.approvedAccountType,
+      approvedAccountName: data?.approvedAccountName || '',
+      approvedAccountNoMask: data?.approvedAccountNoMask || '',
+      withdrawAvailableAmount: Number(data?.withdrawAvailableAmount ?? fallbackAvailable),
+      withdrawFrozenAmount: Number(data?.withdrawFrozenAmount ?? fallbackFrozen),
+      withdrawSuccessAmount: Number(data?.withdrawSuccessAmount ?? fallbackSuccess)
+    }
+  } catch (error) {
+    console.error('加载资金总览失败', error)
+    overview.value = { ...emptyOverview }
+    if (!silent) ElMessage.error('加载资金总览失败，请稍后重试')
+    throw error
   }
 }
 
-const loadAccounts = async () => {
+const loadAccounts = async (silent = false) => {
   accountLoading.value = true
   try {
     const list = await listAccounts()
     accountList.value = list || []
+  } catch (error) {
+    console.error('加载收款账户失败', error)
+    accountList.value = []
+    if (!silent) ElMessage.error('加载收款账户失败，请稍后重试')
+    throw error
   } finally {
     accountLoading.value = false
   }
 }
 
-const loadReconciliation = async () => {
+const loadReconciliation = async (silent = false) => {
   reconciliationLoading.value = true
   try {
     const { startDate, endDate } = mapDateRange(reconciliationQuery.dateRange)
@@ -806,12 +839,18 @@ const loadReconciliation = async () => {
     const res = await listReconciliation(params)
     reconciliationList.value = res?.list || []
     reconciliationTotal.value = Number(res?.total || 0)
+  } catch (error) {
+    console.error('加载对账明细失败', error)
+    reconciliationList.value = []
+    reconciliationTotal.value = 0
+    if (!silent) ElMessage.error('加载对账明细失败，请稍后重试')
+    throw error
   } finally {
     reconciliationLoading.value = false
   }
 }
 
-const loadSubsidyList = async () => {
+const loadSubsidyList = async (silent = false) => {
   subsidyLoading.value = true
   try {
     const { startDate, endDate } = mapDateRange(subsidyQuery.dateRange)
@@ -828,12 +867,18 @@ const loadSubsidyList = async () => {
     const res = await listSubsidy(params)
     subsidyList.value = res?.list || []
     subsidyTotal.value = Number(res?.total || 0)
+  } catch (error) {
+    console.error('加载补贴明细失败', error)
+    subsidyList.value = []
+    subsidyTotal.value = 0
+    if (!silent) ElMessage.error('加载补贴明细失败，请稍后重试')
+    throw error
   } finally {
     subsidyLoading.value = false
   }
 }
 
-const loadWithdrawals = async () => {
+const loadWithdrawals = async (silent = false) => {
   withdrawLoading.value = true
   try {
     const { startDate, endDate } = mapDateRange(withdrawQuery.dateRange)
@@ -849,65 +894,90 @@ const loadWithdrawals = async () => {
     const res = await listWithdrawals(params)
     withdrawList.value = res?.list || []
     withdrawTotal.value = Number(res?.total || 0)
+  } catch (error) {
+    console.error('加载提现记录失败', error)
+    withdrawList.value = []
+    withdrawTotal.value = 0
+    if (!silent) ElMessage.error('加载提现记录失败，请稍后重试')
+    throw error
   } finally {
     withdrawLoading.value = false
   }
 }
 
-const loadRecentRecords = async () => {
-  const [reconciliationRes, subsidyRes, withdrawRes] = await Promise.all([
-    listReconciliation({ pageNum: 1, pageSize: 8 }),
-    listSubsidy({ pageNum: 1, pageSize: 8 }),
-    listWithdrawals({ pageNum: 1, pageSize: 8 })
-  ])
-  const records: RecentRecord[] = []
+const loadRecentRecords = async (silent = false) => {
+  try {
+    const [reconciliationRes, subsidyRes, withdrawRes] = await Promise.allSettled([
+      listReconciliation({ pageNum: 1, pageSize: 8 }),
+      listSubsidy({ pageNum: 1, pageSize: 8 }),
+      listWithdrawals({ pageNum: 1, pageSize: 8 })
+    ])
+    const records: RecentRecord[] = []
 
-  ;(reconciliationRes?.list || []).forEach((item) => {
-    const timeText = item.transferTime || item.createTime || '-'
-    records.push({
-      id: `r-${item.id}`,
-      kind: item.transferStatus === 1 ? 'income' : 'pending',
-      title: item.orderNo ? `订单打款 ${item.orderNo}` : '系统打款记录',
-      statusText: transferStatusText(item.transferStatus),
-      timeText,
-      amount: Number(item.actualIncome || 0),
-      ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
-    })
-  })
+    if (reconciliationRes.status === 'fulfilled') {
+      ;(reconciliationRes.value?.list || []).forEach((item) => {
+        const timeText = item.transferTime || item.createTime || '-'
+        records.push({
+          id: `r-${item.id}`,
+          kind: item.transferStatus === 1 ? 'income' : 'pending',
+          title: item.orderNo ? `订单打款 ${item.orderNo}` : '系统打款记录',
+          statusText: transferStatusText(item.transferStatus),
+          timeText,
+          amount: Number(item.actualIncome || 0),
+          ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
+        })
+      })
+    }
 
-  ;(subsidyRes?.list || []).forEach((item) => {
-    const timeText = item.grantTime || item.createTime || '-'
-    records.push({
-      id: `s-${item.id}`,
-      kind: item.grantStatus === 1 ? 'subsidy' : 'pending',
-      title: item.orderNo ? `订单补贴 ${item.orderNo}` : '补贴记录',
-      statusText: `${subsidyAuditText(item.auditStatus)} / ${subsidyGrantText(item.grantStatus)}`,
-      timeText,
-      amount: Number(item.subsidyAmount || 0),
-      ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
-    })
-  })
+    if (subsidyRes.status === 'fulfilled') {
+      ;(subsidyRes.value?.list || []).forEach((item) => {
+        const timeText = item.grantTime || item.createTime || '-'
+        records.push({
+          id: `s-${item.id}`,
+          kind: item.grantStatus === 1 ? 'subsidy' : 'pending',
+          title: item.orderNo ? `订单补贴 ${item.orderNo}` : '补贴记录',
+          statusText: `${subsidyAuditText(item.auditStatus)} / ${subsidyGrantText(item.grantStatus)}`,
+          timeText,
+          amount: Number(item.subsidyAmount || 0),
+          ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
+        })
+      })
+    }
 
-  ;(withdrawRes?.list || []).forEach((item) => {
-    const timeText = item.transferTime || item.auditTime || item.createTime || '-'
-    records.push({
-      id: `w-${item.id}`,
-      kind: 'withdraw',
-      title: `提现 ${item.withdrawNo || ''}`.trim(),
-      statusText: withdrawStatusText(item.status),
-      timeText,
-      amount: Number(item.actualAmount || item.applyAmount || 0),
-      ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
-    })
-  })
+    if (withdrawRes.status === 'fulfilled') {
+      ;(withdrawRes.value?.list || []).forEach((item) => {
+        const timeText = item.transferTime || item.auditTime || item.createTime || '-'
+        records.push({
+          id: `w-${item.id}`,
+          kind: 'withdraw',
+          title: `提现 ${item.withdrawNo || ''}`.trim(),
+          statusText: withdrawStatusText(item.status),
+          timeText,
+          amount: Number(item.actualAmount || item.applyAmount || 0),
+          ts: timeText && timeText !== '-' ? new Date(timeText).getTime() : 0
+        })
+      })
+    }
 
-  records.sort((a, b) => b.ts - a.ts)
-  recentRecords.value = records.slice(0, 8)
+    records.sort((a, b) => b.ts - a.ts)
+    recentRecords.value = records.slice(0, 8)
+
+    const hasFailure = [reconciliationRes, subsidyRes, withdrawRes].some(item => item.status === 'rejected')
+    if (hasFailure) {
+      console.warn('近期资金动态存在部分加载失败')
+      if (!silent) ElMessage.warning('近期资金动态有部分记录加载失败，已展示可用内容')
+    }
+  } catch (error) {
+    console.error('加载近期资金动态失败', error)
+    recentRecords.value = []
+    if (!silent) ElMessage.error('加载近期资金动态失败，请稍后重试')
+    throw error
+  }
 }
 
 const searchReconciliation = () => {
   reconciliationQuery.pageNum = 1
-  loadReconciliation()
+  void loadReconciliation()
 }
 
 const resetReconciliation = () => {
@@ -916,17 +986,17 @@ const resetReconciliation = () => {
   reconciliationQuery.keyword = ''
   reconciliationQuery.transferStatus = undefined
   reconciliationQuery.dateRange = []
-  loadReconciliation()
+  void loadReconciliation()
 }
 
 const onReconciliationSizeChange = () => {
   reconciliationQuery.pageNum = 1
-  loadReconciliation()
+  void loadReconciliation()
 }
 
 const searchSubsidy = () => {
   subsidyQuery.pageNum = 1
-  loadSubsidyList()
+  void loadSubsidyList()
 }
 
 const resetSubsidy = () => {
@@ -936,17 +1006,17 @@ const resetSubsidy = () => {
   subsidyQuery.auditStatus = undefined
   subsidyQuery.grantStatus = undefined
   subsidyQuery.dateRange = []
-  loadSubsidyList()
+  void loadSubsidyList()
 }
 
 const onSubsidySizeChange = () => {
   subsidyQuery.pageNum = 1
-  loadSubsidyList()
+  void loadSubsidyList()
 }
 
 const searchWithdraw = () => {
   withdrawQuery.pageNum = 1
-  loadWithdrawals()
+  void loadWithdrawals()
 }
 
 const resetWithdraw = () => {
@@ -955,23 +1025,28 @@ const resetWithdraw = () => {
   withdrawQuery.keyword = ''
   withdrawQuery.status = undefined
   withdrawQuery.dateRange = []
-  loadWithdrawals()
+  void loadWithdrawals()
 }
 
 const onWithdrawSizeChange = () => {
   withdrawQuery.pageNum = 1
-  loadWithdrawals()
+  void loadWithdrawals()
 }
 
 const refreshAll = async () => {
-  await Promise.all([
-    loadOverview(),
-    loadAccounts(),
-    loadReconciliation(),
-    loadSubsidyList(),
-    loadWithdrawals(),
-    loadRecentRecords()
+  const results = await Promise.allSettled([
+    loadOverview(true),
+    loadAccounts(true),
+    loadReconciliation(true),
+    loadSubsidyList(true),
+    loadWithdrawals(true),
+    loadRecentRecords(true)
   ])
+  const hasFailure = results.some(item => item.status === 'rejected')
+  if (pageReady.value && hasFailure) {
+    ElMessage.warning('部分账务数据刷新失败，页面已展示当前可用内容')
+  }
+  pageReady.value = true
 }
 
 const saveReceivingAccount = async () => {
@@ -979,13 +1054,18 @@ const saveReceivingAccount = async () => {
     ElMessage.warning('请先填写完整账户信息')
     return
   }
-  await saveAccount({
-    accountType: accountForm.accountType,
-    accountName: accountForm.accountName.trim(),
-    accountNo: accountForm.accountNo.trim()
-  })
-  ElMessage.success('账户已保存，请发起1分钱验证')
-  await Promise.all([loadAccounts(), loadOverview()])
+  try {
+    await saveAccount({
+      accountType: accountForm.accountType,
+      accountName: accountForm.accountName.trim(),
+      accountNo: accountForm.accountNo.trim()
+    })
+    ElMessage.success('账户已保存，请发起1分钱验证')
+    await Promise.all([loadAccounts(true), loadOverview(true)])
+  } catch (error) {
+    console.error('保存收款账户失败', error)
+    ElMessage.error('保存账户失败，请稍后重试')
+  }
 }
 
 const startVerify = async (row: MerchantAccount) => {
@@ -993,14 +1073,19 @@ const startVerify = async (row: MerchantAccount) => {
     ElMessage.info('该账户已通过验证并审核，无需重复验证')
     return
   }
-  const res = await initAccountVerify(row.id)
-  const amount = Number(res?.verifyAmount || 0)
-  if (amount > 0) {
-    ElMessage.success(`验证已发起（模拟到账金额：¥${amount.toFixed(2)}）`)
-  } else {
-    ElMessage.success('验证已发起，请核对到账金额')
+  try {
+    const res = await initAccountVerify(row.id)
+    const amount = Number(res?.verifyAmount || 0)
+    if (amount > 0) {
+      ElMessage.success(`验证已发起（模拟到账金额：¥${amount.toFixed(2)}）`)
+    } else {
+      ElMessage.success('验证已发起，请核对到账金额')
+    }
+    await Promise.all([loadAccounts(true), loadOverview(true)])
+  } catch (error) {
+    console.error('发起账户验证失败', error)
+    ElMessage.error('发起验证失败，请稍后重试')
   }
-  await Promise.all([loadAccounts(), loadOverview()])
 }
 
 const openConfirmVerify = (row: MerchantAccount) => {
@@ -1015,10 +1100,20 @@ const openConfirmVerify = (row: MerchantAccount) => {
 
 const submitConfirmVerify = async () => {
   if (!verifyingAccountId.value) return
-  await confirmAccountVerify(verifyingAccountId.value, Number(verifyAmountForm.amount))
-  ElMessage.success('验证成功，请提交管理员审核')
-  verifyAmountDialogVisible.value = false
-  await Promise.all([loadAccounts(), loadOverview()])
+  const amount = Number(verifyAmountForm.amount)
+  if (amount <= 0) {
+    ElMessage.warning('请输入正确的到账金额')
+    return
+  }
+  try {
+    await confirmAccountVerify(verifyingAccountId.value, amount)
+    ElMessage.success('验证成功，请提交管理员审核')
+    verifyAmountDialogVisible.value = false
+    await Promise.all([loadAccounts(true), loadOverview(true)])
+  } catch (error) {
+    console.error('确认验证金额失败', error)
+    ElMessage.error('确认验证失败，请核对金额后重试')
+  }
 }
 
 const submitAudit = async (row: MerchantAccount) => {
@@ -1030,9 +1125,14 @@ const submitAudit = async (row: MerchantAccount) => {
     ElMessage.info('该账户已审核通过')
     return
   }
-  await submitAccountAudit(row.id)
-  ElMessage.success('已提交管理员审核')
-  await Promise.all([loadAccounts(), loadOverview()])
+  try {
+    await submitAccountAudit(row.id)
+    ElMessage.success('已提交管理员审核')
+    await Promise.all([loadAccounts(true), loadOverview(true)])
+  } catch (error) {
+    console.error('提交账户审核失败', error)
+    ElMessage.error('提交审核失败，请稍后重试')
+  }
 }
 
 const openWithdrawDialog = () => {
@@ -1076,7 +1176,10 @@ const submitWithdraw = async () => {
     })
     withdrawDialogVisible.value = false
     ElMessage.success(`提现申请已提交（${res?.withdrawNo || '待审核'}）`)
-    await Promise.all([loadOverview(), loadWithdrawals(), loadRecentRecords()])
+    await Promise.all([loadOverview(true), loadWithdrawals(true), loadRecentRecords(true)])
+  } catch (error) {
+    console.error('提交提现申请失败', error)
+    ElMessage.error('提现申请提交失败，请稍后重试')
   } finally {
     withdrawSubmitting.value = false
   }
@@ -1089,15 +1192,20 @@ const cancelWithdrawRow = (row: MerchantWithdrawRecord) => {
     cancelButtonText: '取消'
   })
     .then(async () => {
-      await cancelWithdraw(row.id)
-      ElMessage.success('提现申请已取消')
-      await Promise.all([loadOverview(), loadWithdrawals(), loadRecentRecords()])
+      try {
+        await cancelWithdraw(row.id)
+        ElMessage.success('提现申请已取消')
+        await Promise.all([loadOverview(true), loadWithdrawals(true), loadRecentRecords(true)])
+      } catch (error) {
+        console.error('取消提现申请失败', error)
+        ElMessage.error('取消提现失败，请稍后重试')
+      }
     })
     .catch(() => {})
 }
 
 onMounted(() => {
-  refreshAll()
+  void refreshAll()
 })
 </script>
 

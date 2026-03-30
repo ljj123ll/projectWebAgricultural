@@ -70,8 +70,14 @@ service.interceptors.response.use(
       }
       message = '登录已过期，请重新登录';
       const userStore = useUserStore();
+      const currentRole = userStore.role || sessionStorage.getItem('role') || localStorage.getItem('role') || 'user';
       userStore.logout();
-      window.location.href = '/login';
+      const loginPath = currentRole === 'admin'
+        ? '/admin/login'
+        : currentRole === 'merchant'
+          ? '/merchant/login'
+          : '/login';
+      window.location.href = loginPath;
     } else if (error.response?.data?.message) {
         message = error.response.data.message;
     }

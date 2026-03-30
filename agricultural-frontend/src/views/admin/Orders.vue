@@ -218,6 +218,16 @@ const loading = ref(false);
 const orderList = ref<Order[]>([]);
 const detailVisible = ref(false);
 const currentOrder = ref<Order | null>(null);
+const defaultOrderCover = (() => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+      <rect width="120" height="120" rx="20" fill="#f5f7fa" />
+      <circle cx="60" cy="44" r="18" fill="#d9e8cf" />
+      <rect x="24" y="72" width="72" height="12" rx="6" fill="#b8d6ae" />
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+})();
 
 const getStatusType = (status: number) => {
   const map: Record<number, string> = {
@@ -278,9 +288,9 @@ const getOrderItems = (order?: Partial<Order> | null): OrderItem[] => {
 };
 
 const getCoverImage = (raw?: string) => {
-  if (!raw) return '';
+  if (!raw) return defaultOrderCover;
   const first = raw.split(',').map(item => item.trim()).find(Boolean) || '';
-  return getFullImageUrl(first);
+  return first ? getFullImageUrl(first) : defaultOrderCover;
 };
 
 const getOrderCover = (order?: Partial<Order> | null) => {
@@ -320,6 +330,9 @@ const loadOrders = async () => {
     }
   } catch (error) {
     console.error(error);
+    orderList.value = [];
+    total.value = 0;
+    ElMessage.error('订单列表加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -356,6 +369,7 @@ const viewDetail = async (row: Order) => {
     }
   } catch (error) {
     console.error(error);
+    ElMessage.error('订单详情加载失败，请稍后重试');
   }
 };
 
@@ -381,9 +395,10 @@ const handleCancel = (row: Order) => {
       try {
         await cancelOrder(row.id, value);
         ElMessage.success('订单已取消');
-        loadOrders();
+        await loadOrders();
       } catch (error) {
         console.error(error);
+        ElMessage.error('取消订单失败，请稍后重试');
       }
     })
     .catch(() => {});

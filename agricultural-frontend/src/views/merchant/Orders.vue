@@ -36,6 +36,8 @@
             v-if="scope.row.orderStatus === 2"
             type="primary"
             size="small"
+            :loading="isShipActionLocked(scope.row.id)"
+            :disabled="shipSubmitting || shipDialogVisible"
             @click="handleShip(scope.row)"
           >发货</el-button>
           <el-button type="text" size="small" @click="goDetail(scope.row.orderNo)">详情</el-button>
@@ -69,13 +71,20 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="shipDialogVisible" title="订单发货" width="400px">
+    <el-dialog
+      v-model="shipDialogVisible"
+      title="订单发货"
+      width="400px"
+      :close-on-click-modal="!shipSubmitting"
+      :show-close="!shipSubmitting"
+      @closed="handleShipDialogClosed"
+    >
       <el-form :model="shipForm" label-width="80px">
         <el-form-item label="物流公司">
           <el-select v-model="shipForm.logisticsCompany" placeholder="请选择">
-            <el-option label="顺丰速运" value="SF" />
-            <el-option label="中国邮政" value="EMS" />
-            <el-option label="中通快递" value="ZTO" />
+            <el-option label="顺丰速运" value="顺丰速运" />
+            <el-option label="中国邮政" value="中国邮政" />
+            <el-option label="中通快递" value="中通快递" />
           </el-select>
         </el-form-item>
         <el-form-item label="物流单号">
@@ -84,8 +93,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="shipDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmShip">确定</el-button>
+          <el-button :disabled="shipSubmitting" @click="closeShipDialog">取消</el-button>
+          <el-button type="primary" :loading="shipSubmitting" @click="confirmShip">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -100,6 +109,11 @@ import type { Order, OrderItem } from '@/types';
 import { listAfterSale, listOrders, shipOrder } from '@/apis/merchant';
 import { AFTER_SALE_STATUS, getAfterSaleStatusText as getAfterSaleStatusLabel } from '@/utils/afterSale';
 
+/**
+ * 商家订单页。
+ * 核心用于展示待发货订单、执行发货、查看售后待办，是商家履约流程的主要页面。
+ */
+
 const route = useRoute();
 const router = useRouter();
 const activeTab = ref<'2' | '3' | '4' | 'aftersale'>('2');
@@ -111,6 +125,8 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const shipDialogVisible = ref(false);
 const currentOrderId = ref<number>(0);
+const shipSubmitting = ref(false);
+const shipActionOrderId = ref<number>(0);
 const shipForm = reactive({
   logisticsCompany: '',
   logisticsNo: ''
@@ -148,18 +164,47 @@ const formatDate = (date?: string) => {
   return String(date).replace('T', ' ').slice(0, 19);
 };
 
+const resetShipDialogState = () => {
+  currentOrderId.value = 0;
+  shipActionOrderId.value = 0;
+  shipForm.logisticsCompany = '';
+  shipForm.logisticsNo = '';
+};
+
+const isShipActionLocked = (orderId?: number) => {
+  const id = Number(orderId || 0);
+  return id > 0 && shipActionOrderId.value === id;
+};
+
+// 打开发货弹窗，准备填写物流公司和物流单号。
 const handleShip = (row: Order) => {
-  currentOrderId.value = row.id;
+  const orderId = Number(row.id || 0);
+  if (!orderId || shipSubmitting.value || shipDialogVisible.value) return;
+  shipActionOrderId.value = orderId;
+  currentOrderId.value = orderId;
   shipForm.logisticsCompany = '';
   shipForm.logisticsNo = '';
   shipDialogVisible.value = true;
 };
 
+const closeShipDialog = () => {
+  if (shipSubmitting.value) return;
+  shipDialogVisible.value = false;
+};
+
+const handleShipDialogClosed = () => {
+  if (shipSubmitting.value) return;
+  resetShipDialogState();
+};
+
+// 发货提交入口：对应商家端最常演示的“填写物流并发货”功能。
 const confirmShip = async () => {
+  if (shipSubmitting.value) return;
   if (!shipForm.logisticsCompany || !shipForm.logisticsNo) {
     ElMessage.warning('请填写完整物流信息');
     return;
   }
+  shipSubmitting.value = true;
   try {
     await shipOrder(currentOrderId.value, shipForm);
     shipDialogVisible.value = false;
@@ -168,6 +213,12 @@ const confirmShip = async () => {
     await loadData();
   } catch (error) {
     console.error(error);
+    ElMessage.error('发货失败，请稍后重试');
+  } finally {
+    shipSubmitting.value = false;
+    if (!shipDialogVisible.value) {
+      resetShipDialogState();
+    }
   }
 };
 
@@ -194,18 +245,18 @@ const loadOrderData = async (status: number, requestNo: number) => {
 };
 
 const loadAfterSaleData = async (requestNo: number) => {
-  const [pendingRes, processingRes, waitUserRes, adminRes] = await Promise.all([
+  const results = await Promise.allSettled([
     listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.PENDING_MERCHANT }),
     listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.WAIT_MERCHANT_REFUND }),
     listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.WAIT_USER_RETURN }),
     listAfterSale({ pageNum: 1, pageSize: 50, afterSaleStatus: AFTER_SALE_STATUS.ADMIN })
   ]);
   if (requestNo !== latestRequestNo.value) return;
+  const successList = results
+    .filter((item): item is PromiseFulfilledResult<any> => item.status === 'fulfilled')
+    .map(item => item.value);
   const merged = [
-    ...(pendingRes?.list || []),
-    ...(processingRes?.list || []),
-    ...(waitUserRes?.list || []),
-    ...(adminRes?.list || [])
+    ...successList.flatMap(item => item?.list || [])
   ];
   const uniqueMap = new Map<number, any>();
   merged.forEach((item: any) => {
@@ -216,6 +267,7 @@ const loadAfterSaleData = async (requestNo: number) => {
   });
 };
 
+// 根据当前页签加载订单或售后数据。
 const loadData = async () => {
   const requestNo = ++latestRequestNo.value;
   loading.value = true;
@@ -230,6 +282,13 @@ const loadData = async () => {
       }
       await loadOrderData(status, requestNo);
     }
+  } catch (error) {
+    console.error('商家订单页加载失败', error);
+    if (requestNo === latestRequestNo.value) {
+      orderList.value = [];
+      afterSaleList.value = [];
+    }
+    ElMessage.error('订单数据加载失败，请稍后刷新重试');
   } finally {
     if (requestNo === latestRequestNo.value) {
       loading.value = false;
@@ -267,6 +326,10 @@ onUnmounted(() => {
 watch(activeTab, () => {
   void loadData();
 }, { immediate: true });
+
+watch(() => route.query.status, () => {
+  applyRouteStatus();
+});
 </script>
 
 <style scoped>

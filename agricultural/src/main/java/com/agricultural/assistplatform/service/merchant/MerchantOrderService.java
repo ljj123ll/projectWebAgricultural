@@ -5,12 +5,15 @@ import com.agricultural.assistplatform.common.ResultCode;
 import com.agricultural.assistplatform.entity.LogisticsInfo;
 import com.agricultural.assistplatform.entity.OrderItem;
 import com.agricultural.assistplatform.entity.OrderMain;
+import com.agricultural.assistplatform.entity.ProductInfo;
 import com.agricultural.assistplatform.exception.BusinessException;
 import com.agricultural.assistplatform.mapper.LogisticsInfoMapper;
 import com.agricultural.assistplatform.mapper.OrderItemMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
+import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.agricultural.assistplatform.service.common.MerchantRealtimeEventService;
 import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
+import com.agricultural.assistplatform.service.common.PublicDataCacheService;
 import com.agricultural.assistplatform.service.common.UserMessageService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
 import com.agricultural.assistplatform.vo.merchant.MerchantOrderVO;
@@ -27,15 +30,21 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 商家订单服务。
+ * 核心负责商家订单列表、发货、取消待发货订单和履约消息通知。
+ */
 public class MerchantOrderService {
 
     private final OrderMainMapper orderMainMapper;
     private final OrderItemMapper orderItemMapper;
     private final LogisticsInfoMapper logisticsInfoMapper;
+    private final ProductInfoMapper productInfoMapper;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
     private final AdminRealtimeEventService adminRealtimeEventService;
     private final UserRealtimeEventService userRealtimeEventService;
     private final UserMessageService userMessageService;
+    private final PublicDataCacheService publicDataCacheService;
 
     public com.agricultural.assistplatform.common.PageResult<MerchantOrderVO> list(Integer orderStatus, Integer pageNum, Integer pageSize) {
         Long merchantId = LoginContext.getUserId();
@@ -77,6 +86,10 @@ public class MerchantOrderService {
         return toVO(main);
     }
 
+    /**
+     * 商家发货入口。
+     * 校验订单状态后写入物流信息，并把订单推进到待收货。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void ship(Long id, Map<String, String> body) {
         Long merchantId = LoginContext.getUserId();
@@ -116,6 +129,9 @@ public class MerchantOrderService {
         );
     }
 
+    /**
+     * 商家取消待发货订单，并回补库存。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id, String reason) {
         Long merchantId = LoginContext.getUserId();
@@ -124,9 +140,15 @@ public class MerchantOrderService {
                 .eq(OrderMain::getId, id).eq(OrderMain::getMerchantId, merchantId));
         if (main == null) throw new BusinessException(ResultCode.NOT_FOUND, "订单不存在");
         if (main.getOrderStatus() != 2) throw new BusinessException(ResultCode.BAD_REQUEST, "仅待发货订单可取消");
-        main.setOrderStatus(5);
-        main.setCancelReason(reason);
-        orderMainMapper.updateById(main);
+        int updated = orderMainMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderMain>()
+                .eq(OrderMain::getId, main.getId())
+                .eq(OrderMain::getOrderStatus, 2)
+                .set(OrderMain::getOrderStatus, 5)
+                .set(OrderMain::getCancelReason, reason));
+        if (updated < 1) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "订单状态已变更，请刷新后重试");
+        }
+        restoreOrderStock(main);
         merchantRealtimeEventService.publishRefresh(merchantId, "ORDER_CANCELED", main.getOrderNo());
         userRealtimeEventService.publishRefresh(main.getUserId(), "ORDER_CANCELED", main.getOrderNo());
         adminRealtimeEventService.publishRefreshToAll("ORDER_CANCELED", main.getOrderNo());
@@ -160,5 +182,19 @@ public class MerchantOrderService {
             return iv;
         }).collect(Collectors.toList()));
         return vo;
+    }
+
+    /**
+     * 商家取消订单后回补库存。
+     */
+    private void restoreOrderStock(OrderMain main) {
+        List<OrderItem> items = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderNo, main.getOrderNo()));
+        for (OrderItem item : items) {
+            productInfoMapper.restoreStockSafely(item.getProductId(), item.getProductNum());
+            ProductInfo product = productInfoMapper.selectById(item.getProductId());
+            publicDataCacheService.refreshHotProduct(product);
+            publicDataCacheService.evictProductCatalog(item.getProductId(), main.getMerchantId());
+        }
     }
 }

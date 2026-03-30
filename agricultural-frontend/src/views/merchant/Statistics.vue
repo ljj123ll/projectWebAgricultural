@@ -11,45 +11,45 @@
     </div>
 
     <!-- 数据概览 -->
-    <div class="stats-overview">
+    <div class="stats-overview" v-loading="loading">
       <el-row :gutter="16">
         <el-col :span="12" :md="6">
           <el-card class="stat-card">
-            <div class="stat-value">¥{{ stats.sales.toFixed(2) }}</div>
+            <div class="stat-value">¥{{ formatMoney(stats.sales) }}</div>
             <div class="stat-label">销售额</div>
-            <div class="stat-trend" :class="stats.salesTrend >= 0 ? 'up' : 'down'">
-              <el-icon><ArrowUp v-if="stats.salesTrend >= 0" /><ArrowDown v-else /></el-icon>
-              {{ Math.abs(stats.salesTrend) }}%
+            <div class="stat-trend" :class="toNumber(stats.salesTrend) >= 0 ? 'up' : 'down'">
+              <el-icon><ArrowUp v-if="toNumber(stats.salesTrend) >= 0" /><ArrowDown v-else /></el-icon>
+              {{ formatPercent(stats.salesTrend) }}%
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" :md="6">
           <el-card class="stat-card">
-            <div class="stat-value">{{ stats.orders }}</div>
+            <div class="stat-value">{{ formatInteger(stats.orders) }}</div>
             <div class="stat-label">订单数</div>
-            <div class="stat-trend" :class="stats.ordersTrend >= 0 ? 'up' : 'down'">
-              <el-icon><ArrowUp v-if="stats.ordersTrend >= 0" /><ArrowDown v-else /></el-icon>
-              {{ Math.abs(stats.ordersTrend) }}%
+            <div class="stat-trend" :class="toNumber(stats.ordersTrend) >= 0 ? 'up' : 'down'">
+              <el-icon><ArrowUp v-if="toNumber(stats.ordersTrend) >= 0" /><ArrowDown v-else /></el-icon>
+              {{ formatPercent(stats.ordersTrend) }}%
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" :md="6">
           <el-card class="stat-card">
-            <div class="stat-value">{{ stats.visitors }}</div>
+            <div class="stat-value">{{ formatInteger(stats.visitors) }}</div>
             <div class="stat-label">访客数</div>
-            <div class="stat-trend" :class="stats.visitorsTrend >= 0 ? 'up' : 'down'">
-              <el-icon><ArrowUp v-if="stats.visitorsTrend >= 0" /><ArrowDown v-else /></el-icon>
-              {{ Math.abs(stats.visitorsTrend) }}%
+            <div class="stat-trend" :class="toNumber(stats.visitorsTrend) >= 0 ? 'up' : 'down'">
+              <el-icon><ArrowUp v-if="toNumber(stats.visitorsTrend) >= 0" /><ArrowDown v-else /></el-icon>
+              {{ formatPercent(stats.visitorsTrend) }}%
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" :md="6">
           <el-card class="stat-card">
-            <div class="stat-value">{{ stats.conversionRate }}%</div>
+            <div class="stat-value">{{ formatPercent(stats.conversionRate) }}%</div>
             <div class="stat-label">转化率</div>
-            <div class="stat-trend" :class="stats.conversionTrend >= 0 ? 'up' : 'down'">
-              <el-icon><ArrowUp v-if="stats.conversionTrend >= 0" /><ArrowDown v-else /></el-icon>
-              {{ Math.abs(stats.conversionTrend) }}%
+            <div class="stat-trend" :class="toNumber(stats.conversionTrend) >= 0 ? 'up' : 'down'">
+              <el-icon><ArrowUp v-if="toNumber(stats.conversionTrend) >= 0" /><ArrowDown v-else /></el-icon>
+              {{ formatPercent(stats.conversionTrend) }}%
             </div>
           </el-card>
         </el-col>
@@ -90,9 +90,9 @@
           </div>
           <div class="product-info">
             <h4>{{ product.productName }}</h4>
-            <p class="sales">销量：{{ product.salesVolume }}</p>
+            <p class="sales">销量：{{ formatInteger(product.salesVolume) }}</p>
           </div>
-          <div class="product-amount">¥{{ (product.salesVolume * 15).toFixed(2) }}</div>
+          <div class="product-amount">¥{{ formatMoney(product.salesAmount ?? product.amount ?? Number(product.salesVolume || 0) * 15) }}</div>
         </div>
       </div>
     </el-card>
@@ -125,6 +125,7 @@ import { getMerchantStatistics } from '@/apis/merchant'
 import { ElMessage } from 'element-plus'
 
 const timeRange = ref('week')
+const loading = ref(false)
 
 const stats = reactive({
   sales: 0,
@@ -141,38 +142,78 @@ const salesTrend = ref<any[]>([])
 const topProducts = ref<any[]>([])
 const orderStatus = ref<any[]>([])
 
+const toNumber = (value: unknown) => {
+  const num = Number(value ?? 0)
+  return Number.isFinite(num) ? num : 0
+}
+
+const formatMoney = (value: unknown) => toNumber(value).toFixed(2)
+const formatPercent = (value: unknown) => toNumber(value).toFixed(1)
+const formatInteger = (value: unknown) => Math.round(toNumber(value))
+
+const resetStatistics = () => {
+  stats.sales = 0
+  stats.salesTrend = 0
+  stats.orders = 0
+  stats.ordersTrend = 0
+  stats.visitors = 0
+  stats.visitorsTrend = 0
+  stats.conversionRate = 0
+  stats.conversionTrend = 0
+  salesTrend.value = []
+  topProducts.value = []
+  orderStatus.value = []
+}
+
 // 计算柱状图高度
 const calculateBarHeight = (sales: number) => {
-  const maxSales = Math.max(...salesTrend.value.map((d: any) => d.sales || 0), 1)
-  return Math.max((sales / maxSales) * 100, 5)
+  const maxSales = Math.max(...salesTrend.value.map((d: any) => toNumber(d.sales)), 1)
+  return Math.max((toNumber(sales) / maxSales) * 100, 5)
 }
 
 const loadStatistics = async () => {
+  loading.value = true
   try {
     const res = await getMerchantStatistics(timeRange.value)
-    if (res) {
-      // 更新概览数据
-      stats.sales = res.sales || 0
-      stats.salesTrend = res.salesTrend || 0
-      stats.orders = res.orders || 0
-      stats.ordersTrend = res.ordersTrend || 0
-      stats.visitors = res.visitors || 0
-      stats.visitorsTrend = res.visitorsTrend || 0
-      stats.conversionRate = res.conversionRate || 0
-      stats.conversionTrend = res.conversionTrend || 0
-      
-      // 更新销售趋势
-      salesTrend.value = res.salesTrendData || []
-      
-      // 更新热销商品
-      topProducts.value = res.topProducts || []
-      
-      // 更新订单状态分布
-      orderStatus.value = res.orderStatusDistribution || []
-    }
+    stats.sales = toNumber(res?.sales)
+    stats.salesTrend = toNumber(res?.salesTrend)
+    stats.orders = formatInteger(res?.orders)
+    stats.ordersTrend = toNumber(res?.ordersTrend)
+    stats.visitors = formatInteger(res?.visitors)
+    stats.visitorsTrend = toNumber(res?.visitorsTrend)
+    stats.conversionRate = toNumber(res?.conversionRate)
+    stats.conversionTrend = toNumber(res?.conversionTrend)
+
+    salesTrend.value = Array.isArray(res?.salesTrendData)
+      ? res.salesTrendData.map((item: any) => ({
+          date: item?.date || '-',
+          sales: toNumber(item?.sales)
+        }))
+      : []
+
+    topProducts.value = Array.isArray(res?.topProducts)
+      ? res.topProducts.map((item: any) => ({
+          ...item,
+          productName: item?.productName || '未命名商品',
+          salesVolume: formatInteger(item?.salesVolume),
+          salesAmount: toNumber(item?.salesAmount ?? item?.amount)
+        }))
+      : []
+
+    orderStatus.value = Array.isArray(res?.orderStatusDistribution)
+      ? res.orderStatusDistribution.map((item: any) => ({
+          ...item,
+          name: item?.name || '未知状态',
+          count: formatInteger(item?.count),
+          percentage: Math.min(Math.max(toNumber(item?.percentage), 0), 100)
+        }))
+      : []
   } catch (error) {
     console.error('获取统计数据失败', error)
+    resetStatistics()
     ElMessage.error('获取统计数据失败')
+  } finally {
+    loading.value = false
   }
 }
 

@@ -8,6 +8,7 @@ import com.agricultural.assistplatform.service.common.UnsalableProductService;
 import com.agricultural.assistplatform.vo.common.UnsalableProductVO;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
+import com.agricultural.assistplatform.vo.user.TraceArchiveVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
+/**
+ * 用户端商品控制器。
+ * 答辩时如果老师问“商品搜索、商品详情、溯源档案分别从哪个接口进入”，可以先看这里。
+ */
 public class UserProductController {
 
     private final UserProductService userProductService;
@@ -52,6 +57,16 @@ public class UserProductController {
     @GetMapping("/products/{id}")
     public Result<ProductDetailVO> detail(@PathVariable Long id) {
         return Result.ok(userProductService.getDetail(id));
+    }
+
+    /**
+     * 独立溯源档案入口。
+     * 二维码扫码后最终应落到这里，再由服务层组装完整溯源信息。
+     */
+    @Operation(summary = "商品溯源档案")
+    @GetMapping("/traces/{traceCode}")
+    public Result<TraceArchiveVO> trace(@PathVariable String traceCode) {
+        return Result.ok(userProductService.getTraceArchive(traceCode));
     }
 
     @Operation(summary = "热销榜单")

@@ -7,7 +7,6 @@ import com.agricultural.assistplatform.mapper.OrderItemMapper;
 import com.agricultural.assistplatform.mapper.OrderMainMapper;
 import com.agricultural.assistplatform.mapper.ProductInfoMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +27,7 @@ public class OrderTimeoutService {
     private final UserRealtimeEventService userRealtimeEventService;
     private final MerchantRealtimeEventService merchantRealtimeEventService;
     private final AdminRealtimeEventService adminRealtimeEventService;
+    private final UserMessageService userMessageService;
 
     @Transactional(rollbackFor = Exception.class)
     public int cancelTimeoutOrders() {
@@ -46,17 +46,21 @@ public class OrderTimeoutService {
     }
 
     private void cancelTimeoutOrder(OrderMain order) {
-        order.setOrderStatus(5);
-        order.setCancelReason("超时未付款，系统自动取消");
-        orderMainMapper.updateById(order);
+        int updated = orderMainMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderMain>()
+                .eq(OrderMain::getId, order.getId())
+                .eq(OrderMain::getOrderStatus, 1)
+                .lt(OrderMain::getPayDeadline, LocalDateTime.now())
+                .set(OrderMain::getOrderStatus, 5)
+                .set(OrderMain::getCancelReason, "超时未付款，系统自动取消"));
+        if (updated < 1) {
+            log.info("订单 {} 已被其他流程处理，跳过超时取消", order.getOrderNo());
+            return;
+        }
 
         List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getOrderNo, order.getOrderNo()));
         for (OrderItem item : items) {
-            productInfoMapper.update(null, new LambdaUpdateWrapper<ProductInfo>()
-                    .eq(ProductInfo::getId, item.getProductId())
-                    .setSql("stock = stock + " + item.getProductNum())
-                    .setSql("sales_volume = GREATEST(sales_volume - " + item.getProductNum() + ", 0)"));
+            productInfoMapper.restoreStockSafely(item.getProductId(), item.getProductNum());
             ProductInfo product = productInfoMapper.selectById(item.getProductId());
             publicDataCacheService.refreshHotProduct(product);
             publicDataCacheService.evictProductCatalog(item.getProductId(), order.getMerchantId());
@@ -64,6 +68,13 @@ public class OrderTimeoutService {
 
         if (order.getUserId() != null) {
             userRealtimeEventService.publishRefresh(order.getUserId(), "ORDER_TIMEOUT_CANCELED", order.getOrderNo());
+            userMessageService.createSystemMessage(
+                    order.getUserId(),
+                    "订单超时自动取消",
+                    "您的订单 " + order.getOrderNo() + " 因超时未付款已自动取消，商品库存已恢复。",
+                    "order",
+                    order.getOrderNo()
+            );
         }
         if (order.getMerchantId() != null) {
             merchantRealtimeEventService.publishRefresh(order.getMerchantId(), "ORDER_TIMEOUT_CANCELED", order.getOrderNo());

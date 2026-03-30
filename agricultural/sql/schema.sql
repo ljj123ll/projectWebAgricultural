@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS payment_record (
     delete_flag TINYINT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_order_no (order_no),
+    UNIQUE KEY uk_order_no (order_no),
     INDEX idx_pay_status (pay_status)
 ) COMMENT = '支付记录表';
 
@@ -390,12 +390,19 @@ CREATE TABLE IF NOT EXISTS product_info (
 CREATE TABLE IF NOT EXISTS product_trace (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     product_id BIGINT NOT NULL,
+    trace_code VARCHAR(64),
+    batch_no VARCHAR(64),
+    production_date DATE,
+    harvest_date DATE,
+    packaging_date DATE,
+    inspection_report VARCHAR(500),
+    trace_extra TEXT,
     planting_cycle VARCHAR(50),
     origin_place_detail VARCHAR(100),
     fertilizer_type VARCHAR(50),
     storage_method VARCHAR(50),
     transport_method VARCHAR(50),
-    qr_code_url VARCHAR(255),
+    qr_code_url TEXT,
     delete_flag TINYINT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

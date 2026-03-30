@@ -104,6 +104,11 @@ const loadList = async () => {
     });
     records.value = res?.list || [];
     total.value = res?.total || 0;
+  } catch (error) {
+    console.error('加载打款台账失败', error);
+    records.value = [];
+    total.value = 0;
+    ElMessage.error('打款台账加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -120,9 +125,14 @@ const handleManualTransfer = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消'
   }).then(async () => {
-    await manualTransfer(row.id);
-    ElMessage.success('人工打款成功');
-    await loadList();
+    try {
+      await manualTransfer(row.id);
+      ElMessage.success('人工打款成功');
+      await loadList();
+    } catch (error) {
+      console.error('人工打款失败', error);
+      ElMessage.error('人工打款失败，请稍后重试');
+    }
   }).catch(() => {});
 };
 

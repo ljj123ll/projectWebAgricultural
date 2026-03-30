@@ -204,11 +204,15 @@ const sendCode = async () => {
   try {
     await sendSms(formData.phone);
     ElMessage.success('验证码发送成功');
+    if (timer) clearInterval(timer);
     codeCountdown.value = 60;
     timer = setInterval(() => {
       codeCountdown.value--;
       if (codeCountdown.value <= 0) {
-        if (timer) clearInterval(timer);
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
       }
     }, 1000);
   } catch (error) {
@@ -220,44 +224,47 @@ const sendCode = async () => {
 const handleLogin = async () => {
   if (!formRef.value) return;
 
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true;
-      try {
-        let res;
-        if (loginType.value === 'code') {
-           res = await loginSms({
-             phone: formData.phone,
-             code: formData.code
-           });
-        } else {
-           res = await loginPassword({
-             phone: formData.phone,
-             password: formData.password
-           });
-        }
-        
-        // 如果后端没有返回 role，手动设置为 user
-        if (!res.userInfo.role) {
-          res.userInfo.role = 'user';
-        }
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
 
-        userStore.setLoginState(res, { remember: rememberMe.value });
-        ElMessage.success('登录成功');
-        // 登录成功后跳转到首页 /home
-        await router.push('/home');
-      } catch (error) {
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
+  loading.value = true;
+  try {
+    let res;
+    if (loginType.value === 'code') {
+      res = await loginSms({
+        phone: formData.phone,
+        code: formData.code
+      });
+    } else {
+      res = await loginPassword({
+        phone: formData.phone,
+        password: formData.password
+      });
     }
-  });
+
+    if (!res.userInfo.role) {
+      res.userInfo.role = 'user';
+    }
+
+    userStore.setLoginState(res, { remember: rememberMe.value });
+    ElMessage.success('登录成功');
+    await router.push('/home');
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 清理定时器
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
 });
 </script>
 
@@ -267,16 +274,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center;
+  background:
+    radial-gradient(circle at top left, rgba(119, 181, 88, 0.22), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(255, 198, 94, 0.18), transparent 28%),
+    linear-gradient(135deg, #244127 0%, #3d6a3e 38%, #e9f2df 100%);
   position: relative;
   
   .bg-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(2px);
+    background:
+      linear-gradient(180deg, rgba(15, 38, 20, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%),
+      repeating-linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.04) 0,
+        rgba(255, 255, 255, 0.04) 12px,
+        transparent 12px,
+        transparent 24px
+      );
+    backdrop-filter: blur(4px);
   }
 }
 

@@ -150,19 +150,23 @@ const rules: FormRules = {
 };
 
 const sendCode = async () => {
-  if (!formData.phone) {
-    ElMessage.warning('请先输入手机号');
+  if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
+    ElMessage.warning('请输入正确的手机号');
     return;
   }
   
   try {
     await adminSendSms(formData.phone);
     ElMessage.success('验证码发送成功');
+    if (timer) clearInterval(timer);
     codeCountdown.value = 60;
     timer = setInterval(() => {
       codeCountdown.value--;
       if (codeCountdown.value <= 0) {
-        if (timer) clearInterval(timer);
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
       }
     }, 1000);
   } catch (error) {
@@ -173,28 +177,33 @@ const sendCode = async () => {
 const handleLogin = async () => {
   if (!formRef.value) return;
 
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      loading.value = true;
-      try {
-        const res: any = await adminLogin(formData);
-        if (!res.userInfo.role) {
-          res.userInfo.role = 'admin';
-        }
-        userStore.setLoginState(res);
-        ElMessage.success('登录成功');
-        router.push('/admin/dashboard');
-      } catch (error) {
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const res: any = await adminLogin(formData);
+    if (!res.userInfo.role) {
+      res.userInfo.role = 'admin';
     }
-  });
+    userStore.setLoginState(res);
+    ElMessage.success('登录成功');
+    router.push('/admin/dashboard');
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
 };
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
 });
 </script>
 

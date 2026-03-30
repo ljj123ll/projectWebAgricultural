@@ -17,9 +17,13 @@ import com.agricultural.assistplatform.service.common.PublicDataCacheService;
 import com.agricultural.assistplatform.service.common.RedisCacheService;
 import com.agricultural.assistplatform.vo.user.ProductDetailVO;
 import com.agricultural.assistplatform.vo.user.ProductSimpleVO;
+import com.agricultural.assistplatform.vo.user.TraceArchiveVO;
+import com.agricultural.assistplatform.vo.user.TraceExtraFieldVO;
+import com.agricultural.assistplatform.util.TraceabilityCatalog;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +39,10 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 用户端商品浏览服务。
+ * 负责商品搜索、商品详情、热销榜和独立溯源档案组装，并统一接入公共缓存。
+ */
 public class UserProductService {
 
     private final ProductInfoMapper productInfoMapper;
@@ -44,6 +52,7 @@ public class UserProductService {
     private final MerchantInfoMapper merchantInfoMapper;
     private final RedisCacheService redisCacheService;
     private final PublicDataCacheService publicDataCacheService;
+    private final ObjectMapper objectMapper;
 
     private static final Duration PRODUCT_SEARCH_CACHE_TTL = Duration.ofMinutes(5);
     private static final Duration PRODUCT_DETAIL_CACHE_TTL = Duration.ofMinutes(10);
@@ -70,6 +79,22 @@ public class UserProductService {
                 PRODUCT_DETAIL_CACHE_TTL,
                 ProductDetailVO.class,
                 () -> loadDetail(id)
+        );
+    }
+
+    /**
+     * 独立溯源档案查询入口。
+     * 通过 traceCode 读取产品批次信息，并拼装基础字段与分类特色字段。
+     */
+    public TraceArchiveVO getTraceArchive(String traceCode) {
+        if (traceCode == null || traceCode.isBlank()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "溯源码不能为空");
+        }
+        return redisCacheService.getOrLoad(
+                PublicDataCacheService.PRODUCT_TRACE_ARCHIVE_KEY_PREFIX + traceCode,
+                PRODUCT_DETAIL_CACHE_TTL,
+                TraceArchiveVO.class,
+                () -> loadTraceArchive(traceCode)
         );
     }
 
@@ -153,6 +178,10 @@ public class UserProductService {
         return PageResult.of(page.getTotal(), list);
     }
 
+    /**
+     * 商品详情组装逻辑。
+     * 除了基础商品信息，还会附带商家信息和当前商品绑定的溯源摘要字段。
+     */
     private ProductDetailVO loadDetail(Long id) {
         ProductInfo p = productInfoMapper.selectById(id);
         if (p == null || p.getStatus() != 1) throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在或已下架");
@@ -179,13 +208,72 @@ public class UserProductService {
         ProductTrace trace = productTraceMapper.selectOne(
                 new LambdaQueryWrapper<ProductTrace>().eq(ProductTrace::getProductId, id));
         if (trace != null) {
+            vo.setTraceCode(trace.getTraceCode());
+            vo.setBatchNo(trace.getBatchNo());
+            vo.setProductionDate(trace.getProductionDate());
+            vo.setHarvestDate(trace.getHarvestDate());
+            vo.setPackagingDate(trace.getPackagingDate());
+            vo.setInspectionReport(trace.getInspectionReport());
             vo.setPlantingCycle(trace.getPlantingCycle());
             vo.setOriginPlaceDetail(trace.getOriginPlaceDetail());
             vo.setFertilizerType(trace.getFertilizerType());
             vo.setStorageMethod(trace.getStorageMethod());
             vo.setTransportMethod(trace.getTransportMethod());
             vo.setQrCodeUrl(trace.getQrCodeUrl());
+            vo.setTraceExtra(parseTraceExtra(p.getCategoryId(), trace.getTraceExtra()));
         }
+        return vo;
+    }
+
+    /**
+     * 构造独立溯源档案页数据。
+     * 这里会把数据库中的通用溯源字段与分类特色字段转换成前端可直接展示的档案结构。
+     */
+    private TraceArchiveVO loadTraceArchive(String traceCode) {
+        ProductTrace trace = productTraceMapper.selectOne(new LambdaQueryWrapper<ProductTrace>()
+                .eq(ProductTrace::getTraceCode, traceCode)
+                .last("LIMIT 1"));
+        if (trace == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "溯源档案不存在");
+        }
+
+        ProductInfo product = productInfoMapper.selectById(trace.getProductId());
+        if (product == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "商品不存在");
+        }
+
+        TraceArchiveVO vo = new TraceArchiveVO();
+        vo.setProductId(product.getId());
+        vo.setTraceCode(trace.getTraceCode());
+        vo.setBatchNo(trace.getBatchNo());
+        vo.setCategoryId(product.getCategoryId());
+        if (product.getCategoryId() != null) {
+            ProductCategory category = productCategoryMapper.selectById(product.getCategoryId());
+            vo.setCategoryName(category != null ? category.getCategoryName() : null);
+        }
+        vo.setProductName(product.getProductName());
+        vo.setProductImg(product.getProductImg());
+        vo.setProductDesc(product.getProductDesc());
+        vo.setOriginPlace(product.getOriginPlace());
+        vo.setOriginPlaceDetail(trace.getOriginPlaceDetail());
+        vo.setPlantingCycle(trace.getPlantingCycle());
+        vo.setFertilizerType(trace.getFertilizerType());
+        vo.setStorageMethod(trace.getStorageMethod());
+        vo.setTransportMethod(trace.getTransportMethod());
+        vo.setInspectionReport(trace.getInspectionReport());
+        vo.setProductionDate(trace.getProductionDate());
+        vo.setHarvestDate(trace.getHarvestDate());
+        vo.setPackagingDate(trace.getPackagingDate());
+
+        ShopInfo shop = shopInfoMapper.selectOne(
+                new LambdaQueryWrapper<ShopInfo>().eq(ShopInfo::getMerchantId, product.getMerchantId())
+        );
+        if (shop != null) {
+            vo.setShopName(shop.getShopName());
+        }
+
+        vo.setBaseFields(buildBaseFields(trace));
+        vo.setFeatureFields(TraceabilityCatalog.toFieldList(product.getCategoryId(), parseTraceExtra(product.getCategoryId(), trace.getTraceExtra())));
         return vo;
     }
 
@@ -284,5 +372,40 @@ public class UserProductService {
         }
         String text = String.valueOf(value).trim();
         return text.isEmpty() ? "blank" : text.replace(":", "_");
+    }
+
+    private Map<String, String> parseTraceExtra(Long categoryId, String traceExtra) {
+        if (traceExtra == null || traceExtra.isBlank()) {
+            return TraceabilityCatalog.sanitize(categoryId, null);
+        }
+        try {
+            Map<String, String> raw = objectMapper.readValue(traceExtra, new TypeReference<>() {
+            });
+            return TraceabilityCatalog.sanitize(categoryId, raw);
+        } catch (Exception e) {
+            return TraceabilityCatalog.sanitize(categoryId, null);
+        }
+    }
+
+    private List<TraceExtraFieldVO> buildBaseFields(ProductTrace trace) {
+        List<TraceExtraFieldVO> list = new java.util.ArrayList<>();
+        addField(list, "batchNo", "批次编号", trace.getBatchNo());
+        addField(list, "productionDate", "生产建档日期", trace.getProductionDate() == null ? null : trace.getProductionDate().toString());
+        addField(list, "harvestDate", "采收/出栏日期", trace.getHarvestDate() == null ? null : trace.getHarvestDate().toString());
+        addField(list, "packagingDate", "包装入库日期", trace.getPackagingDate() == null ? null : trace.getPackagingDate().toString());
+        addField(list, "plantingCycle", "生产周期", trace.getPlantingCycle());
+        addField(list, "originPlaceDetail", "详细产地", trace.getOriginPlaceDetail());
+        addField(list, "fertilizerType", "生产方式", trace.getFertilizerType());
+        addField(list, "storageMethod", "存储方式", trace.getStorageMethod());
+        addField(list, "transportMethod", "运输方式", trace.getTransportMethod());
+        addField(list, "inspectionReport", "检测/检疫说明", trace.getInspectionReport());
+        return list;
+    }
+
+    private void addField(List<TraceExtraFieldVO> list, String key, String label, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        list.add(new TraceExtraFieldVO(key, label, value));
     }
 }

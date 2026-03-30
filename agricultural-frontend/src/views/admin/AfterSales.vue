@@ -332,6 +332,10 @@ const loadList = async () => {
     ]);
     list.value = uniqueSort([...s1, ...s2, ...s3, ...s4, ...s5, ...s6]);
     await loadUnreadCounts();
+  } catch (error) {
+    console.error('加载售后列表失败', error);
+    list.value = [];
+    ElMessage.error('售后列表加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -365,6 +369,10 @@ const loadAfterSaleMessages = async () => {
     const res = await listAdminAfterSaleMessages(chatAfterSaleNo.value, { pageNum: 1, pageSize: 100 });
     const source = res?.list || [];
     afterSaleMessages.value = [...source].sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  } catch (error) {
+    console.error('加载售后消息失败', error);
+    afterSaleMessages.value = [];
+    ElMessage.error('售后消息加载失败，请稍后重试');
   } finally {
     afterSaleMsgLoading.value = false;
   }
@@ -403,6 +411,9 @@ const submitAfterSaleMessage = async () => {
     afterSaleMsgForm.content = '';
     await enterAfterSaleMessageTab();
     ElMessage.success('消息已发送');
+  } catch (error) {
+    console.error('发送售后消息失败', error);
+    ElMessage.error('发送消息失败，请稍后重试');
   } finally {
     afterSaleSendPending.value = false;
   }
@@ -422,14 +433,19 @@ const submitJudge = async () => {
         ? '管理员裁决：支持退货退款，请用户上传退货快递单号。'
         : '管理员裁决：不支持本次售后申请。';
 
-  await handleAfterSale(current.value.id, {
-    afterSaleStatus,
-    handleResult: judgeForm.remark.trim() || defaultRemark,
-    adminId: userStore.userInfo?.id
-  });
-  ElMessage.success('裁决提交成功');
-  judgeDialogVisible.value = false;
-  await loadList();
+  try {
+    await handleAfterSale(current.value.id, {
+      afterSaleStatus,
+      handleResult: judgeForm.remark.trim() || defaultRemark,
+      adminId: userStore.userInfo?.id
+    });
+    ElMessage.success('裁决提交成功');
+    judgeDialogVisible.value = false;
+    await loadList();
+  } catch (error) {
+    console.error('提交售后裁决失败', error);
+    ElMessage.error('裁决提交失败，请稍后重试');
+  }
 };
 
 const handleRealtimeRefresh = (event: Event) => {

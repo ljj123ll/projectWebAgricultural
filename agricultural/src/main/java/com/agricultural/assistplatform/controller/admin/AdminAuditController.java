@@ -18,6 +18,10 @@ import java.util.Map;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminPermission("audit:manage")
+/**
+ * 管理员审核控制器。
+ * 商家审核和商品审核的后台入口统一收口在这里。
+ */
 public class AdminAuditController {
 
     private final AdminAuditService adminAuditService;
@@ -47,6 +51,9 @@ public class AdminAuditController {
         return Result.ok(adminAuditService.productAuditList(status, pageNum, pageSize));
     }
 
+    /**
+     * 商品审核入口，负责把商品流转到“通过”或“驳回”状态。
+     */
     @Operation(summary = "审核商品")
     @PutMapping("/products/{id}/audit")
     public Result<Void> auditProduct(@PathVariable Long id, @RequestBody Map<String, Object> body) {

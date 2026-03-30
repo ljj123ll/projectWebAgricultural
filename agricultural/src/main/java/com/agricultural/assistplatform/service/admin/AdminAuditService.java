@@ -15,20 +15,28 @@ import com.agricultural.assistplatform.mapper.ShopInfoMapper;
 import com.agricultural.assistplatform.service.common.PublicDataCacheService;
 import com.agricultural.assistplatform.service.common.AdminRealtimeEventService;
 import com.agricultural.assistplatform.service.common.UserRealtimeEventService;
+import com.agricultural.assistplatform.util.TraceabilityCatalog;
 import com.agricultural.assistplatform.vo.admin.AdminProductAuditVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * 管理员审核服务。
+ * 负责商家审核、商品审核，以及后台审核页需要展示的商品档案拼装。
+ */
 public class AdminAuditService {
 
     private final MerchantInfoMapper merchantInfoMapper;
@@ -40,6 +48,7 @@ public class AdminAuditService {
     private final AdminRealtimeEventService adminRealtimeEventService;
     private final AdminAuditTrailService adminAuditTrailService;
     private final PublicDataCacheService publicDataCacheService;
+    private final ObjectMapper objectMapper;
 
     public com.agricultural.assistplatform.common.PageResult<MerchantInfo> merchantAuditList(Integer auditStatus, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
@@ -65,6 +74,10 @@ public class AdminAuditService {
         adminAuditTrailService.record("merchant", id, pass, pass ? "商家审核通过" : reason);
     }
 
+    /**
+     * 商品审核列表查询。
+     * 这里把商品、商家、店铺、品类、溯源档案信息聚合成后台审核展示对象。
+     */
     public com.agricultural.assistplatform.common.PageResult<AdminProductAuditVO> productAuditList(Integer status, Integer pageNum, Integer pageSize) {
         if (pageNum == null || pageNum < 1) pageNum = 1;
         if (pageSize == null || pageSize < 1) pageSize = 10;
@@ -114,12 +127,19 @@ public class AdminAuditService {
                     vo.setOriginPlace(p.getOriginPlace());
                     ProductTrace t = traceMap.get(p.getId());
                     if (t != null) {
+                        vo.setTraceCode(t.getTraceCode());
+                        vo.setBatchNo(t.getBatchNo());
+                        vo.setProductionDate(t.getProductionDate());
+                        vo.setHarvestDate(t.getHarvestDate());
+                        vo.setPackagingDate(t.getPackagingDate());
+                        vo.setInspectionReport(t.getInspectionReport());
                         vo.setPlantingCycle(t.getPlantingCycle());
                         vo.setOriginPlaceDetail(t.getOriginPlaceDetail());
                         vo.setFertilizerType(t.getFertilizerType());
                         vo.setStorageMethod(t.getStorageMethod());
                         vo.setTransportMethod(t.getTransportMethod());
                         vo.setQrCodeUrl(t.getQrCodeUrl());
+                        vo.setTraceExtra(parseTraceExtra(p.getCategoryId(), t.getTraceExtra()));
                     }
                     vo.setStatus(p.getStatus());
                     vo.setRejectReason(p.getRejectReason());
@@ -128,6 +148,25 @@ public class AdminAuditService {
                 }).collect(Collectors.toList()));
     }
 
+    /**
+     * 解析商品的分类特色溯源字段，供后台审核详情页直接展示。
+     */
+    private Map<String, String> parseTraceExtra(Long categoryId, String traceExtra) {
+        if (traceExtra == null || traceExtra.isBlank()) {
+            return TraceabilityCatalog.sanitize(categoryId, null);
+        }
+        try {
+            Map<String, String> raw = objectMapper.readValue(traceExtra, new TypeReference<>() {
+            });
+            return new LinkedHashMap<>(TraceabilityCatalog.sanitize(categoryId, raw));
+        } catch (Exception e) {
+            return new LinkedHashMap<>(TraceabilityCatalog.sanitize(categoryId, null));
+        }
+    }
+
+    /**
+     * 审核商品并同步刷新用户侧公共缓存。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void auditProduct(Long id, Map<String, Object> body) {
         Boolean pass = body != null && body.get("pass") != null ? (Boolean) body.get("pass") : null;
